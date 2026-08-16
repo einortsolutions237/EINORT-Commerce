@@ -14,8 +14,10 @@ dist/
 .env.test
 .env.test.local
 
-# Prisma
+# Prisma — generated client output path (Prisma 7 requires an explicit output);
+# created by plan 01-02. Never commit generated client code.
 /prisma/generated/
+src/generated/
 
 # Testing
 coverage/
