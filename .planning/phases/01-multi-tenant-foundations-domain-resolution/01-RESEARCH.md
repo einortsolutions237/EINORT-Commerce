@@ -1292,32 +1292,39 @@ Claims that were **not** verified in this session. The planner should treat thes
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All five questions were operationalised into specific plan tasks during Phase 1 planning. Each carries an inline **RESOLVED** citation naming the plan and task that settles it.
 
 1. **Does the tenant-scope extension survive `$transaction`?** (= A1)
    - Known: extensions wrap client operations; interactive-transaction clients are derived from the extended client.
    - Unclear: not verifiable without a live DB in this session.
    - Recommendation: make it the **first** test in the isolation suite. If it fails, `scopedDb` must expose its own `$transaction` wrapper.
+   - **RESOLVED:** plan 01-04 Task 2 — the isolation suite carries a test named `"$transaction inside scopedDb stays scoped"` that settles A1 against a real Postgres before any Phase 3 transactional code is written. A failure is a declared blocking finding recorded in `01-04-SUMMARY.md`, and `scopedDb` must then expose its own `$transaction` wrapper before Phase 3 proceeds.
 
 2. **Vercel preview deployments and wildcard subdomains.**
    - Known: Vercel's own starter handles a `tenant---branch.vercel.app` convention; preview URLs have a 63-char DNS-label ceiling.
    - Unclear: whether preview deploys should support tenant subdomains at all in Phase 1.
    - Recommendation: don't. Do multi-tenant testing locally via `*.localhost` (zero config on Windows/Chrome/Edge/Firefox) and on production. Have `classifyHost` return `root` for any `*.vercel.app` host so previews exercise the apex surface only.
+   - **RESOLVED:** plan 01-03 Task 1 — `classifyHost` returns `root` for any host ending in `.vercel.app`, so preview deployments exercise the apex surface only and the 63-character DNS-label ceiling never applies. `tests/unit/host.test.ts` carries the `*.vercel.app` and `*.localhost` rows. No preview-subdomain support in Phase 1; local multi-tenant testing uses `*.localhost`.
 
 3. **Where does `platformRole` get checked in Phase 1?**
    - Known: C-8 fixes the mechanism (a `User` field, not the admin plugin).
    - Unclear: Phase 1 has no admin UI (that's Phase 6), so nothing reads it yet.
    - Recommendation: add the field and `adminDb` + its lint boundary now (TEN-05 demands the *architectural* isolation), but build no admin routes. TEN-05 is satisfied by the client existing, being unscoped, and being lint-fenced.
+   - **RESOLVED:** nothing reads it in Phase 1, and no admin route is built. Plan 01-02 Task 1 adds `User.platformRole` (default `"merchant"`), plan 01-02 Task 2 creates the unscoped `adminDb` client, and plan 01-01 Task 3 declares the `src/server/admin/**` ESLint import zone. TEN-05 is satisfied architecturally; Phase 6 is the first reader.
 
 4. **Does `organizationLimit: 1` conflict with anything later?**
    - Known: it applies to system actions too (verified), which gives idempotent signup.
    - Unclear: whether a merchant will ever legitimately need a second store.
    - Recommendation: keep `1` for V1; it is a one-line change and REQUIREMENTS.md ONB-01 says "one store."
+   - **RESOLVED:** plan 01-06 Task 1 — `organizationLimit: 1` is set in the Better Auth `organization` plugin config and kept for V1 per ONB-01. Plan 01-06 Task 2 depends on it applying to the system-action provisioning path (verified for 1.6.29), which is what makes a retried signup idempotent rather than minting a second store; `tests/isolation/signup.test.ts` asserts the second-store refusal.
 
 5. **Should `/store-not-found` return HTTP 404?**
    - Known: D-04 wants a branded page. A `NextResponse.rewrite` preserves 200 by default.
    - Unclear: SEO/monitoring preference.
    - Recommendation: return a genuine 404 status with branded content — reach it via `notFound()` and a custom `not-found.tsx` rather than rewriting to a 200 page, so crawlers don't index thousands of wildcard hostnames.
+   - **RESOLVED:** plan 01-05 Task 2 — yes, a genuine 404. `/store-not-found` is a thin route whose only job is to call `notFound()`, which renders `src/app/not-found.tsx` with a real 404 status instead of the 200 a bare rewrite returns. The unknown-host and suspended-store paths therefore render the identical component with identical props, which is also the D-05 enforcement criterion.
 
 ---
 

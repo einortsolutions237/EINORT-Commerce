@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Reserved slugs (e.g. `api`, `admin`, `www`) cannot be claimed as a store subdomain; unrecognized hostnames return a clean failure and never fall through to any tenant.
   4. All tenant-scoped queries route through a single centralized, tenant-injecting data-access layer, and an automated two-tenant isolation test suite passes before the phase is considered done.
   5. Platform admin uses a deliberately separate, unscoped data-access client, architecturally isolated from the tenant-scoped layer.
-**Plans**: 7 plans (5 waves)
+**Plans**: 7 plans (6 waves)
 Plans:
 - [ ] 01-01-PLAN.md — Scaffold Next 16 + toolchain, typed env, ESLint import zones, Vitest harness, root placeholder page
 - [ ] 01-02-PLAN.md — Prisma 7 + Better Auth schema, first migration, and the four data-access clients (scopedDb / platformDb / adminDb)
