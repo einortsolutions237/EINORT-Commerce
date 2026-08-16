@@ -122,27 +122,66 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEN-01 through TEN-08 | TBD | Pending |
-| ONB-01 through ONB-05 | TBD | Pending |
-| TMPL-01 through TMPL-05 | TBD | Pending |
-| EDIT-01 through EDIT-03 | TBD | Pending |
-| CAT-01 through CAT-03 | TBD | Pending |
-| CHK-01 through CHK-05 | TBD | Pending |
-| ORD-01 through ORD-05 | TBD | Pending |
-| DOM-01 through DOM-02 | TBD | Pending |
-| SUB-01 through SUB-02 | TBD | Pending |
-| DASH-01 through DASH-02 | TBD | Pending |
-| ADM-01 through ADM-04 | TBD | Pending |
+| TEN-01 | Phase 1 | Pending |
+| TEN-02 | Phase 1 | Pending |
+| TEN-03 | Phase 1 | Pending |
+| TEN-04 | Phase 2 | Pending |
+| TEN-05 | Phase 1 | Pending |
+| TEN-06 | Phase 1 | Pending |
+| TEN-07 | Phase 1 | Pending |
+| TEN-08 | Phase 1 | Pending |
+| ONB-01 | Phase 1 | Pending |
+| ONB-02 | Phase 4 | Pending |
+| ONB-03 | Phase 4 | Pending |
+| ONB-04 | Phase 4 | Pending |
+| ONB-05 | Phase 2 | Pending |
+| TMPL-01 | Phase 4 | Pending |
+| TMPL-02 | Phase 4 | Pending |
+| TMPL-03 | Phase 5 | Pending |
+| TMPL-04 | Phase 5 | Pending |
+| TMPL-05 | Phase 5 | Pending |
+| EDIT-01 | Phase 4 | Pending |
+| EDIT-02 | Phase 4 | Pending |
+| EDIT-03 | Phase 4 | Pending |
+| CAT-01 | Phase 3 | Pending |
+| CAT-02 | Phase 3 | Pending |
+| CAT-03 | Phase 3 | Pending |
+| CHK-01 | Phase 3 | Pending |
+| CHK-02 | Phase 3 | Pending |
+| CHK-03 | Phase 3 | Pending |
+| CHK-04 | Phase 3 | Pending |
+| CHK-05 | Phase 3 | Pending |
+| ORD-01 | Phase 3 | Pending |
+| ORD-02 | Phase 3 | Pending |
+| ORD-03 | Phase 3 | Pending |
+| ORD-04 | Phase 3 | Pending |
+| ORD-05 | Phase 3 | Pending |
+| DOM-01 | Phase 1 | Pending |
+| DOM-02 | Phase 1 | Pending |
+| SUB-01 | Phase 2 | Pending |
+| SUB-02 | Phase 2 | Pending |
+| DASH-01 | Phase 6 | Pending |
+| DASH-02 | Phase 6 | Pending |
+| ADM-01 | Phase 6 | Pending |
+| ADM-02 | Phase 6 | Pending |
+| ADM-03 | Phase 6 | Pending |
+| ADM-04 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 39 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 39 ⚠️ (expected — roadmap creation fills this in next)
+- v1 requirements: 44 total (corrected from initial count of 39 during roadmap creation — full line-by-line recount of this file's requirement list)
+- Mapped to phases: 44/44 ✓
+- Unmapped: 0
+
+**Phase distribution:**
+- Phase 1 (Multi-Tenant Foundations & Domain Resolution): 10 requirements
+- Phase 2 (Merchant Auth, Entitlements & Trial): 4 requirements
+- Phase 3 (Product Catalog & Order/Payment-Claim State Machine): 13 requirements
+- Phase 4 (Theme/Section/Block System & Flagship Template): 8 requirements
+- Phase 5 (Template Segment Expansion): 3 requirements
+- Phase 6 (Merchant Dashboard & Platform Admin): 6 requirements
 
 ---
 *Requirements defined: 2026-08-16*
-*Last updated: 2026-08-16 after initial definition*
+*Last updated: 2026-08-16 after roadmap creation (traceability populated, requirement count corrected 39→44)*
