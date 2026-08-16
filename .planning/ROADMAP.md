@@ -32,7 +32,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Reserved slugs (e.g. `api`, `admin`, `www`) cannot be claimed as a store subdomain; unrecognized hostnames return a clean failure and never fall through to any tenant.
   4. All tenant-scoped queries route through a single centralized, tenant-injecting data-access layer, and an automated two-tenant isolation test suite passes before the phase is considered done.
   5. Platform admin uses a deliberately separate, unscoped data-access client, architecturally isolated from the tenant-scoped layer.
-**Plans**: TBD
+**Plans**: 7 plans (5 waves)
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold Next 16 + toolchain, typed env, ESLint import zones, Vitest harness, root placeholder page
+- [ ] 01-02-PLAN.md — Prisma 7 + Better Auth schema, first migration, and the four data-access clients (scopedDb / platformDb / adminDb)
+- [ ] 01-03-PLAN.md — Reserved slugs, slug schema, classifyHost and the Next 16 proxy (header strip, /s/ 404, host rewrite)
+- [ ] 01-04-PLAN.md — Two-tenant seed fixture, model-generic isolation suite and the schema-drift guard
+- [ ] 01-05-PLAN.md — Redis-cached fail-closed tenant resolution, storefront route tree and the branded store-not-found page
+- [ ] 01-06-PLAN.md — Better Auth config, checkStoreSlug and signUpMerchant tenant provisioning
+- [ ] 01-07-PLAN.md — /signup form with live address checking, signup recovery route, Windows next start smoke check
+**Walking Skeleton**: SKELETON.md (architectural contract for Phases 2-6)
 
 ### Phase 2: Merchant Auth, Entitlements & Trial
 **Goal**: A merchant logs into a dashboard whose tenant context comes only from their session, and their subscription tier and trial state are enforced for real on the server, not just displayed in the UI.
@@ -106,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Multi-Tenant Foundations & Domain Resolution | 0/TBD | Not started | - |
+| 1. Multi-Tenant Foundations & Domain Resolution | 0/7 | Planned | - |
 | 2. Merchant Auth, Entitlements & Trial | 0/TBD | Not started | - |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
