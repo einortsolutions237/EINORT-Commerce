@@ -1,0 +1,204 @@
+// EINORT-Commerce data model.
+//
+// Prisma 7: `datasource db` deliberately carries NO `url`. Connection config
+// lives in `prisma.config.ts` and the runtime client is bound to
+// `@prisma/adapter-pg` in `src/server/db/base.ts`. Putting a `url` back here
+// silently does nothing (Pitfall 9).
+//
+// The Better Auth blocks below (User, Session, Account, Verification,
+// Organization, Member, Invitation) were emitted by `npx auth generate`
+// against better-auth@1.6.29 with the `organization` plugin. Hand edits to
+// them are annotated inline; anything unannotated is generator output and
+// should be regenerated rather than hand-maintained.
+//
+// `Organization` IS the tenant (CLAUDE.md C-8). Every tenant-scoped model
+// carries `tenantId String` holding `organization.id` — a plain indexed
+// column with no Prisma relation, per RESEARCH.md Pattern 3.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String       @id
+  name          String
+  email         String
+  emailVerified Boolean      @default(false)
+  image         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  // HAND-CORRECTED: emitted as `String?` because the Better Auth field is
+  // declared `required: false`. Made NOT NULL so the single-owner Super Admin
+  // marker (CLAUDE.md C-8) is a two-valued column, never a three-valued one —
+  // a NULL platformRole is neither "merchant" nor "admin" and every future
+  // authorization check would have to special-case it. Nothing writes this in
+  // Phase 1; the DB default supplies it. Phase 6 reads it.
+  platformRole  String       @default("merchant")
+  sessions      Session[]
+  accounts      Account[]
+  members       Member[]
+  invitations   Invitation[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id
+  expiresAt            DateTime
+  token                String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeOrganizationId String?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+/// The tenant. One Organization == one storefront == one merchant's store.
+model Organization {
+  id          String       @id
+  name        String
+  // HAND-CORRECTED (assumption A2): the generator emitted a non-nullable
+  // `slug String` plus a block-level `@@unique([slug])`. Normalized to the
+  // inline form — identical DDL, but it puts the DOM-02 guarantee on the same
+  // line as the column. NOT NULL + UNIQUE is what makes "one hostname can
+  // never resolve to two stores" a database guarantee rather than an
+  // application convention. Never relax either half.
+  slug        String       @unique
+  logo        String?
+  createdAt   DateTime
+  metadata    String?
+  // HAND-CORRECTED: emitted as `String?`. Made NOT NULL for D-05 — hostname
+  // resolution branches on this value, and a NULL status is neither "active"
+  // nor "suspended", so a row with one would resolve ambiguously. Declared
+  // `input: false` in the Better Auth config, so it can never be set through
+  // the public create/update API; suspension is a Phase 6 admin-only write.
+  status      String       @default("active")
+  members     Member[]
+  invitations Invitation[]
+
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("member")
+  createdAt      DateTime
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String       @default("pending")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
+}
+
+// ---------------------------------------------------------------------------
+// Tenant-scoped models
+//
+// Every model below this line MUST be registered in TENANT_SCOPED_MODELS in
+// `src/server/db/tenant-scoped.ts`, and MUST declare `tenantId String` —
+// required, with no default. That is not a style preference: Prisma Client
+// Extensions do not intercept nested writes (Pitfall 4), so a nested `create`
+// on a tenant-scoped relation bypasses `scopedDb` entirely. A required
+// `tenantId` turns that bypass into a compile-time type error, and a NOT NULL
+// violation at worst — instead of a silent NULL row that a later read
+// attributes to the wrong tenant.
+// ---------------------------------------------------------------------------
+
+/// Append-only record of which tenant has held which slug, and when.
+///
+/// This is the concrete artifact D-03 asks for. Slugs are renameable in
+/// Phase 4, and without this table a rename releases the old slug for a
+/// different merchant to claim — inheriting the original's inbound links, QR
+/// codes and WhatsApp shares. That is a store-hijack window, not a cosmetic
+/// gap.
+///
+/// Rename stays cheap because `tenantId` holds the stable `organization.id`:
+/// a rename is an UPDATE of `organization.slug` plus a cache invalidation,
+/// with no data migration anywhere.
+model StoreSlugHistory {
+  id String @id @default(cuid())
+
+  /// `organization.id`. Required, no default — see the block comment above.
+  tenantId String
+
+  /// DELIBERATELY GLOBAL UNIQUE, not led by `tenantId`.
+  ///
+  /// This is the one intentional exception to the "every index leads with
+  /// tenantId" rule (Pitfall 8), and the exception is the point: a slug is a
+  /// hostname, so it must be unique across the entire platform for all time,
+  /// including after release. Scoping this constraint to a tenant would let
+  /// two tenants hold the same hostname, which is precisely the failure
+  /// DOM-02 forbids.
+  slug String @unique
+
+  claimedAt  DateTime  @default(now())
+  /// NULL means this tenant currently holds the slug.
+  releasedAt DateTime?
+
+  @@index([tenantId])
+  @@index([tenantId, claimedAt])
+  @@map("store_slug_history")
+}
