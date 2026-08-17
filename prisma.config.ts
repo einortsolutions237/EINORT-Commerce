@@ -26,14 +26,44 @@ for (const file of [".env.local", ".env"]) {
   if (existsSync(file)) process.loadEnvFile(file);
 }
 
+/**
+ * TEST_DATABASE_URL, when present, wins outright.
+ *
+ * This is a correctness fix, not a convenience (T-01-27). `.env.test` carries
+ * TEST_DATABASE_URL and nothing else, so the documented command
+ * `npx dotenv -e .env.test -- npx prisma migrate deploy` left DIRECT_URL unset
+ * — and the `.env.local` load above then quietly supplied the DEVELOPMENT
+ * connection string. The command that every plan and the README describe as
+ * "migrate the test branch" was in fact running DDL against the development
+ * branch, and announcing it only in a line of CLI output nobody diffs.
+ *
+ * The override direction is deliberately the safe one. If TEST_DATABASE_URL
+ * leaks into a shell where a developer meant to migrate development, the
+ * migration lands on the disposable test branch; the reverse mistake is
+ * unrecoverable.
+ *
+ * `tests/setup/global-setup.ts` still passes DATABASE_URL/DIRECT_URL
+ * explicitly to its `migrate deploy` child process. That belt-and-braces stays:
+ * the guarantee should not rest on this file alone.
+ */
+if (process.env.TEST_DATABASE_URL) {
+  process.env.DIRECT_URL = process.env.TEST_DATABASE_URL;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
 
   migrations: {
     path: "prisma/migrations",
     // Prisma 7 no longer auto-seeds on `migrate dev`, so the runner must be
-    // declared explicitly. `prisma/seed.ts` itself is owned by plan 01-04.
-    seed: "tsx prisma/seed.ts",
+    // declared explicitly.
+    //
+    // `--conditions=react-server` is required, not cosmetic: the seed reaches
+    // `src/server/db/tenant-scoped.ts` for TENANT_SCOPED_MODELS, and every
+    // module in that directory opens with `import "server-only"` — a marker
+    // package whose default export condition throws on import. Only the
+    // `react-server` condition resolves it to an empty module.
+    seed: "tsx --conditions=react-server prisma/seed.ts",
   },
 
   datasource: {

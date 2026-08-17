@@ -40,15 +40,20 @@ export function requireTestDatabaseUrl(): string {
 }
 
 /**
- * Truncate every tenant-scoped table and reseed the two-tenant fixture.
+ * Truncate every table and rebuild the two-tenant fixture.
  *
- * Deliberately a no-op today: there is no schema and no fixture until plans
- * 01-02 and 01-04 land. Plan 01-04 T1 replaces this body with a call into
- * `tests/setup/seed-two-tenants.ts` — the hook exists now so that `globalSetup`
- * does not have to change shape when it does.
+ * The hook was left empty by plan 01-01; plan 01-04 T1 wires it to the real
+ * fixture. The URL is passed explicitly rather than re-read from the
+ * environment so that the database this migrates and the database it seeds
+ * cannot possibly differ.
+ *
+ * `seedTwoTenants` re-runs its own `assertSafeSeedTarget` on the value — the
+ * duplication is intentional, because the guard must hold for every caller,
+ * not only for the ones that remembered to check first.
  */
-export async function truncateAndSeed(_databaseUrl: string): Promise<void> {
-  // Filled in by plan 01-04 T1 (tests/setup/seed-two-tenants.ts).
+export async function truncateAndSeed(databaseUrl: string): Promise<void> {
+  const { seedTwoTenants } = await import("./seed-two-tenants");
+  await seedTwoTenants(databaseUrl);
 }
 
 /**
@@ -56,6 +61,12 @@ export async function truncateAndSeed(_databaseUrl: string): Promise<void> {
  */
 export default async function setup(): Promise<void> {
   const databaseUrl = requireTestDatabaseUrl();
+
+  // Identify the target BEFORE running DDL against it. `requireTestDatabaseUrl`
+  // only proves the variable is set; this proves the branch it names is the
+  // test branch and not the development one (T-01-27).
+  const { assertSafeSeedTarget } = await import("./seed-two-tenants");
+  assertSafeSeedTarget(databaseUrl);
 
   if (!existsSync(schemaPath)) {
     // Plan 01-02 creates prisma/schema.prisma. Until then there is nothing to
