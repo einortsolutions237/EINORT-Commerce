@@ -31,6 +31,9 @@ coverage/
 # Vercel
 .vercel
 
+# Local worktrees used for parallel plan execution — never shared/committed
+.claude/worktrees/
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
