@@ -34,10 +34,20 @@ import { env } from "@/env";
  * silence is how a no-cache configuration reaches production unnoticed.
  */
 
-/** The shape persisted under a positive entry. Mirrors the resolver's select. */
+/**
+ * The shape persisted under a positive entry. Mirrors the resolver's select.
+ *
+ * `name` is here so the storefront can render the store's own name without a
+ * second lookup. The cost is one more invalidation obligation: a rename of
+ * `name` must call `invalidateTenantHost` alongside the existing `slug` and
+ * `status` mutations, or the storefront shows the old name until the TTL
+ * expires. Cosmetic rather than security-relevant, but it is a real obligation
+ * — see the note on `invalidateTenantHost`.
+ */
 export type CachedTenant = {
   id: string;
   slug: string;
+  name: string;
   status: string;
 };
 
@@ -153,10 +163,11 @@ function parseEntry(raw: unknown): StoredEntry | null {
       tenant !== null &&
       typeof (tenant as CachedTenant).id === "string" &&
       typeof (tenant as CachedTenant).slug === "string" &&
+      typeof (tenant as CachedTenant).name === "string" &&
       typeof (tenant as CachedTenant).status === "string"
     ) {
-      const { id, slug, status } = tenant as CachedTenant;
-      return { kind: "hit", tenant: { id, slug, status } };
+      const { id, slug, name, status } = tenant as CachedTenant;
+      return { kind: "hit", tenant: { id, slug, name, status } };
     }
   }
 
@@ -209,7 +220,12 @@ export async function setCachedTenant(
 
   const entry: StoredEntry = {
     kind: "hit",
-    tenant: { id: tenant.id, slug: tenant.slug, status: tenant.status },
+    tenant: {
+      id: tenant.id,
+      slug: tenant.slug,
+      name: tenant.name,
+      status: tenant.status,
+    },
   };
 
   try {
@@ -244,9 +260,10 @@ export async function setCachedMiss(slug: string): Promise<void> {
 /**
  * Evict one or more slugs.
  *
- * **Call this on every mutation of `slug` or `status`** — plan 01-06 after
- * provisioning, Phase 6 on suspend and on rename (both the old and the new
- * slug). The TTL is a backstop; this is the mechanism (T-01-32, Pitfall 7).
+ * **Call this on every mutation of `slug`, `status` or `name`** — plan 01-06
+ * after provisioning, Phase 6 on suspend and on rename (both the old and the
+ * new slug). The TTL is a backstop; this is the mechanism (T-01-32, Pitfall 7).
+ * `status` is the one that matters for security; `name` only for staleness.
  *
  * Unlike the read and write paths this one does **not** swallow errors. A
  * failed eviction means a suspended store keeps serving, so the caller has to

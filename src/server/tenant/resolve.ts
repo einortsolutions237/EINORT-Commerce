@@ -25,9 +25,17 @@ import { getCachedTenant, setCachedMiss, setCachedTenant } from "./cache";
  * one branded not-found body (D-04/D-05).
  */
 
+/**
+ * `name` is additive to the contract this plan published for plan 01-06
+ * (`{ id, slug, status }`) — consumers that destructure those three are
+ * unaffected. It is here because the placeholder storefront has to render
+ * something that could only have come from Postgres; echoing the slug back
+ * would prove nothing, since the slug arrives in the URL.
+ */
 export type ResolvedTenant = {
   id: string;
   slug: string;
+  name: string;
   status: string;
 };
 
@@ -70,7 +78,7 @@ export const resolveTenantBySlug = cache(
     // not resolve to a silently rendered storefront.
     const organization = await platformDb.organization.findUnique({
       where: { slug },
-      select: { id: true, slug: true, status: true },
+      select: { id: true, slug: true, name: true, status: true },
     });
 
     if (!organization) {

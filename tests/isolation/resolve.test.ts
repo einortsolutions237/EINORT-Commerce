@@ -88,7 +88,12 @@ class FakeRedis {
 type LoadedResolver = {
   resolveTenantBySlug: (
     slug: string,
-  ) => Promise<{ id: string; slug: string; status: string } | null>;
+  ) => Promise<{
+    id: string;
+    slug: string;
+    name: string;
+    status: string;
+  } | null>;
   invalidateTenantHost: (...slugs: string[]) => Promise<void>;
   /** How many times the resolver reached Postgres in this module epoch. */
   dbQueryCount: () => number;
@@ -195,6 +200,7 @@ describe("resolveTenantBySlug", () => {
     expect(tenant).toEqual({
       id: TENANT_A.id,
       slug: TENANT_A.slug,
+      name: TENANT_A.name,
       status: "active",
     });
     expect(dbQueryCount()).toBe(1);
@@ -251,6 +257,9 @@ describe("resolveTenantBySlug caching", () => {
     const second = await resolveTenantBySlug(TENANT_A.slug);
 
     expect(first).toEqual(second);
+    // The whole record round-trips, not just the id — the storefront renders
+    // `name` off a cache hit and must not need a second lookup for it.
+    expect(second?.name).toBe(TENANT_A.name);
     expect(dbQueryCount()).toBe(1);
   });
 

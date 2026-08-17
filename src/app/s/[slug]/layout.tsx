@@ -1,0 +1,38 @@
+import { notFound } from "next/navigation";
+
+import { resolveTenantBySlug } from "@/server/tenant/resolve";
+
+/**
+ * The storefront tenant gate (TEN-03, DOM-02).
+ *
+ * `/s/{slug}` is an internal rewrite target, never a URL a visitor types — the
+ * Proxy 404s any direct request for it from the apex. The slug therefore always
+ * derives from the `Host` header and from nothing a client can forge.
+ *
+ * This layout is the single place where "this hostname is *shaped* like a
+ * store" becomes "this store exists and is serving". Nothing beneath it may run
+ * for an unresolved or suspended tenant, which is why the check lives in the
+ * layout rather than in each page: a page added in Phase 3 or 4 inherits the
+ * gate instead of having to remember it (T-01-30).
+ *
+ * There is deliberately no `try`/`catch` around the resolver. Failing closed
+ * means failing: a database or cache error must surface as an error, never be
+ * swallowed into a rendered storefront and never be mistaken for "no such
+ * tenant".
+ */
+export default async function StorefrontLayout({
+  children,
+  params,
+}: LayoutProps<"/s/[slug]">) {
+  // `params` is a Promise in Next 16.
+  const { slug } = await params;
+
+  const tenant = await resolveTenantBySlug(slug);
+
+  // `null` means unknown, unclaimed, suspended, or any other non-active status
+  // — the resolver does not distinguish them and neither does this branch.
+  // Renders the one branded body with a real 404 (D-04 / D-05).
+  if (!tenant) notFound();
+
+  return <>{children}</>;
+}

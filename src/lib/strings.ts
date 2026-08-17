@@ -14,8 +14,8 @@
  *   - Copy must satisfy the voice contract in `01-UI-SPEC.md` § Copywriting
  *     Contract: direct, second person, no exclamation marks, no "Oops", no emoji.
  *
- * Later plans extend this file: `signup` (01-07), `storeNotFound` (01-05),
- * `storefront` (01-05). Do not pre-populate a namespace before its surface exists.
+ * Later plans extend this file: `signup` (01-07). Do not pre-populate a
+ * namespace before its surface exists.
  *
  * Note: this governs UI copy language only. Currency and number formatting stay
  * on the `fr-CM` locale (`Intl.NumberFormat('fr-CM', { currency: 'XAF' })`) per
@@ -31,5 +31,36 @@ export const strings = {
     wordmark: BRAND,
     tagline: "Create your online store in minutes.",
     cta: "Create my store",
+  },
+
+  /**
+   * The single branded failure surface (D-04). Rendered by
+   * `src/app/not-found.tsx` for **every** failure path in the phase: an
+   * unrecognized hostname, a well-formed but unclaimed hostname, and a
+   * suspended store.
+   *
+   * D-05 is a copy rule before it is a code rule. Nothing in this namespace may
+   * hint at *why* the store is unavailable — no "suspended", no "temporarily
+   * unavailable", no "this store has been disabled". A visitor must not be able
+   * to tell a suspended store from a hostname nobody ever claimed, because that
+   * difference is an enumeration oracle over the merchant base (T-01-29).
+   * Adding a second variant of this copy is how that control gets lost.
+   */
+  storeNotFound: {
+    /** Renders as "Store not found · EINORT" through the layout template. */
+    title: "Store not found",
+    heading: "Store not found",
+    body: "No store exists at this address. Check the spelling of the address.",
+    link: "Discover EINORT",
+  },
+
+  /**
+   * The placeholder storefront (`/s/[slug]`). Phase 4 replaces this page
+   * wholesale with the real template system — deliberately no catalog, no cart
+   * and no onboarding call to action here.
+   */
+  storefront: {
+    heading: "Store coming soon",
+    body: "This store hasn't opened yet. Check back soon.",
   },
 } as const;
