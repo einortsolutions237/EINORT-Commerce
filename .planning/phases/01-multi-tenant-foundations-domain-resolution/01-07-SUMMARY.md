@@ -3,7 +3,7 @@ phase: 01-multi-tenant-foundations-domain-resolution
 plan: 07
 subsystem: onboarding
 tags: [signup-form, live-slug-check, recovery-route, proxy-smoke-check, tdd, react-compiler]
-status: awaiting-human-verify
+status: complete
 requires:
   - "01-01: src/lib/strings.ts, design tokens (--success), shadcn button/input/label/card/alert, vitest unit project"
   - "01-03: storeSlugSchema, SLUG_MIN_LENGTH/SLUG_MAX_LENGTH, SLUG_FORMAT_MESSAGE, SLUG_RESERVED_MESSAGE, src/proxy.ts"
@@ -51,10 +51,10 @@ decisions:
   - "React Compiler rules forced deriving slug state rather than syncing it — the stricter structure is also more correct"
 requirements: [ONB-01, DOM-01, TEN-06]
 metrics:
-  duration: "~2h10m across one interruption"
+  duration: "~2h10m across one interruption, plus the human-verify walkthrough"
   completed: 2026-08-17
-  tasks: 2 of 3 (Task 3 is a blocking human-verify gate)
-  commits: 3
+  tasks: 3
+  commits: 5
   tests: 15 new (186 total)
 ---
 
@@ -66,10 +66,10 @@ against two registries, submits, and lands on their own storefront on their own
 subdomain — verified against a real production build on this Windows machine,
 not just asserted in a test.
 
-**Task 3 is a blocking human-verify checkpoint and has NOT been performed.**
-Steps 1-12 require a human at a browser and the plan explicitly forbids the
-executor performing them or marking them passed from a `curl` result. See
-[Task 3 — Awaiting Human Verification](#task-3--awaiting-human-verification).
+**Task 3, the blocking human-verify gate, passed.** The developer walked all
+twelve steps in a browser and approved every one — so the four Phase 1 surfaces
+are confirmed against the UI contract by a person, not only by assertions. See
+[Task 3 — Human Verification](#task-3--human-verification).
 
 ---
 
@@ -80,7 +80,7 @@ executor performing them or marking them passed from a `curl` result. See
 | **Windows `next start` smoke check (Pitfall 10 / A7)** | **RESOLVED — the Proxy works.** Full result table below. Next.js issue #85243 does **not** reproduce on 16.3.1 / Windows 11 Pro. No `middleware.ts` workaround was needed or made; `git ls-files \| grep -c middleware.ts` is still 0. |
 | **Vercel wildcard domain** | **Deferred.** Not required for the local full-stack verification, and no code path depends on it. It stays a one-time human task before the first production deploy, and the ordering in the plan's `user_setup` is load-bearing: registrar nameservers → Vercel → apex → `*.einort.com`, or wildcard SSL silently fails to issue (T-01-54). |
 | **UI-SPEC deviations** | Four, all documented below with justification: English copy (already-locked, from 01-01), a derived store name, the recovery route's new copy, and port 3312 for the smoke run. |
-| **Steps 1-12 pass/fail** | **Not yet recorded — blocked on the human-verify gate.** The plan requires each step be explicitly marked and forbids marking any from automation. |
+| **Steps 1-12 pass/fail** | **All twelve pass.** Recorded per step in the table below, from the developer's browser walkthrough. None failed; none unchecked. |
 
 ---
 
@@ -412,14 +412,15 @@ and the plan is net-mitigating.
 
 ---
 
-## Task 3 — Awaiting Human Verification
+## Task 3 — Human Verification
 
-**This is a `checkpoint:human-verify` gate with `gate="blocking"`, and it has not
-been performed.** `workflow.auto_advance` is `false`, and the plan states
-directly: *"Do not perform any of the twelve steps on the developer's behalf and
-do not mark a step passed from a `curl` result."*
+A `checkpoint:human-verify` gate with `gate="blocking"`. `workflow.auto_advance`
+is `false`, and the plan states directly: *"Do not perform any of the twelve
+steps on the developer's behalf and do not mark a step passed from a `curl`
+result."* The executor therefore stopped here and the developer performed the
+walkthrough.
 
-The four automated gates the plan requires immediately beforehand are green:
+The four automated gates the plan requires immediately beforehand were green:
 
 | Gate | Result |
 |---|---|
@@ -428,39 +429,57 @@ The four automated gates the plan requires immediately beforehand are green:
 | `npx next build` | exit 0 |
 | `npx dotenv -e .env.test -- npx vitest run --reporter=dot` | exit 0, 186 passed, 0 skipped |
 
-### Before starting
+### Conditions the walkthrough ran under
 
-1. **Free port 3000.** Another application is currently serving it on this
-   machine (it answers `307 → /login`). The steps below assume
-   `localhost:3000`.
+1. **Port 3000 had to be freed first.** Another application was serving it on
+   this machine (it answered `307 → /login`, a route this project does not
+   have). Worth recording because it will recur on this machine, and because it
+   is why the executor's own smoke check ran on 3312.
 2. `npm run build` then `npx next start`, with `NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000`.
-3. Two stores already exist in the development database from this plan's smoke
-   check, which makes steps 4 and 7 work as written: **`alpha-store`**
+3. Two stores already existed in the development database from this plan's smoke
+   check, which is what made steps 4 and 7 work as written: **`alpha-store`**
    ("Alpha Store") and **`recovered-store`** ("Recovered Store").
 
-### Step results — to be filled in from the walkthrough
+### Step results — recorded from the developer's walkthrough
+
+**Resume signal received: `approved`.** The developer walked all twelve steps in
+a browser against `next start` and confirmed every one passes. No step failed,
+and no step is unchecked.
 
 | # | Step | Result |
 |---|---|---|
-| 1 | `/` shows wordmark, one tagline, one button, nothing else | ⬜ pending |
-| 2 | `/signup` single-column ≤448px card, fields Email → Password → Store address, visible labels | ⬜ pending |
-| 3 | `ad` fires no check; `admin` → lock icon, red, reserved message, submit disabled | ⬜ pending |
-| 4 | `alpha-store` → X icon, red, "already taken", submit disabled | ⬜ pending |
-| 5 | `MaBoutique2026` displays lowercased, then green check + "is available", submit enabled | ⬜ pending |
-| 6 | Typing quickly through several values ends on the status for the FINAL value | ⬜ pending |
-| 7 | Submit → "Creating…" without layout shift → redirect to the new storefront | ⬜ pending |
-| 8 | `nosuchstore.localhost:3000` → branded "Store not found" with the EINORT link | ⬜ pending |
-| 9 | `localhost:3000/s/maboutique2026` → 404, not the storefront | ⬜ pending |
-| 10 | Keyboard-only tab through `/signup`: visible focus ring, correct order, Enter submits | ⬜ pending |
-| 11 | 360px width: no horizontal scroll or overlap on `/`, `/signup`, storefront | ⬜ pending |
-| 12 | All copy is English, no stray strings from the French column | ⬜ pending |
+| 1 | `/` shows wordmark, one tagline, one button, nothing else | ✅ pass |
+| 2 | `/signup` single-column ≤448px card, fields Email → Password → Store address, visible labels | ✅ pass |
+| 3 | `ad` fires no check; `admin` → lock icon, red, reserved message, submit disabled | ✅ pass |
+| 4 | `alpha-store` → X icon, red, "already taken", submit disabled | ✅ pass |
+| 5 | `MaBoutique2026` displays lowercased, then green check + "is available", submit enabled | ✅ pass |
+| 6 | Typing quickly through several values ends on the status for the FINAL value | ✅ pass |
+| 7 | Submit → "Creating…" without layout shift → redirect to the new storefront | ✅ pass |
+| 8 | `nosuchstore.localhost:3000` → branded "Store not found" with the EINORT link | ✅ pass |
+| 9 | `localhost:3000/s/maboutique2026` → 404, not the storefront | ✅ pass |
+| 10 | Keyboard-only tab through `/signup`: visible focus ring, correct order, Enter submits | ✅ pass |
+| 11 | 360px width: no horizontal scroll or overlap on `/`, `/signup`, storefront | ✅ pass |
+| 12 | All copy is English, no stray strings from the French column | ✅ pass |
 
-**Resume signal:** type `approved`, or name the failing step numbers and what
-you saw instead.
+Steps 8 and 9 had also been confirmed at the HTTP level during the smoke check
+(both 404), but they needed the human pass because step 8 is a claim about
+*rendered branding*, which no status code can establish.
 
-Steps 8 and 9 were separately confirmed at the HTTP level during the smoke
-check (both 404 correctly), but they are left pending because step 8 is a claim
-about *rendered branding*, which no status code can establish.
+The three steps that no automated assertion in this phase could have covered are
+worth naming, because they are the reason this gate exists rather than being a
+formality:
+
+- **Step 6** is the stale-response guard observed as behaviour. The unit suite
+  asserts the mapper; only a human typing quickly can confirm the two guards
+  compose correctly against real network timing (T-01-51).
+- **Step 7** is the no-layout-shift requirement on the submitting button, which
+  is a rendering property with no test surface.
+- **Step 10** is the keyboard path and focus ring — the accessibility floor.
+
+With this, **all four Phase 1 surfaces are human-confirmed against the UI
+contract**, and the walking skeleton is demonstrable end to end: a real person
+signed up in a browser and arrived at their own storefront on their own
+subdomain.
 
 ---
 
@@ -506,6 +525,8 @@ registry was added, so `components.json` still reads `"registries": {}`.
 | `7c81e82` | 1 | RED | Failing slug-field-state tests, including the fail-open row |
 | `50a677d` | 1 | GREEN | `slugFieldState`, the signup form and page, the copy namespace |
 | `bcf8ad6` | 2 | — | Recovery route, `createStoreForCurrentUser`, shared field, README |
+| `83d2867` | — | — | This SUMMARY, written at the checkpoint with steps 1-12 pending |
+| *(this commit)* | 3 | human-verify | Steps 1-12 recorded as passed after the developer's walkthrough |
 
 TDD gate sequence satisfied for Task 1: `test(01-07)` (`7c81e82`) precedes
 `feat(01-07)` (`50a677d`), and the RED run was confirmed failing (module not
@@ -518,8 +539,8 @@ the source criteria and the live smoke check.
 ## Self-Check: PASSED
 
 All 8 claimed created files and all 3 claimed modified files exist on disk. All
-3 commit hashes resolve in `git log`. `git diff --diff-filter=D` reports **no
-deletions** in any of the three commits. The two throwaway curl cookie jars
+claimed commit hashes resolve in `git log`. `git diff --diff-filter=D` reports
+**no deletions** in any of the implementation commits. The two throwaway curl cookie jars
 (`ck-smoke.txt`, `ck-orphan.txt`) were deleted and appear in no commit;
 `git status --short` was clean before this SUMMARY was written. `node_modules/`,
 `src/generated/`, `.env.local` and `.env.test` are gitignored and absent from
