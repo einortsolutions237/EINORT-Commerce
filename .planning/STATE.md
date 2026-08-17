@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-08-17T12:52:26.212Z"
-last_activity: 2026-08-16 -- Phase 01 execution started
+stopped_at: Phase 02 UI-SPEC approved
+last_updated: "2026-08-17T17:22:07.969Z"
+last_activity: 2026-08-17 -- Phase 02 planning complete
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 7
+  total_plans: 14
   completed_plans: 7
   percent: 17
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 
 Phase: 01 (Multi-Tenant Foundations & Domain Resolution) — EXECUTING
 Plan: 1 of 7
-Status: Executing Phase 01
-Last activity: 2026-08-16 -- Phase 01 execution started
+Status: Ready to execute
+Last activity: 2026-08-17 -- Phase 02 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -71,6 +71,7 @@ None yet.
 
 - Phase 3 (Order/Payment-Claim State Machine): MTN MoMo / Orange Money USSD merchant-code strings need re-verification against official Cameroon operator merchant docs before build (flagged MEDIUM confidence in research).
 - Phase 4 (Theme/Section/Block System): design-distinctiveness has no objective completion signal — the side-by-side "would a stranger think these are the same product" check must be built into this phase's definition of done explicitly.
+- Phase 2 (Merchant Auth, Entitlements & Trial): automated decision-coverage gate reported 0/13 CONTEXT.md decisions (D-01–D-13) cited in plan `must_haves`/`truths` frontmatter — overridden and proceeded to execute-phase on 2026-08-17. The plan-checker's independent semantic review confirmed all 13 decisions have implementing tasks; manual grep confirmed D-04–D-09/10, D-12 are cited by ID in task `<action>` bodies (just not in the scanned frontmatter fields). D-01/D-02/D-03 are only cited as a range ("D-01 through D-05"); D-11 and D-13 have no ID citation found anywhere. Re-verify these five during Phase 2's verify-phase pass.
 
 ## Deferred Items
 
@@ -82,6 +83,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-17T12:52:26.200Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-merchant-auth-entitlements-trial/02-CONTEXT.md
+Last session: 2026-08-17T16:36:34.741Z
+Stopped at: Phase 02 UI-SPEC approved
+Resume file: .planning/phases/02-merchant-auth-entitlements-trial/02-UI-SPEC.md
