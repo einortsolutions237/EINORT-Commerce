@@ -13,7 +13,7 @@ EINORT-Commerce goes from an empty repository to a working, trustworthy, Cameroo
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Multi-Tenant Foundations & Domain Resolution** - Structurally enforced tenant isolation and working subdomain resolution, from signup onward
+- [x] **Phase 1: Multi-Tenant Foundations & Domain Resolution** - Structurally enforced tenant isolation and working subdomain resolution, from signup onward (completed 2026-08-17)
 - [ ] **Phase 2: Merchant Auth, Entitlements & Trial** - Session-scoped merchant login with server-enforced plan limits and a 10-day trial
 - [ ] **Phase 3: Product Catalog & Order/Payment-Claim State Machine** - A customer can browse, buy, and pay by claim; a merchant can list products and confirm payment
 - [ ] **Phase 4: Theme/Section/Block System & Flagship Template** - Onboarding produces a live, branded, portfolio-quality storefront; merchants can customize it
@@ -61,7 +61,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 01-07-PLAN.md — /signup form with live address checking, signup recovery route, Windows next start smoke check
+- [x] 01-07-PLAN.md — /signup form with live address checking, signup recovery route, Windows next start smoke check
 
 **Walking Skeleton**: SKELETON.md (architectural contract for Phases 2-6)
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Multi-Tenant Foundations & Domain Resolution | 6/7 | In Progress|  |
+| 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 0/TBD | Not started | - |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
