@@ -42,9 +42,16 @@ Covers: TEN-04, SUB-01, SUB-02, ONB-05.
 
 ### Claude's Discretion
 
-- Exact copy/wording for the expired-trial placeholder ("contact us to subscribe" or equivalent).
 - Exact visual treatment/threshold for the escalating urgency banner (what counts as "final 1-2 days" styling vs. neutral).
 - Internal data-model specifics for how plan choice, trial start/end, and entitlement checks are represented (e.g. fields on Organization vs. a separate Subscription model) — follow whatever pattern research recommends, consistent with Phase 1's `scopedDb` conventions.
+
+### Addendum — Resolving 02-RESEARCH.md's Open Questions
+
+- **OQ-1 (blocking) & OQ-2:** Resolved via `.planning/phases/02-merchant-auth-entitlements-trial/pricing-reference.md`, which reconstructs the v4.0 Section 4.4 pricing/feature data from earlier in this project's planning conversation. `membershipLimit` (inclusive of the owner, per research finding #3) is Starter=1, Business=4, Professional=11.
+- **OQ-3 (can an expired-trial merchant switch plans?):** No. D-06's plan-switch capability applies only during an *active* trial. Once expired, the only self-service action is the D-10 "contact us" placeholder — there is no in-app plan-switch path out of read-only in this phase, consistent with the real subscribe flow being deferred.
+- **OQ-4 (contact channel for the D-10 placeholder):** A WhatsApp link — `https://wa.me/237686661578`. This is a real number the founder will need to actually monitor once merchants start hitting trial expiry, not a placeholder.
+- **OQ-5 (suspended-tenant route):** Reuse Phase 1's existing pattern — a suspended organization is not a new route; the storefront resolver already treats "suspended" identically to "unclaimed" for the customer-facing side (Phase 1 D-05). For the *merchant's own dashboard* login, if their organization is suspended, the researcher/planner should decide the exact UX (e.g. reuse the same read-only treatment, or a distinct "account suspended" message) — Claude's discretion, but must not silently let a suspended merchant operate normally.
+- **OQ-6 (check-slug throttling):** Claude's discretion — follow whatever rate-limit pattern Phase 1's `src/server/rate-limit.ts` already established for consistency, no new founder decision needed here.
 
 </decisions>
 
