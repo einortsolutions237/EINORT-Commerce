@@ -82,7 +82,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Organization plan/trial columns (input:false), the entitlement registry, the pure trial resolver and its unit suite
+- [x] 02-01-PLAN.md — Organization plan/trial columns (input:false), the entitlement registry, the pure trial resolver and its unit suite
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -178,7 +178,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
-| 2. Merchant Auth, Entitlements & Trial | 0/7 | Planned | - |
+| 2. Merchant Auth, Entitlements & Trial | 1/7 | In Progress|  |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
