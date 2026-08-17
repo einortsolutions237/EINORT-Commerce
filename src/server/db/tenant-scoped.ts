@@ -124,3 +124,46 @@ export function scopedDb(tenantId: string) {
 }
 
 export type ScopedDb = ReturnType<typeof scopedDb>;
+
+/**
+ * A create payload for a tenant-scoped model with `tenantId` deliberately
+ * omitted, because `scopedDb` stamps it.
+ *
+ * This exists to resolve a genuine disagreement between the runtime guarantee
+ * and the generated types. Every tenant-scoped model declares `tenantId`
+ * required with no default — that is the Pitfall 4 defence, and it must stay
+ * that way, because it is what turns a nested or unscoped create into a
+ * compile-time error. But it also means the generated `CreateInput` demands
+ * `tenantId` from callers who must never supply it: the extension overwrites
+ * whatever they pass (spread order in `$allOperations` puts `tenantId` last),
+ * so a caller-provided value is at best noise and at worst a reader's false
+ * impression that the value is theirs to choose (TEN-08).
+ *
+ * Without this helper the only ways to write the correct call are an inline
+ * cast at every site, or passing a real `tenantId` that is then discarded. The
+ * first scatters unexplained casts through feature code; the second is exactly
+ * the client-supplied tenant id the whole mechanism exists to reject, and it
+ * would read as legitimate in review.
+ *
+ * So the cast lives here, once, next to the code that makes it true.
+ */
+export type ScopedCreateData<T> = Omit<T, "tenantId">;
+
+/**
+ * Type-level companion to `scopedDb(...).<model>.create`.
+ *
+ * Purely a compile-time assertion — it emits no runtime behaviour and cannot
+ * stamp anything itself. The stamp is the extension's job; this only stops the
+ * generated type from demanding a field the caller is forbidden to set.
+ *
+ * ```ts
+ * await scopedDb(orgId).storeSlugHistory.create({
+ *   data: scopedCreateData<Prisma.StoreSlugHistoryUncheckedCreateInput>({ slug }),
+ * });
+ * ```
+ */
+export function scopedCreateData<T extends { tenantId: string }>(
+  data: ScopedCreateData<T>,
+): T {
+  return data as T;
+}

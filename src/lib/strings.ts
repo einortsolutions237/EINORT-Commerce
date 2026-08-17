@@ -63,4 +63,46 @@ export const strings = {
     heading: "Store coming soon",
     body: "This store hasn't opened yet. Check back soon.",
   },
+
+  /**
+   * `/signup` — merchant onboarding (ONB-01, D-02).
+   *
+   * Only the copy the SERVER returns lives here today: plan 01-06 builds
+   * `checkStoreSlug` and `signUpMerchant`, both of which hand a rendered
+   * message back to the caller, so these strings have a live surface. Plan
+   * 01-07 extends this namespace with the form's own labels, helper text and
+   * button states.
+   *
+   * Two slug states are deliberately ABSENT from this namespace:
+   * `SLUG_FORMAT_MESSAGE` and `SLUG_RESERVED_MESSAGE` are owned by
+   * `@/server/tenant/host` because the Zod schema raises them and the format
+   * message is built by template literal from `SLUG_MIN_LENGTH`/
+   * `SLUG_MAX_LENGTH`. Copying them here would let the bounds the merchant
+   * reads drift from the bounds the schema enforces — see 01-03-SUMMARY.
+   */
+  signup: {
+    /** Slug field, `taken` state. */
+    slugTaken: "That address is taken. Try another name.",
+    /**
+     * Slug field, "check unavailable" state — rate-limited or a transport
+     * failure. The submit button stays ENABLED here: the server is the
+     * authority and the client check is UX only, so a merchant must never be
+     * blocked from trying by a check that could not run.
+     */
+    slugCheckUnavailable:
+      "Can't check right now. You can continue — we'll verify on submit.",
+    /** The TOCTOU window between the live check and submit closing on them. */
+    slugRaceLost: "That address was just taken. Choose another.",
+    emailTaken: "An account already exists with that email.",
+    rateLimited: "Too many attempts. Try again in a minute.",
+    /**
+     * The honest message for the non-atomic gap: the user row was written and
+     * the organization was not. Says so, rather than implying nothing happened
+     * and inviting a retry that will fail on the duplicate email. Plan 01-07
+     * owns the `/onboarding/create-store` route this points them toward.
+     */
+    provisioningFailed:
+      "Store creation failed. Your account was saved — sign back in to finish.",
+    genericError: "Something went wrong. Try again in a moment.",
+  },
 } as const;

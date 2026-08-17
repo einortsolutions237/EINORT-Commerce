@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Prisma } from "@/generated/prisma/client";
 import { platformDb } from "@/server/db/platform";
-import { scopedDb } from "@/server/db/tenant-scoped";
+import { scopedCreateData, scopedDb } from "@/server/db/tenant-scoped";
 import { SLUG_RESERVED_MESSAGE } from "@/server/tenant/host";
 
 import { seedTwoTenants, TENANT_A } from "../setup/seed-two-tenants";
@@ -175,7 +176,10 @@ describe("checkStoreSlug", () => {
     // store's inbound links, QR codes and WhatsApp shares (T-01-41).
     const released = "renamed-away-store";
     await scopedDb(TENANT_A.id).storeSlugHistory.create({
-      data: { slug: released, releasedAt: new Date() },
+      data: scopedCreateData<Prisma.StoreSlugHistoryUncheckedCreateInput>({
+        slug: released,
+        releasedAt: new Date(),
+      }),
     });
 
     const organization = await platformDb.organization.findUnique({
