@@ -78,7 +78,32 @@ Plans:
   3. Starter/Business/Professional plan differences exist only as server-enforced entitlement checks (product limits, staff limits, feature access) on one shared codebase — no separate codebase or client-only gating per tier.
   4. Plan limits and trial state are checked server-side on every relevant write, and attempting to exceed a limit is blocked even if the UI is bypassed.
 
-**Plans**: TBD
+**Plans**: 7 plans (6 waves)
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Organization plan/trial columns (input:false), the entitlement registry, the pure trial resolver and its unit suite
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Mandatory plan-selection step: pricing copy, badge, selectPlan write, and the rewired post-signup redirects
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-03-PLAN.md — The merchant DAL, the merchantAction write gate, the dashboard shell with the trial banner, and /suspended
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-04-PLAN.md — /login, sign-in/sign-out actions, the signup cross-link and distributed login throttling
+- [ ] 02-05-PLAN.md — /dashboard/plan switch during the trial, the read-only refusal after it, and the SUB-02 isolation suite
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-06-PLAN.md — Seat limits and refusals on the raw /api/auth/organization/* endpoints (membershipLimit + four hooks)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 02-07-PLAN.md — Phase gate (full suite, lint, typecheck, build) and the human walkthrough of the plan screen and read-only mode
 
 ### Phase 3: Product Catalog & Order/Payment-Claim State Machine
 
@@ -153,7 +178,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
-| 2. Merchant Auth, Entitlements & Trial | 0/TBD | Not started | - |
+| 2. Merchant Auth, Entitlements & Trial | 0/7 | Planned | - |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
