@@ -117,6 +117,37 @@ model Organization {
   // `input: false` in the Better Auth config, so it can never be set through
   // the public create/update API; suspension is a Phase 6 admin-only write.
   status      String       @default("active")
+
+  /// SUB-01 / D-05: the merchant's chosen tier, one of `PLAN_TIERS` in
+  /// `src/server/entitlements/plans.ts`. NULL means "signed up, has not picked
+  /// a plan yet" and is the ONE place a nullable enum-ish column is correct in
+  /// this schema — deliberately unlike the `status`/`platformRole` NOT NULL
+  /// hand-corrections, where a third state had no meaning. Here the third state
+  /// IS the D-01 flow, and exactly one gate handles it: the dashboard redirects
+  /// a NULL-tier merchant to `/onboarding/plan`. Declared `input: false` in the
+  /// Better Auth config, so no merchant can forge their own tier.
+  planTier           String?
+
+  /// ONB-05: an optional override for a support-granted trial extension. NULL
+  /// is the normal case and means "derive from `createdAt` + TRIAL_DAYS".
+  /// Deriving rather than stamping means there is no window in which a
+  /// just-created organization has no trial, and no second write that can fail
+  /// and leave a merchant with no trial at all. `input: false`.
+  trialEndsAt        DateTime?
+
+  /// D-09/D-10: "none" until a later phase builds the merchant subscribe-via-
+  /// claim flow. NOT NULL for the same reason `status` was hand-corrected — no
+  /// authorization check should have to special-case a third state, and
+  /// `resolveEntitlements` compares this to the literal "active". `input: false`
+  /// plus `defaultValue: "none"` in the Better Auth config satisfies the NOT
+  /// NULL on insert without opening a public write path.
+  subscriptionStatus String       @default("none")
+
+  /// D-06 audit breadcrumb: when the current tier was chosen or switched.
+  /// Cheap to keep, and reconstructing tier history after the fact is
+  /// impossible. NULL until the first plan selection. `input: false`.
+  planSelectedAt     DateTime?
+
   members     Member[]
   invitations Invitation[]
 

@@ -186,6 +186,57 @@ export const auth = betterAuth({
               required: false,
               defaultValue: "active",
             },
+
+            /**
+             * SUB-01 / ONB-05: the plan and trial columns from plan 02-01.
+             *
+             * `input: false` is a real control here, not decoration. Verified
+             * in this exact version:
+             *
+             *   1. `/organization/create` builds its body schema as
+             *      `z.object({ ...baseOrganizationSchema.shape,
+             *      ...additionalFieldsSchema.shape })`, where
+             *      `additionalFieldsSchema = toZodSchema({ fields,
+             *      isClientSide: true })` (`routes/crud-org.mjs`).
+             *   2. `toZodSchema` drops `input: false` fields when
+             *      `isClientSide` is set: `if (isClientSide && field.input ===
+             *      false) return acc;` (`db/to-zod.mjs`).
+             *   3. Zod's `z.object` strips unknown keys, so a forged
+             *      `{"planTier":"professional"}` is discarded before `ctx.body`
+             *      exists.
+             *   4. `/organization/update` uses the identical construction, so
+             *      the same holds for updates.
+             *
+             * The only writer of these four columns is server code going
+             * through `platformDb.organization.update`. That is not a gap — it
+             * is the design: there is deliberately no public API path to set a
+             * tier, a trial end, or a subscription status.
+             *
+             * `subscriptionStatus` is NOT NULL in the schema, so it carries a
+             * `defaultValue` for the same reason `status` above does. The other
+             * three are nullable and need none.
+             */
+            planTier: {
+              type: "string",
+              input: false,
+              required: false,
+            },
+            trialEndsAt: {
+              type: "date",
+              input: false,
+              required: false,
+            },
+            subscriptionStatus: {
+              type: "string",
+              input: false,
+              required: false,
+              defaultValue: "none",
+            },
+            planSelectedAt: {
+              type: "date",
+              input: false,
+              required: false,
+            },
           },
         },
       },

@@ -15,6 +15,13 @@ const srcPath = fileURLToPath(new URL("./src", import.meta.url));
  * `react-server` to `resolve.conditions` globally would also work, but it
  * changes how React and Next resolve too, which is a much larger blast radius
  * for a one-package problem.
+ *
+ * The `unit` project needs the same alias as of plan 02-01: the entitlement
+ * modules (`src/server/entitlements/**`) are pure, database-free and therefore
+ * unit-testable, but they still open with `import "server-only"` because they
+ * must never be bundled into a client component. The marker package is a build
+ * constraint, not a runtime dependency, so stubbing it out under test changes
+ * nothing about what the tests prove.
  */
 const serverOnlyStub = fileURLToPath(
   new URL("./node_modules/server-only/empty.js", import.meta.url),
@@ -61,7 +68,7 @@ export default defineConfig({
   test: {
     projects: [
       {
-        resolve: { alias: { "@": srcPath } },
+        resolve: { alias: { "@": srcPath, "server-only": serverOnlyStub } },
         test: {
           name: "unit",
           environment: "node",
