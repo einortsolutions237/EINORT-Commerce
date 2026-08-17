@@ -53,7 +53,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-05-PLAN.md — Redis-cached fail-closed tenant resolution, storefront route tree and the branded store-not-found page
+- [x] 01-05-PLAN.md — Redis-cached fail-closed tenant resolution, storefront route tree and the branded store-not-found page
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Multi-Tenant Foundations & Domain Resolution | 4/7 | In Progress|  |
+| 1. Multi-Tenant Foundations & Domain Resolution | 5/7 | In Progress|  |
 | 2. Merchant Auth, Entitlements & Trial | 0/TBD | Not started | - |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
