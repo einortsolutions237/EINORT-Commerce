@@ -143,5 +143,27 @@ export const strings = {
     provisioningFailed:
       "Store creation failed. Your account was saved — sign back in to finish.",
     genericError: "Something went wrong. Try again in a moment.",
+    /** The session lapsed between rendering a form and submitting it. */
+    sessionExpired: "Your session expired. Sign in again to continue.",
+  },
+
+  /**
+   * `/onboarding/create-store` — the recovery route for the one genuinely
+   * non-atomic step in the phase.
+   *
+   * This surface is not in `01-UI-SPEC.md`'s four-route table, so its copy is
+   * new rather than transcribed. It reuses the spec's voice: state what
+   * happened, then what to do next. It deliberately does NOT reuse
+   * `signup.provisioningFailed` — that string ends "sign back in to finish",
+   * and the merchant reading this page is already signed in, so repeating it
+   * would send them in a circle.
+   */
+  createStore: {
+    title: "Finish creating your store",
+    heading: "Finish creating your store",
+    notice:
+      "Your account was saved, but your store wasn't created. Choose your store address to finish.",
+    cta: "Create my store",
+    ctaSubmitting: "Creating…",
   },
 } as const;

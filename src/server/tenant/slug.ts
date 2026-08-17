@@ -51,3 +51,24 @@ export const storeSlugSchema = z
   .refine((slug) => !RESERVED_SLUGS.has(slug), SLUG_RESERVED_MESSAGE);
 
 export type StoreSlug = z.infer<typeof storeSlugSchema>;
+
+/**
+ * The display name a store gets from its address.
+ *
+ * D-01 is explicit that the merchant types exactly one thing — their address —
+ * so there is no store-name field to ask. `alpha-store` becomes "Alpha Store",
+ * which is what the storefront renders until Phase 4 gives the merchant a real
+ * branding surface.
+ *
+ * Lives here, beside the schema, because both the signup form and the recovery
+ * action derive it and the two must agree. `storeSlugSchema` guarantees at
+ * least `SLUG_MIN_LENGTH` (3) characters, so the result always clears the
+ * 2-character floor the signup schema enforces on the name.
+ */
+export function storeNameFromSlug(slug: string): string {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
