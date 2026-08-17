@@ -1,3 +1,4 @@
+import { applySetCookies } from "better-auth/cookies";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { strings } from "@/lib/strings";
@@ -81,6 +82,7 @@ vi.mock("@/server/rate-limit", async (importOriginal) => {
 const { signUpMerchant } = await import("@/server/auth/signup");
 const { selectPlan } = await import("@/server/merchant/actions");
 const { platformDb } = await import("@/server/db/platform");
+const { auth } = await import("@/server/auth/auth");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -94,21 +96,34 @@ function resetRequestContext(): void {
 }
 
 /**
- * Replay the cookie jar into the request headers.
+ * Put a real, signed session cookie on the NEXT request.
  *
- * `signUpMerchant` copies the incoming headers before merging the freshly
- * issued session cookie into its own copy, and the `nextCookies()` plugin
- * writes the cookie to the jar. In a browser the NEXT request would carry that
- * cookie in its `Cookie` header — this is the stand-in for that hop, and it is
- * what makes `selectPlan` a genuinely separate authenticated request rather
- * than a continuation of the signup call.
+ * `selectPlan` reads `await headers()`, so the merchant's session has to arrive
+ * the way a browser would send it — in a `Cookie` header — rather than being
+ * inherited from the signup call. `applySetCookies` is Better Auth's own helper
+ * (the same one `signup.ts` uses internally): the session cookie is SIGNED and
+ * percent-encoded, so a hand-rolled `name=value` join gets the encode/decode
+ * round trip subtly wrong and presents as an expired session.
+ *
+ * The `nextCookies()` jar is deliberately NOT the source here. That plugin
+ * reaches for its cookie store through a dynamic `import("next/headers.js")`,
+ * which the `vi.mock("next/headers")` above does not intercept, so under Vitest
+ * the jar stays empty and a jar-based helper would silently authenticate
+ * nothing. Signing in for the cookie is both the real round trip and the honest
+ * one — and it additionally exercises the `databaseHooks` back-fill that puts
+ * `activeOrganizationId` on a session created by `signInEmail`.
  */
-function carryCookiesToNextRequest(): void {
-  const cookie = Array.from(requestContext.cookies.values())
-    .map((entry) => `${entry.name}=${entry.value}`)
-    .join("; ");
+async function authenticateAs(email: string): Promise<void> {
+  const signIn = await auth.api.signInEmail({
+    body: { email, password: PASSWORD },
+    headers: requestContext.headers,
+    returnHeaders: true,
+  });
+
   requestContext.headers = new Headers({ "x-forwarded-for": "203.0.113.7" });
-  if (cookie !== "") requestContext.headers.set("cookie", cookie);
+  const setCookie = signIn.headers.get("set-cookie");
+  if (!setCookie) throw new Error("fixture sign-in issued no session cookie");
+  applySetCookies(requestContext.headers, [setCookie]);
 }
 
 /** A merchant with a store and a live session, ready to pick a plan. */
@@ -125,7 +140,7 @@ async function signUpAndCarrySession(
   if (!result.ok) {
     throw new Error(`fixture signup failed: ${JSON.stringify(result.error)}`);
   }
-  carryCookiesToNextRequest();
+  await authenticateAs(email);
   return result.slug;
 }
 
