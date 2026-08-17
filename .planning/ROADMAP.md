@@ -49,7 +49,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-04-PLAN.md — Two-tenant seed fixture, model-generic isolation suite and the schema-drift guard
+- [x] 01-04-PLAN.md — Two-tenant seed fixture, model-generic isolation suite and the schema-drift guard
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Multi-Tenant Foundations & Domain Resolution | 3/7 | In Progress|  |
+| 1. Multi-Tenant Foundations & Domain Resolution | 4/7 | In Progress|  |
 | 2. Merchant Auth, Entitlements & Trial | 0/TBD | Not started | - |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
