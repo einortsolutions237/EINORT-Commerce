@@ -40,12 +40,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Scaffold Next 16 + toolchain, typed env, ESLint import zones, Vitest harness, root placeholder page
+- [x] 01-01-PLAN.md — Scaffold Next 16 + toolchain, typed env, ESLint import zones, Vitest harness, root placeholder page
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Prisma 7 + Better Auth schema, first migration, and the four data-access clients (scopedDb / platformDb / adminDb)
-- [ ] 01-03-PLAN.md — Reserved slugs, slug schema, classifyHost and the Next 16 proxy (header strip, /s/ 404, host rewrite)
+- [x] 01-02-PLAN.md — Prisma 7 + Better Auth schema, first migration, and the four data-access clients (scopedDb / platformDb / adminDb)
+- [x] 01-03-PLAN.md — Reserved slugs, slug schema, classifyHost and the Next 16 proxy (header strip, /s/ 404, host rewrite)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Multi-Tenant Foundations & Domain Resolution | 0/7 | Planned | - |
+| 1. Multi-Tenant Foundations & Domain Resolution | 3/7 | In Progress|  |
 | 2. Merchant Auth, Entitlements & Trial | 0/TBD | Not started | - |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
