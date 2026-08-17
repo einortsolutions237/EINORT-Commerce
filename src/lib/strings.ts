@@ -17,6 +17,10 @@
  * Later plans extend this file: `signup` (01-07). Do not pre-populate a
  * namespace before its surface exists.
  *
+ * Interpolation: a handful of messages carry a `{token}` placeholder rather
+ * than being assembled by concatenation at the call site. Concatenation bakes
+ * English word order into the code; a token can be moved by a translator.
+ *
  * Note: this governs UI copy language only. Currency and number formatting stay
  * on the `fr-CM` locale (`Intl.NumberFormat('fr-CM', { currency: 'XAF' })`) per
  * CLAUDE.md — that is a Cameroon formatting convention, independent of copy
@@ -81,6 +85,41 @@ export const strings = {
    * reads drift from the bounds the schema enforces — see 01-03-SUMMARY.
    */
   signup: {
+    /** Renders as "Create your store · EINORT" through the layout template. */
+    title: "Create your store",
+    heading: "Create your store",
+    subline: "Free for 10 days. No card required.",
+
+    emailLabel: "Email address",
+    passwordLabel: "Password",
+    passwordHelper: "8 characters minimum.",
+    slugLabel: "Your store address",
+
+    /** The one primary button on the page. */
+    cta: "Create my store",
+    /**
+     * Shown while the submit is in flight. The button keeps its width so the
+     * card does not reflow — 01-UI-SPEC.md § Loading forbids a layout shift
+     * here, and there is deliberately no full-page spinner.
+     */
+    ctaSubmitting: "Creating…",
+
+    /** Slug field, `idle` state — nothing typed yet, no check has run. */
+    slugIdle: "Choose your store address.",
+    /** Slug field, `checking` state. */
+    slugChecking: "Checking…",
+    /**
+     * Slug field, `available` state. `{host}` is replaced with the full
+     * hostname the merchant would get (`maboutique.einort.com`), which is the
+     * D-01 familiarity cue — the merchant reads back the actual address rather
+     * than a bare "available".
+     *
+     * Kept as an interpolation token rather than string concatenation at the
+     * call site so a later i18n pass can move the token, which languages with
+     * different word order need.
+     */
+    slugAvailable: "{host} is available.",
+
     /** Slug field, `taken` state. */
     slugTaken: "That address is taken. Try another name.",
     /**
@@ -104,5 +143,27 @@ export const strings = {
     provisioningFailed:
       "Store creation failed. Your account was saved — sign back in to finish.",
     genericError: "Something went wrong. Try again in a moment.",
+    /** The session lapsed between rendering a form and submitting it. */
+    sessionExpired: "Your session expired. Sign in again to continue.",
+  },
+
+  /**
+   * `/onboarding/create-store` — the recovery route for the one genuinely
+   * non-atomic step in the phase.
+   *
+   * This surface is not in `01-UI-SPEC.md`'s four-route table, so its copy is
+   * new rather than transcribed. It reuses the spec's voice: state what
+   * happened, then what to do next. It deliberately does NOT reuse
+   * `signup.provisioningFailed` — that string ends "sign back in to finish",
+   * and the merchant reading this page is already signed in, so repeating it
+   * would send them in a circle.
+   */
+  createStore: {
+    title: "Finish creating your store",
+    heading: "Finish creating your store",
+    notice:
+      "Your account was saved, but your store wasn't created. Choose your store address to finish.",
+    cta: "Create my store",
+    ctaSubmitting: "Creating…",
   },
 } as const;

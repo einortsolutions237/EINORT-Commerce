@@ -9,7 +9,7 @@ import { platformDb } from "@/server/db/platform";
 import { scopedCreateData, scopedDb } from "@/server/db/tenant-scoped";
 import { callerIp, signupLimiter } from "@/server/rate-limit";
 import { invalidateTenantHost } from "@/server/tenant/cache";
-import { storeSlugSchema } from "@/server/tenant/slug";
+import { storeNameFromSlug, storeSlugSchema } from "@/server/tenant/slug";
 import type { Prisma } from "@/generated/prisma/client";
 
 import { auth } from "./auth";
@@ -127,6 +127,52 @@ export async function signUpMerchant(
 
   const userId = signUp.response.user.id;
 
+  return provisionStore({
+    userId,
+    storeName,
+    slug,
+    requestHeaders,
+    createFailureMessage: strings.signup.provisioningFailed,
+  });
+}
+
+interface ProvisionStoreInput {
+  userId: string;
+  storeName: string;
+  slug: string;
+  requestHeaders: Headers;
+  /**
+   * What to tell the caller when organization creation fails for a reason that
+   * is neither a slug race nor the reserved/format gate.
+   *
+   * It differs by entry point, and the difference is not cosmetic. From
+   * `signUpMerchant` the user row was just written and the store was not, so
+   * the honest message names that gap and points at the recovery route. From
+   * the recovery route the merchant is already sitting on that page, so the
+   * same words would be a loop; a plain retry message is correct there.
+   */
+  createFailureMessage: string;
+}
+
+/**
+ * Steps 2-5 of provisioning, factored out so the `/onboarding/create-store`
+ * recovery route runs the SAME path rather than a second implementation of it.
+ *
+ * That sharing is a security property, not a tidiness one: the ordering here
+ * decides which failures abort the signup and which are logged and survived,
+ * and a divergent copy of that decision is exactly the kind of drift that
+ * leaves one entry point creating stores the other would have refused.
+ *
+ * `userId` is supplied by the caller and must always be derived from a session
+ * or from a just-created user — never from request input (T-01-49).
+ */
+async function provisionStore({
+  userId,
+  storeName,
+  slug,
+  requestHeaders,
+  createFailureMessage,
+}: ProvisionStoreInput): Promise<SignUpMerchantResult> {
   // -------------------------------------------------------------------------
   // 2. The tenant, created as a SYSTEM ACTION.
   // -------------------------------------------------------------------------
@@ -185,20 +231,19 @@ export async function signUpMerchant(
      * the organization does not, and no amount of wrapping makes those two
      * writes one transaction — they span two Better Auth endpoints. Telling
      * the merchant nothing happened would send them into a retry that fails on
-     * the duplicate email. Plan 01-07 owns the `/onboarding/create-store`
-     * recovery route that any authenticated user with zero organizations is
-     * redirected to.
+     * the duplicate email. `/onboarding/create-store` is the recovery route
+     * that any authenticated user with zero organizations is redirected to.
      */
     console.error(
-      `[signup] user ${userId} was created but provisioning "${slug}" failed; ` +
+      `[signup] user ${userId} exists but provisioning "${slug}" failed; ` +
         `they now need the /onboarding/create-store recovery route.`,
       error,
     );
-    return { ok: false, error: { form: [strings.signup.provisioningFailed] } };
+    return { ok: false, error: { form: [createFailureMessage] } };
   }
 
   if (!organization) {
-    return { ok: false, error: { form: [strings.signup.provisioningFailed] } };
+    return { ok: false, error: { form: [createFailureMessage] } };
   }
 
   // -------------------------------------------------------------------------
@@ -296,4 +341,76 @@ export async function signUpMerchant(
   }
 
   return { ok: true, slug };
+}
+
+/**
+ * The recovery half of ONB-01: provision a store for a merchant who already
+ * has an account and no store.
+ *
+ * That state is reachable because signup is not atomic — `signUpEmail` and
+ * `createOrganization` are two Better Auth endpoints and cannot be one
+ * transaction. Without this action the merchant is stranded: their email is
+ * taken, so signing up again fails, and they have nothing to sign in to.
+ *
+ * IDENTITY COMES FROM THE SESSION AND NOWHERE ELSE (T-01-49). The input schema
+ * accepts a slug and nothing more — no user id, no organization id — so there
+ * is no field an attacker could set to provision a store onto someone else's
+ * account. A caller who forges extra keys has them dropped by the parse.
+ */
+const recoverStoreSchema = z.object({ slug: storeSlugSchema });
+
+export async function createStoreForCurrentUser(
+  input: unknown,
+): Promise<SignUpMerchantResult> {
+  const parsed = recoverStoreSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: z.flattenError(parsed.error).fieldErrors as Record<
+        string,
+        string[]
+      >,
+    };
+  }
+
+  const { slug } = parsed.data;
+  const requestHeaders = new Headers(await headers());
+
+  const session = await auth.api.getSession({ headers: requestHeaders });
+  if (!session) {
+    // The page redirects unauthenticated visitors to /signup; reaching this
+    // branch means the session expired between render and submit.
+    return { ok: false, error: { form: [strings.signup.sessionExpired] } };
+  }
+
+  const userId = session.user.id;
+
+  // Same limiter as signup: each success here still mints a tenant and a
+  // DNS-addressable hostname, so it is the same abuse surface (T-01-40).
+  const { success } = await signupLimiter.limit(callerIp(requestHeaders));
+  if (!success) {
+    return { ok: false, error: { form: [strings.signup.rateLimited] } };
+  }
+
+  /**
+   * Idempotence, not authorization: `organizationLimit: 1` already refuses a
+   * second store, and would do so with a confusing error. A merchant who
+   * double-submits, or who lands here from a stale tab after the store was
+   * created, should simply be sent to the store they already have.
+   */
+  const existing = await platformDb.organization.findFirst({
+    where: { members: { some: { userId } } },
+    select: { slug: true },
+  });
+  if (existing) return { ok: true, slug: existing.slug };
+
+  return provisionStore({
+    userId,
+    storeName: storeNameFromSlug(slug),
+    slug,
+    requestHeaders,
+    // No "sign back in to finish" here — they ARE signed in and already on the
+    // recovery page, so that wording would send them in a circle.
+    createFailureMessage: strings.signup.genericError,
+  });
 }
