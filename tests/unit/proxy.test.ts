@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
  * updating the validation map.
  */
 process.env.NEXT_PUBLIC_ROOT_DOMAIN = "einort.com";
-const { proxy, config } = await import("../../proxy");
+const { proxy, config } = await import("../../src/proxy");
 
 const request = (url: string, headers: Record<string, string> = {}): NextRequest => {
   const host = new URL(url).host;
@@ -105,7 +105,7 @@ describe("proxy", () => {
     });
 
     it("strips forged tenant headers on the unknown branch", () => {
-      const response = proxy(request("https://nope.einort.com/", FORGED));
+      const response = proxy(request("https://a.b.einort.com/", FORGED));
       const headers = forwardedHeaders(response);
       expect(headers.get("x-tenant-id")).toBeNull();
       expect(headers.get("x-store-slug")).toBeNull();
@@ -120,10 +120,14 @@ describe("proxy", () => {
   });
 
   describe("store hostnames", () => {
-    it("rewrites the storefront root to /s/<slug>/", () => {
+    it("rewrites the storefront root to /s/<slug>", () => {
+      // `url.pathname` is set to "/s/store1/", but NextURL normalizes the
+      // trailing slash away under the default `trailingSlash: false`. Both forms
+      // resolve to app/s/[slug]/page.tsx, so the normalized form is asserted
+      // here rather than fought.
       const response = proxy(request("https://store1.einort.com/"));
       expect(isRewrite(response)).toBe(true);
-      expect(new URL(getRewrittenUrl(response)!).pathname).toBe("/s/store1/");
+      expect(new URL(getRewrittenUrl(response)!).pathname).toBe("/s/store1");
     });
 
     it("preserves the original path when rewriting", () => {
@@ -167,8 +171,26 @@ describe("proxy", () => {
   });
 
   describe("unknown hostnames fail closed", () => {
-    it("rewrites an unclaimed subdomain to /store-not-found", () => {
+    /**
+     * "Unknown" here means *unclassifiable*, not *unclaimed*. `nope.einort.com`
+     * is a well-formed slug, so it classifies as a store and rewrites into the
+     * storefront tree — whether a tenant named `nope` actually exists is a
+     * database question, answered by plan 01-05's storefront layout, which calls
+     * `notFound()` and lands on the same branded body. The proxy stays zero-I/O.
+     */
+    it("rewrites a well-formed but unclaimed subdomain into the storefront tree, not to /store-not-found", () => {
       const response = proxy(request("https://nope.einort.com/"));
+      expect(new URL(getRewrittenUrl(response)!).pathname).toBe("/s/nope");
+    });
+
+    it("rewrites a deep subdomain to /store-not-found", () => {
+      const response = proxy(request("https://a.b.einort.com/"));
+      expect(isRewrite(response)).toBe(true);
+      expect(new URL(getRewrittenUrl(response)!).pathname).toBe("/store-not-found");
+    });
+
+    it("rewrites an all-numeric subdomain to /store-not-found", () => {
+      const response = proxy(request("https://12345.einort.com/"));
       expect(isRewrite(response)).toBe(true);
       expect(new URL(getRewrittenUrl(response)!).pathname).toBe("/store-not-found");
     });
