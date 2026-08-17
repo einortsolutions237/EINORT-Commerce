@@ -37,11 +37,24 @@ export default defineConfig({
   },
 
   datasource: {
-    // Neon POOLED connection string. Serverless concurrency exhausts Postgres
-    // connection limits against an unpooled host (CLAUDE.md C-5).
-    url: env("DATABASE_URL"),
-    // Neon UNPOOLED connection string. Migrations only — DDL and advisory
-    // locks do not survive a transaction pooler.
-    directUrl: env("DIRECT_URL"),
+    /*
+     * The UNPOOLED Neon string, on purpose.
+     *
+     * Prisma 7 removed `directUrl` — the `Datasource` type is exactly
+     * `{ url?, shadowDatabaseUrl? }`, so the Prisma 5/6 two-URL split no
+     * longer exists here. It is not needed either, because this file is read
+     * *only by the Prisma CLI* (`migrate`, `studio`, `db pull`). The
+     * application runtime never loads it: `src/server/db/base.ts` builds its
+     * own connection through `@prisma/adapter-pg`.
+     *
+     * That split is what keeps CLAUDE.md C-5 intact while still doing the
+     * right thing for migrations:
+     *   runtime  -> DATABASE_URL (pooled)   — via the adapter, in base.ts
+     *   CLI/DDL  -> DIRECT_URL  (unpooled)  — here
+     *
+     * Migrations want the unpooled host specifically: schema changes take
+     * session-level advisory locks, which do not survive a transaction pooler.
+     */
+    url: env("DIRECT_URL"),
   },
 });
