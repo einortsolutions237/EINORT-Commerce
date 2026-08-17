@@ -21,7 +21,12 @@
  *
  * The seed TRUNCATEs every table. There is no partial or recoverable mode.
  */
-import { seedTwoTenants, TENANT_A, TENANT_B } from "../tests/setup/seed-two-tenants";
+import {
+  closeSeedClient,
+  seedTwoTenants,
+  TENANT_A,
+  TENANT_B,
+} from "../tests/setup/seed-two-tenants";
 
 async function main(): Promise<void> {
   await seedTwoTenants();
@@ -31,9 +36,13 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  // Non-zero exit so a refused target fails a CI step rather than logging and
-  // continuing as if the database had been seeded.
-  process.exitCode = 1;
-});
+main()
+  .catch((error: unknown) => {
+    console.error(error);
+    // Non-zero exit so a refused target fails a CI step rather than logging and
+    // continuing as if the database had been seeded.
+    process.exitCode = 1;
+  })
+  // The seed client is cached for reuse across calls, so a one-shot run has to
+  // release the pool or the process will not exit.
+  .finally(() => closeSeedClient());

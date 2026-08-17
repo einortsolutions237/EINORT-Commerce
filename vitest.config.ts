@@ -75,6 +75,8 @@ export default defineConfig({
           environment: "node",
           include: ["tests/isolation/**/*.test.ts"],
           globalSetup: ["tests/setup/global-setup.ts"],
+          // Releases the cached seed connection pool when each file finishes.
+          setupFiles: ["tests/setup/isolation-setup.ts"],
           env: isolationEnv,
           // Isolation tests share one database branch; running files in parallel
           // would let one suite's truncate wipe another's fixtures mid-assertion.

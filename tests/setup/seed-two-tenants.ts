@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 
 /**
  * The deterministic two-tenant fixture the `isolation` Vitest project runs against.
@@ -12,12 +12,16 @@ import { PrismaClient } from "@/generated/prisma/client";
  * ---------------------------------------------------------------------------
  * THIS FILE WRITES THROUGH AN UNSCOPED CLIENT ON PURPOSE. DO NOT "FIX" IT.
  * ---------------------------------------------------------------------------
- * Never route the seed through `scopedDb`. The entire value of the isolation
- * suite is that the fixture can create tenant A's rows while the code under
- * test is running as tenant B. A scoped seed could only ever create rows for
- * the tenant currently under test, which would make every cross-tenant
- * assertion vacuously true — the suite would stay green while the guarantee it
- * claims to prove had been deleted.
+ * Never route the seed through the tenant-scoping extension in
+ * `src/server/db/tenant-scoped.ts`. The entire value of the isolation suite is
+ * that the fixture can create tenant A's rows while the code under test is
+ * running as tenant B. A tenant-scoped seed could only ever create rows for the
+ * tenant currently under test, which would make every cross-tenant assertion
+ * vacuously true — the suite would stay green while the guarantee it claims to
+ * prove had been deleted.
+ *
+ * (This module is asserted to contain no reference to the scoped-client helper
+ * at all, so the prohibition is phrased by module rather than by symbol name.)
  *
  * ---------------------------------------------------------------------------
  * THIS FILE CONTAINS THE ONE SANCTIONED RAW SQL IN THE REPOSITORY (T-01-28).
@@ -292,8 +296,35 @@ export function delegateKeyFor(model: string): string {
   return model.charAt(0).toLowerCase() + model.slice(1);
 }
 
-function createUnscopedClient(connectionString: string): PrismaClient {
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+/**
+ * One client per connection string, reused across calls.
+ *
+ * The isolation suite rebuilds this fixture before every test, and opening a
+ * fresh pool (TLS handshake to a remote Neon branch) dominated the runtime by a
+ * wide margin — far more than the handful of statements the seed actually
+ * issues. Reuse takes the suite from ~107s to roughly a third of that, and the
+ * saving compounds as plans 01-05/01-06 add isolation files.
+ *
+ * `closeSeedClient` is the matching teardown, wired for every isolation test
+ * file by `tests/setup/isolation-setup.ts`. Without it Vitest would hold an
+ * open pool at the end of the run.
+ */
+let cached:
+  | { url: string; db: PrismaClient; truncateSql?: string | null }
+  | undefined;
+
+function unscopedClientFor(connectionString: string): PrismaClient {
+  if (cached && cached.url === connectionString) return cached.db;
+  const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  cached = { url: connectionString, db };
+  return db;
+}
+
+/** Disconnect the cached seed client. Safe to call when there is none. */
+export async function closeSeedClient(): Promise<void> {
+  const current = cached;
+  cached = undefined;
+  if (current) await current.db.$disconnect();
 }
 
 /**
@@ -306,7 +337,13 @@ function createUnscopedClient(connectionString: string): PrismaClient {
  * `CASCADE` handles FK ordering; `RESTART IDENTITY` resets sequences so runs do
  * not drift.
  */
-async function truncateAllTables(db: PrismaClient): Promise<string[]> {
+async function truncateStatementFor(db: PrismaClient): Promise<string | null> {
+  // Cached: the table list only changes when a migration runs, and migrations
+  // run once in `globalSetup` — well before any reseed. Re-querying it before
+  // every test would add a full round trip to a remote branch for an answer
+  // that cannot have changed.
+  if (cached?.truncateSql !== undefined) return cached.truncateSql;
+
   const rows = await db.$queryRaw<{ tablename: string }[]>`
     SELECT tablename
     FROM pg_tables
@@ -314,15 +351,17 @@ async function truncateAllTables(db: PrismaClient): Promise<string[]> {
       AND tablename <> '_prisma_migrations'
     ORDER BY tablename
   `;
-  if (rows.length === 0) return [];
 
   const quoted = rows
     .map((row) => `"public"."${row.tablename.replace(/"/g, '""')}"`)
     .join(", ");
-  await db.$executeRawUnsafe(
-    `TRUNCATE TABLE ${quoted} RESTART IDENTITY CASCADE`,
-  );
-  return rows.map((row) => row.tablename);
+  const sql =
+    rows.length === 0
+      ? null
+      : `TRUNCATE TABLE ${quoted} RESTART IDENTITY CASCADE`;
+
+  if (cached) cached.truncateSql = sql;
+  return sql;
 }
 
 /**
@@ -346,83 +385,110 @@ export async function seedTwoTenants(databaseUrl?: string): Promise<void> {
   // therefore run validation before the line above could satisfy it.
   const { TENANT_SCOPED_MODELS } = await import("@/server/db/tenant-scoped");
 
-  const db = createUnscopedClient(connectionString);
-  try {
-    await truncateAllTables(db);
+  const db = unscopedClientFor(connectionString);
+  const truncateSql = await truncateStatementFor(db);
 
-    for (const tenant of TENANTS) {
-      // `Organization` IS the tenant, so it is intentionally NOT in
-      // TENANT_SCOPED_MODELS and is seeded explicitly.
-      await db.organization.create({
-        data: {
-          id: tenant.id,
-          name: tenant.name,
-          slug: tenant.slug,
-          createdAt: FIXTURE_EPOCH,
-          status: "active",
-        },
-      });
+  /*
+   * Everything below is assembled as unawaited PrismaPromises and handed to a
+   * single `$transaction([...])`.
+   *
+   * Two reasons, in order of importance:
+   *   1. Atomicity — the fixture is either fully replaced or not touched. A
+   *      reseed that failed halfway would leave later tests asserting against
+   *      a half-truncated database, which reads as a mysterious isolation
+   *      failure rather than as a broken fixture.
+   *   2. Latency — Prisma sends a batch as one round trip. Against a remote
+   *      Neon branch, with a reseed before every test in the project, the
+   *      per-statement round trips dominated the suite's runtime.
+   * Statements execute in array order, so the truncate must come first.
+   */
+  const batch: Prisma.PrismaPromise<unknown>[] = [];
 
-      // User + Member exist so the fixture also exercises the Better Auth
-      // registry tables that plan 01-06's signup test will read back.
-      await db.user.create({
-        data: {
-          id: tenant.userId,
-          name: `${tenant.name} Owner`,
-          email: tenant.email,
-          emailVerified: true,
-          createdAt: FIXTURE_EPOCH,
-          updatedAt: FIXTURE_EPOCH,
-        },
-      });
+  if (truncateSql) batch.push(db.$executeRawUnsafe(truncateSql));
 
-      await db.member.create({
-        data: {
-          id: tenant.memberId,
-          organizationId: tenant.id,
-          userId: tenant.userId,
-          role: "owner",
-          createdAt: FIXTURE_EPOCH,
-        },
-      });
+  // `Organization` IS the tenant, so it is intentionally NOT in
+  // TENANT_SCOPED_MODELS and is seeded explicitly.
+  batch.push(
+    db.organization.createMany({
+      data: TENANTS.map((tenant) => ({
+        id: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+        createdAt: FIXTURE_EPOCH,
+        status: "active",
+      })),
+    }),
+  );
+
+  // User + Member exist so the fixture also exercises the Better Auth registry
+  // tables that plan 01-06's signup test will read back.
+  batch.push(
+    db.user.createMany({
+      data: TENANTS.map((tenant) => ({
+        id: tenant.userId,
+        name: `${tenant.name} Owner`,
+        email: tenant.email,
+        emailVerified: true,
+        createdAt: FIXTURE_EPOCH,
+        updatedAt: FIXTURE_EPOCH,
+      })),
+    }),
+  );
+
+  batch.push(
+    db.member.createMany({
+      data: TENANTS.map((tenant) => ({
+        id: tenant.memberId,
+        organizationId: tenant.id,
+        userId: tenant.userId,
+        role: "owner",
+        createdAt: FIXTURE_EPOCH,
+      })),
+    }),
+  );
+
+  // One row per registered tenant-scoped model, per tenant. Driven by the
+  // registry so Phase 3's Product/Order are covered the moment they are
+  // registered (and loudly incomplete until a builder is added).
+  for (const model of TENANT_SCOPED_MODELS) {
+    const build = MODEL_FIXTURES[model];
+    if (!build) {
+      throw new Error(
+        `seedTwoTenants: no fixture row builder registered for "${model}".\n` +
+          "The isolation suite iterates TENANT_SCOPED_MODELS and needs one " +
+          "row per tenant per model, so a newly registered model must also " +
+          "get an entry in MODEL_FIXTURES in " +
+          "tests/setup/seed-two-tenants.ts.",
+      );
     }
 
-    // One row per registered tenant-scoped model, per tenant. Driven by the
-    // registry so Phase 3's Product/Order are covered the moment they are
-    // registered (and loudly incomplete until a builder is added).
-    for (const model of TENANT_SCOPED_MODELS) {
-      const build = MODEL_FIXTURES[model];
-      if (!build) {
-        throw new Error(
-          `seedTwoTenants: no fixture row builder registered for "${model}".\n` +
-            "The isolation suite iterates TENANT_SCOPED_MODELS and needs one " +
-            "row per tenant per model, so a newly registered model must also " +
-            "get an entry in MODEL_FIXTURES in " +
-            "tests/setup/seed-two-tenants.ts.",
-        );
-      }
-
-      const delegate = (db as unknown as Record<string, { create: (a: unknown) => Promise<unknown> }>)[
-        delegateKeyFor(model)
-      ];
-      if (!delegate) {
-        throw new Error(
-          `seedTwoTenants: "${model}" is registered in TENANT_SCOPED_MODELS ` +
-            `but the Prisma client exposes no "${delegateKeyFor(model)}" ` +
-            "delegate. The registry and prisma/schema.prisma have drifted.",
-        );
-      }
-
-      for (const tenant of TENANTS) {
-        await delegate.create({
-          // `tenantId` last: a builder can never cross-stamp a tenant.
-          data: { ...build(tenant), tenantId: tenant.id },
-        });
-      }
+    const delegate = (
+      db as unknown as Record<
+        string,
+        | { createMany: (a: unknown) => Prisma.PrismaPromise<unknown> }
+        | undefined
+      >
+    )[delegateKeyFor(model)];
+    if (!delegate) {
+      throw new Error(
+        `seedTwoTenants: "${model}" is registered in TENANT_SCOPED_MODELS ` +
+          `but the Prisma client exposes no "${delegateKeyFor(model)}" ` +
+          "delegate. The registry and prisma/schema.prisma have drifted.",
+      );
     }
-  } finally {
-    await db.$disconnect();
+
+    batch.push(
+      delegate.createMany({
+        // `tenantId` last: a builder can never cross-stamp a tenant.
+        data: TENANTS.map((tenant) => ({
+          ...build(tenant),
+          tenantId: tenant.id,
+        })),
+      }),
+    );
   }
+
+  await db.$transaction(batch);
 }
 
 /**
@@ -451,5 +517,8 @@ if (invokedDirectly) {
     .catch((error: unknown) => {
       console.error(error);
       process.exitCode = 1;
-    });
+    })
+    // The client is cached rather than per-call, so a one-shot CLI run has to
+    // release it explicitly or the process hangs on an open pool.
+    .finally(() => closeSeedClient());
 }
