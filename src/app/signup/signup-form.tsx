@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -15,11 +16,7 @@ import { cn } from "@/lib/utils";
 import { signUpMerchant } from "@/server/auth/signup";
 import { storeNameFromSlug, storeSlugSchema } from "@/server/tenant/slug";
 
-import {
-  StoreAddressField,
-  storeOrigin,
-  useSlugCheck,
-} from "./store-address-field";
+import { StoreAddressField, useSlugCheck } from "./store-address-field";
 
 /**
  * The merchant signup form (ONB-01, D-01, D-02).
@@ -48,6 +45,7 @@ const signupFormSchema = z.object({
 type SignupFormValues = z.infer<typeof signupFormSchema>;
 
 export function SignupForm() {
+  const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
 
@@ -85,17 +83,21 @@ export function SignupForm() {
 
     if (result.ok) {
       /**
-       * Success is a navigation, never a transient notification. A hard
-       * navigation is required rather than preferred: `useRouter().push()` is a
-       * client-side transition within one origin and cannot reach
-       * `{slug}.einort.com`, which is a different host.
+       * Success is a navigation, never a transient notification — and the next
+       * step is no longer the storefront. D-05 makes plan selection mandatory,
+       * so signup hands off to `/onboarding/plan`, which owns the (cross-origin,
+       * therefore hard) hop to `{slug}.einort.com` once a tier is chosen.
+       *
+       * `router.push` rather than `window.location.assign`: `/onboarding/plan`
+       * is same-origin apex, and a full-page assign would throw away the client
+       * router in the middle of onboarding.
        *
        * `redirecting` holds the button in its submitting state across the
        * hand-off so it cannot flash back to "Create my store" while the browser
        * is already leaving.
        */
       setRedirecting(true);
-      window.location.assign(storeOrigin(result.slug));
+      router.push("/onboarding/plan");
       return;
     }
 

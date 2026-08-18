@@ -2,13 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import {
   StoreAddressField,
-  storeOrigin,
   useSlugCheck,
 } from "@/app/signup/store-address-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -31,6 +31,7 @@ const createStoreFormSchema = z.object({ slug: storeSlugSchema });
 type CreateStoreFormValues = z.infer<typeof createStoreFormSchema>;
 
 export function CreateStoreForm() {
+  const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
 
@@ -61,9 +62,14 @@ export function CreateStoreForm() {
     const result = await createStoreForCurrentUser({ slug: values.slug });
 
     if (result.ok) {
-      // Cross-origin: the merchant's own subdomain (DOM-01), so a hard nav.
+      /**
+       * A merchant recovering here is in exactly the same plan-less state a
+       * fresh signup is, so this route hands off to the same mandatory step
+       * (D-05) rather than jumping to the storefront. Same-origin apex, so a
+       * client transition — `/onboarding/plan` owns the cross-origin hop.
+       */
       setRedirecting(true);
-      window.location.assign(storeOrigin(result.slug));
+      router.push("/onboarding/plan");
       return;
     }
 
