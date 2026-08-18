@@ -86,7 +86,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Mandatory plan-selection step: pricing copy, badge, selectPlan write, and the rewired post-signup redirects
+- [x] 02-02-PLAN.md — Mandatory plan-selection step: pricing copy, badge, selectPlan write, and the rewired post-signup redirects
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -178,7 +178,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
-| 2. Merchant Auth, Entitlements & Trial | 1/7 | In Progress|  |
+| 2. Merchant Auth, Entitlements & Trial | 2/7 | In Progress|  |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |

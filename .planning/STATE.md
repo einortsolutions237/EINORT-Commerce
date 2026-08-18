@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 02 UI-SPEC approved
-last_updated: "2026-08-17T17:22:07.969Z"
-last_activity: 2026-08-17 -- Phase 02 planning complete
+last_updated: "2026-08-17T22:51:13.054Z"
+last_activity: 2026-08-17 -- Phase 02 execution started
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 14
-  completed_plans: 7
+  completed_plans: 8
   percent: 17
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 01 — Multi-Tenant Foundations & Domain Resolution
+**Current focus:** Phase 02 — merchant-auth-entitlements-trial
 
 ## Current Position
 
-Phase: 01 (Multi-Tenant Foundations & Domain Resolution) — EXECUTING
+Phase: 02 (merchant-auth-entitlements-trial) — EXECUTING
 Plan: 1 of 7
-Status: Ready to execute
-Last activity: 2026-08-17 -- Phase 02 planning complete
+Status: Executing Phase 02
+Last activity: 2026-08-17 -- Phase 02 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
