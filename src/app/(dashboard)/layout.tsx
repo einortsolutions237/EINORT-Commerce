@@ -1,6 +1,7 @@
 import { isUrgentTrial } from "@/server/entitlements/resolve";
 import { requireMerchantContext } from "@/server/merchant/context";
 
+import { SignOutButton } from "../sign-out-button";
 import { TrialBanner } from "./trial-banner";
 
 /**
@@ -63,10 +64,12 @@ export default async function DashboardLayout({
          * which store they are looking at — the one fact the whole dashboard
          * is scoped to.
          */}
-        <header className="flex items-baseline justify-between gap-4 border-b border-border pb-4">
+        <header className="flex items-center justify-between gap-4 border-b border-border pb-4">
           <span className="text-sm leading-normal font-semibold text-foreground">
             {ctx.storeName}
           </span>
+          {/* Calls the signOutMerchant server action; see sign-out-button.tsx. */}
+          <SignOutButton />
         </header>
 
         {/*

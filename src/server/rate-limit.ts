@@ -158,6 +158,142 @@ export const signupLimiter: RateLimiter = createLimiter({
 });
 
 /**
+ * Merchant login (`signInMerchant`).
+ *
+ * 10/minute per caller IP: much looser than `signupLimiter` because every
+ * returning merchant hits this on every visit, not once ever. This is the
+ * ACTION-level limiter, checked before parsing and before any credential
+ * verification. It is a second, independent line of defence to the one
+ * below — `authRateLimitStorage` throttles the raw HTTP endpoint, which is
+ * reachable even when this Server Action never runs.
+ *
+ * Scrypt verification is CPU-bound, so an unthrottled login flood is a
+ * compute-exhaustion vector (T-02-19) and not only a credential-stuffing one
+ * (T-02-18) — the reason this exists alongside, rather than instead of, the
+ * HTTP-level throttle.
+ */
+export const loginLimiter: RateLimiter = createLimiter({
+  prefix: "rl:login",
+  tokens: 10,
+  window: "1 m",
+  surface: "merchant login",
+});
+
+/**
+ * A single rate-limit record as Better Auth's storage contract shapes it:
+ * the key it was stored under, how many requests have landed in the current
+ * window, and when the most recent one was recorded.
+ */
+interface AuthRateLimitRecord {
+  key: string;
+  count: number;
+  lastRequest: number;
+}
+
+/**
+ * The Upstash-backed storage adapter behind Better Auth's
+ * `rateLimit.customStorage` (RESEARCH.md Pattern 6, Code Example 7).
+ *
+ * `consume` is the ONLY member Better Auth's own built-in HTTP rate limiter
+ * calls in the hot path (`api/rate-limiter/index.mjs`): it is documented as
+ * "the atomic path", and the separate `get`/`set` fallback is Better Auth's
+ * own words "best-effort under concurrency" — N simultaneous requests can
+ * all pass a stale read before any increment lands
+ * (`@better-auth/core/dist/types/init-options.d.mts:76-95`). `get`/`set` are
+ * implemented for contract completeness (the type requires them) but are not
+ * on the enforcement path this project relies on.
+ *
+ * Not built on `@upstash/ratelimit`'s `Ratelimit` class like the limiters
+ * above: Better Auth owns the window/max PER PATH (its own `/sign-in*`
+ * special rule is window 10s, max 3) and hands them to `consume` per call, so
+ * this needs a raw atomic increment-with-expiry primitive keyed by whatever
+ * Better Auth passes in, not a limiter pre-configured with one fixed rule.
+ *
+ * Mirrors the SAME degradation contract as every limiter above: when Upstash
+ * is unconfigured, allow-all with one loud warning. Never an in-process
+ * counter — the module header explains why that is dishonest rather than
+ * weak, and it applies here with equal force.
+ */
+export const authRateLimitStorage = {
+  async get(key: string): Promise<AuthRateLimitRecord | null> {
+    const redis = getRedis();
+    if (!redis) return null;
+
+    try {
+      const record = await redis.get<AuthRateLimitRecord>(
+        `rl:auth:record:${key}`,
+      );
+      return record ?? null;
+    } catch (error) {
+      console.warn(
+        "[rate-limit] rl:auth get transport failure; reporting no record.",
+        error,
+      );
+      return null;
+    }
+  },
+
+  async set(key: string, value: AuthRateLimitRecord): Promise<void> {
+    const redis = getRedis();
+    if (!redis) return;
+
+    try {
+      // No window is passed to `set()`, so this uses a generous fixed TTL.
+      // Harmless: `consume` below is what every enforced request actually
+      // goes through, and it manages its own TTL per call.
+      await redis.set(`rl:auth:record:${key}`, value, { ex: 300 });
+    } catch (error) {
+      console.warn(
+        "[rate-limit] rl:auth set transport failure; the record was not persisted.",
+        error,
+      );
+    }
+  },
+
+  async consume(
+    key: string,
+    rule: { window: number; max: number },
+  ): Promise<{ allowed: boolean; retryAfter: number | null }> {
+    const redis = getRedis();
+    if (!redis) {
+      console.warn(
+        `[rate-limit] DEGRADED: rl:auth is allow-all. Missing ` +
+          `UPSTASH_REDIS_REST_URL and/or UPSTASH_REDIS_REST_TOKEN. The login ` +
+          `HTTP endpoint (an unauthenticated, CPU-bound surface) is ` +
+          `unprotected. Acceptable in local development and in tests; never ` +
+          `acceptable in production.`,
+      );
+      return { allowed: true, retryAfter: null };
+    }
+
+    const redisKey = `rl:auth:${key}`;
+    try {
+      // INCR + EXPIRE, the atomic path: the increment and the check happen in
+      // one round trip, so no concurrent request can read a stale count.
+      const count = await redis.incr(redisKey);
+      if (count === 1) {
+        await redis.expire(redisKey, rule.window);
+      }
+
+      if (count > rule.max) {
+        const ttl = await redis.ttl(redisKey);
+        return { allowed: false, retryAfter: ttl > 0 ? ttl : rule.window };
+      }
+
+      return { allowed: true, retryAfter: null };
+    } catch (error) {
+      // Fail OPEN, loudly — an Upstash blip must not take login offline.
+      console.warn(
+        "[rate-limit] rl:auth transport failure; allowing the request. " +
+          "Merchant login is momentarily unthrottled.",
+        error,
+      );
+      return { allowed: true, retryAfter: null };
+    }
+  },
+};
+
+/**
  * Bucket key for an anonymous caller.
  *
  * `x-forwarded-for` is a comma-separated chain and only the FIRST entry is the

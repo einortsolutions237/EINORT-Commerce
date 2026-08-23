@@ -4,6 +4,8 @@ import { ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { strings } from "@/lib/strings";
 
+import { SignOutButton } from "../sign-out-button";
+
 /**
  * `/suspended` (OQ-5) — where `requireMerchantContext()` sends the owner of a
  * suspended store.
@@ -53,16 +55,27 @@ export default function SuspendedPage() {
               {strings.suspended.body}
             </p>
 
-            <a
-              href={strings.trial.contactUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-1.5 text-base leading-normal font-medium text-foreground underline underline-offset-3"
-            >
-              {strings.suspended.cta}
-              <ExternalLink aria-hidden="true" className="size-4" />
-              <span className="sr-only">{strings.trial.contactUrlLabel}</span>
-            </a>
+            <div className="flex flex-wrap items-center gap-4">
+              <a
+                href={strings.trial.contactUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-1.5 text-base leading-normal font-medium text-foreground underline underline-offset-3"
+              >
+                {strings.suspended.cta}
+                <ExternalLink aria-hidden="true" className="size-4" />
+                <span className="sr-only">
+                  {strings.trial.contactUrlLabel}
+                </span>
+              </a>
+
+              {/*
+               * The secondary action: a suspended merchant must have a way
+               * out that is not the browser back button (T-02-15). Calls the
+               * signOutMerchant server action; see sign-out-button.tsx.
+               */}
+              <SignOutButton />
+            </div>
           </CardContent>
         </Card>
       </div>

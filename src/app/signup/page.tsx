@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { strings } from "@/lib/strings";
@@ -54,6 +55,19 @@ export default function SignupPage() {
             <SignupForm />
           </CardContent>
         </Card>
+
+        {/*
+         * The only change to /signup in this phase (02-04): the sign-in
+         * cross-link. Below the card, Body role, --foreground + underline.
+         */}
+        <p className="mt-6 text-base leading-normal font-normal text-muted-foreground">
+          <Link
+            href="/login"
+            className="text-foreground underline underline-offset-3"
+          >
+            {strings.signup.loginLink}
+          </Link>
+        </p>
       </div>
     </main>
   );
