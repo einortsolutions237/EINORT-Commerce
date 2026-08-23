@@ -21,16 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 02 — merchant-auth-entitlements-trial
+**Current focus:** Phase 03 — product-catalog-order-payment-claim-state-machine
 
 ## Current Position
 
-Phase: 02 (merchant-auth-entitlements-trial) — EXECUTING
-Plan: 2 of 7
-Status: Ready to execute
+Phase: 03 (product-catalog-order-payment-claim-state-machine) — PLANNING
+Status: Context, research, and UI-SPEC all approved. Ready for gsd-planner.
 Last activity: 2026-08-23
 
-Progress: [█████████░] 93%
+Progress: [██████░░░░] 33% (2/6 phases complete)
 
 ## Performance Metrics
 
@@ -79,7 +78,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3 (Order/Payment-Claim State Machine): MTN MoMo / Orange Money USSD merchant-code strings need re-verification against official Cameroon operator merchant docs before build (flagged MEDIUM confidence in research).
+- ~~Phase 3: MTN MoMo / Orange Money USSD merchant-code strings need re-verification~~ — **Resolved 2026-08-23** by `03-RESEARCH.md`'s "Payment Rails: the D-15 Blocker, Resolved" section, sourced directly from MTN Cameroon's and Orange Cameroun's own official documentation (HIGH confidence). Neither operator publishes a one-shot parametrized P2P string; both require an operator-issued merchant code for a parametrized tap-to-dial link. Manual-copy ships unconditionally as the floor regardless of merchant-code availability.
 - Phase 4 (Theme/Section/Block System): design-distinctiveness has no objective completion signal — the side-by-side "would a stranger think these are the same product" check must be built into this phase's definition of done explicitly.
 - Phase 2 (Merchant Auth, Entitlements & Trial): automated decision-coverage gate reported 0/13 CONTEXT.md decisions (D-01–D-13) cited in plan `must_haves`/`truths` frontmatter — overridden and proceeded to execute-phase on 2026-08-17. The plan-checker's independent semantic review confirmed all 13 decisions have implementing tasks; manual grep confirmed D-04–D-09/10, D-12 are cited by ID in task `<action>` bodies (just not in the scanned frontmatter fields). D-01/D-02/D-03 are only cited as a range ("D-01 through D-05"); D-11 and D-13 have no ID citation found anywhere. Re-verify these five during Phase 2's verify-phase pass.
 
