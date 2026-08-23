@@ -34,7 +34,7 @@ export default function SignupPage() {
        */}
       <div className="w-full max-w-md">
         {/* Heading role: 24px / 600 / 1.2 */}
-        <h1 className="text-2xl leading-tight font-semibold tracking-tight text-foreground">
+        <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.signup.heading}
         </h1>
 

@@ -62,7 +62,7 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         {/* Heading role: 24px / 600 / 1.2 */}
-        <h1 className="text-2xl leading-tight font-semibold tracking-tight text-foreground">
+        <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.dashboard.heading}
         </h1>
 
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
        */}
       <Card className="rounded-lg border border-border bg-muted ring-0 [--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]">
         <CardContent className="flex flex-col items-start gap-2">
-          <h2 className="text-base leading-normal font-semibold text-foreground">
+          <h2 className="font-heading text-base leading-normal font-semibold text-foreground">
             {strings.dashboard.emptyHeading}
           </h2>
           <p className="text-base leading-normal font-normal text-muted-foreground">

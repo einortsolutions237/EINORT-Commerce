@@ -66,7 +66,7 @@ export default async function CreateStorePage() {
     <main className="flex flex-1 flex-col items-center px-4 py-16 sm:px-8">
       <div className="w-full max-w-md">
         {/* Heading role: 24px / 600 / 1.2 */}
-        <h1 className="text-2xl leading-tight font-semibold tracking-tight text-foreground">
+        <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.createStore.heading}
         </h1>
 

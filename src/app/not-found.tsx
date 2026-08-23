@@ -58,7 +58,7 @@ export default function NotFound() {
     <main className="flex flex-1 flex-col items-center justify-center px-8 py-16">
       <div className="flex max-w-prose flex-col items-center text-center">
         {/* Display role: 36px / 600 / 1.1 */}
-        <h1 className="text-4xl leading-[1.1] font-semibold tracking-tight text-foreground">
+        <h1 className="font-heading text-4xl leading-[1.1] font-semibold tracking-tight text-foreground">
           {strings.storeNotFound.heading}
         </h1>
 

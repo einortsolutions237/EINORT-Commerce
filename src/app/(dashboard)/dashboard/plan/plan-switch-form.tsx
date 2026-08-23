@@ -131,7 +131,7 @@ export function PlanSwitchForm({
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <h2 className="text-lg leading-snug font-semibold text-foreground">
+                <h2 className="font-heading text-lg leading-snug font-semibold text-foreground">
                   {card.name}
                 </h2>
 

@@ -54,7 +54,7 @@ export default async function DashboardPlanPage() {
   if (ctx.trial.state === "expired") {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl leading-tight font-semibold tracking-tight text-foreground">
+        <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.plan.dashboard.expiredHeading}
         </h1>
         <p className="text-base leading-normal font-normal text-muted-foreground">
@@ -110,7 +110,7 @@ export default async function DashboardPlanPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl leading-tight font-semibold tracking-tight text-foreground">
+        <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.plan.dashboard.heading}
         </h1>
         <p className="text-base leading-normal font-normal text-muted-foreground">

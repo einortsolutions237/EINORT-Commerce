@@ -146,7 +146,7 @@ export function PlanPicker({ plans }: { plans: readonly PlanCard[] }) {
 
                 <div className="flex items-start justify-between gap-2">
                   {/* Heading role, one step down: 18px / 600 */}
-                  <h2 className="text-lg leading-snug font-semibold text-foreground">
+                  <h2 className="font-heading text-lg leading-snug font-semibold text-foreground">
                     {plan.name}
                   </h2>
 
