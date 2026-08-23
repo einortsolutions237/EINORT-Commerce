@@ -38,6 +38,15 @@ export const platformDb = {
   get member() {
     return prismaBase.member;
   },
+  /**
+   * Pending/accepted invitations. Not tenant-scoped for the same reason
+   * `member` is not: it is Better Auth's own registry table, and plan 02-06's
+   * `beforeCreateInvitation` hook reads it to count pending invitations
+   * against the seat limit before Better Auth writes a new one.
+   */
+  get invitation() {
+    return prismaBase.invitation;
+  },
   /** Auth sessions, including `activeOrganizationId`. */
   get session() {
     return prismaBase.session;
