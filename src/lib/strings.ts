@@ -324,4 +324,148 @@ export const strings = {
       expiredCta: "Contact us to subscribe",
     },
   },
+
+  /**
+   * The trial countdown and the read-only state (ONB-05, D-08, D-11, D-12).
+   *
+   * ---------------------------------------------------------------------
+   * `contactUrl` IS COPY, NOT CONFIGURATION.
+   * ---------------------------------------------------------------------
+   * It lives here rather than in `src/env.ts` because it is a single real,
+   * monitored WhatsApp number that is the same in development, preview and
+   * production, and because the only thing that would ever change it is a
+   * copy revision. An env var would add a boot-time failure mode and a
+   * deployment step to a string, and would let the contact route differ
+   * between environments — which is exactly how a "Contact us" link ends up
+   * pointing at nothing in production. There is no other support surface in
+   * V1: every contact CTA in the product resolves to this one value.
+   *
+   * ---------------------------------------------------------------------
+   * PLURALIZATION IS TWO STRINGS AND A `=== 1` CHECK.
+   * ---------------------------------------------------------------------
+   * `daysLeft` and `oneDayLeft` are separate entries, selected by the caller.
+   * No `Intl.PluralRules`, no `"day(s)"`. The rule reads as over-simple until
+   * the i18n pass, at which point two flat strings are trivially replaced by a
+   * plural group while a `"day(s)"` fallback would have to be found and
+   * unpicked. There is deliberately no "0 days left" copy: `resolveEntitlements`
+   * uses `Math.ceil`, so an active trial with three hours left reports 1, and
+   * the state after that is `expired`, which has its own copy below.
+   *
+   * `{days}` is an integer the SERVER computed. Nothing in the browser
+   * subtracts dates from its own clock (T-02-14).
+   */
+  trial: {
+    /** Neutral and urgent share this copy — only the treatment escalates. */
+    daysLeft: "{days} days left in your trial.",
+    /** Selected when `daysLeft === 1`. Carries no token by design. */
+    oneDayLeft: "1 day left in your trial.",
+    /** The action link on both active states. */
+    changePlan: "Change plan",
+
+    /** D-08. The persistent banner once the trial is over. */
+    expiredHeading: "Your trial has ended.",
+    expiredBody:
+      "You can still see your store and your data, but you can't make changes until you subscribe.",
+    expiredCta: "Contact us to subscribe",
+
+    /** Visually hidden, beside the external-link icon on the contact CTA. */
+    contactUrlLabel: "(opens WhatsApp)",
+    contactUrl: "https://wa.me/237686661578",
+
+    /**
+     * SUB-02. What `merchantAction({ mode: "write" })` returns when the trial
+     * has expired — rendered as `role="alert"` AT THE CONTROL the merchant
+     * used, never as a toast and never as a redirect. It repeats the remedy
+     * rather than pointing back at the banner, because the merchant reading it
+     * is looking at the control, not at the top of the page.
+     */
+    readOnlyBlocked:
+      "Your trial has ended. Contact us to subscribe before you make changes.",
+
+    /**
+     * The `title` / `aria-describedby` text on a disabled write control.
+     * Disable, never hide: a hidden control makes the dashboard look broken
+     * rather than restricted, and the merchant must always be able to reach
+     * the reason by keyboard.
+     */
+    disabledHint: "Not available while your trial is expired.",
+  },
+
+  /**
+   * `/dashboard` (D-08, TEN-04) — the merchant's own store, and nothing else
+   * in Phase 2.
+   *
+   * The empty state links to the storefront and to NOTHING ELSE. There is no
+   * "Add your first product" here: Phase 3 owns products, and a CTA pointing
+   * at a route that does not exist is worse than no CTA at all. Do not add one
+   * ahead of the surface it opens.
+   *
+   * `renameUnsupported` and `deleteUnsupported` are authored here and consumed
+   * by plan 02-06's Better Auth organization hooks. They are refusals the
+   * merchant may meet without ever seeing a form — the `/api/auth/organization/*`
+   * endpoints are reachable directly — so they are phrased as complete
+   * sentences rather than as field errors.
+   */
+  dashboard: {
+    /** Renders as "Your store · EINORT" through the layout template. */
+    title: "Your store",
+    heading: "Your store",
+    /** Label role, `--muted-foreground`. `{host}` is the store's address. */
+    address: "{host}",
+    viewStore: "View my store",
+    /** Visually hidden, beside the external-link icon on the store link. */
+    viewStoreLabel: "(opens your store)",
+    signOut: "Sign out",
+
+    emptyHeading: "Your store is live",
+    emptyBody:
+      "Your storefront is ready at your address. Open it to see what your customers see.",
+
+    /**
+     * D-03: the address is claimed once at signup and held in
+     * `StoreSlugHistory`. Phase 4 owns the self-service change; until then the
+     * honest answer is that this is not the place, not that it is impossible.
+     */
+    renameUnsupported: "Your store address can't be changed here.",
+    deleteUnsupported:
+      "Stores can't be deleted from here. Contact us if you need to close your store.",
+  },
+
+  /**
+   * Plan-limit refusals (SUB-01) — consumed by plan 02-06.
+   *
+   * `{n}` is the limit the merchant's CURRENT plan includes, read from
+   * `PLANS[tier].limits`. "including you" is not padding: the owner counts
+   * against the limit, and a merchant on Starter reading "includes 1 team
+   * member" while unable to add anyone would reasonably conclude the product
+   * is broken.
+   */
+  entitlements: {
+    memberLimitReached:
+      "Your plan includes {n} team members, including you. Choose a larger plan to add more.",
+  },
+
+  /**
+   * `/suspended` (OQ-5) — the terminal page for a suspended organization.
+   *
+   * ---------------------------------------------------------------------
+   * THIS DOES NOT WEAKEN PHASE 1'S D-05.
+   * ---------------------------------------------------------------------
+   * D-05 forbids disclosing suspension to an ANONYMOUS visitor, because a
+   * visible difference between "suspended" and "never claimed" is an
+   * enumeration oracle over the merchant base. That path is untouched:
+   * `storeNotFound` above still renders byte-identical copy for unknown,
+   * unclaimed and suspended hostnames, and nothing in this namespace may be
+   * reused there. This surface is reachable only behind a session whose active
+   * organization IS the suspended one — i.e. only by that store's own owner,
+   * for whom the information is a necessity rather than a leak.
+   */
+  suspended: {
+    /** Renders as "Your store is unavailable · EINORT" via the template. */
+    title: "Your store is unavailable",
+    heading: "Your store is unavailable",
+    body: "Your store has been suspended and customers can't reach it right now. Contact us to sort this out.",
+    cta: "Contact us",
+    signOut: "Sign out",
+  },
 } as const;
