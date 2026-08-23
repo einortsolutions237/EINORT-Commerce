@@ -1,5 +1,5 @@
 import { applySetCookies } from "better-auth/cookies";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { seedTwoTenants, TENANT_B } from "../setup/seed-two-tenants";
 
@@ -193,8 +193,33 @@ async function expectRedirect(
   );
 }
 
-beforeEach(async () => {
+/**
+ * SEEDED ONCE PER FILE, NOT ONCE PER TEST — deliberately, and safely.
+ *
+ * Every test below signs up its own merchant under its own email and slug, and
+ * the only row any of them mutates is that merchant's own organization. None
+ * reads a row another created, so per-test isolation is a property of the
+ * fixtures rather than of the truncate, and re-truncating between them buys
+ * nothing.
+ *
+ * What it costs is real: `seedTwoTenants` opens with a
+ * `TRUNCATE … CASCADE` inside a `$transaction`, whose default `maxWait` is
+ * 2 000 ms. Against a remote Neon branch, with a second connection pool already
+ * live for `prismaBase`, five of those in one file intermittently failed to
+ * acquire a connection in time ("Transaction API error: Unable to start a
+ * transaction in the given time") — a flake in the fixture, never in the code
+ * under test, but one that turns a tenant-isolation suite into a suite people
+ * learn to re-run. One reseed per file removes four fifths of that exposure.
+ *
+ * The per-test `beforeEach` below still runs: the request context MUST be reset
+ * between tests, or the previous test's session cookie would authenticate the
+ * next one and "no session" would silently stop testing anything.
+ */
+beforeAll(async () => {
   await seedTwoTenants();
+});
+
+beforeEach(() => {
   resetRequestContext();
   limitVerdict.slugCheck = true;
   limitVerdict.signup = true;
