@@ -29,13 +29,18 @@ Phase 3 is the first phase that builds real UI on **both** product surfaces at o
 
 `src/app/globals.css`'s `:root` currently resolves every semantic token to the **merchant** (slate/blue/gold) values. Storefront pages that write `bg-background text-foreground` today therefore silently render in merchant colours. Fix this once, structurally, rather than by discipline:
 
-1. Add a scoped token block to `globals.css` (below `:root`, above `.dark`) that re-declares the zinc set under an attribute selector:
+1. Add a scoped token block to `globals.css` (below `:root`, above `.dark`) that re-declares the **complete** zinc set under an attribute selector:
    ```css
    /* Surface B — customer storefront (src/app/s/[slug]/**) ONLY.
       Zinc-monochrome DTC/editorial, per 01-UI-SPEC.md § Color.
       Deliberately NOT the merchant platform's blue/gold/slate. */
-   [data-surface="storefront"] { --background: …; --foreground: …; /* full set, table below */ }
+   [data-surface="storefront"] {
+     --background: oklch(1 0 0);
+     --foreground: oklch(0.141 0.005 285.823);
+     /* …and every remaining row of § B. Color — all 20 tokens, verbatim, omit none. */
+   }
    ```
+   **Completeness is the entire mechanism.** A semantic token that is *not* re-declared inside this selector inherits the merchant `:root` value, so one omitted `--card`, `--input` or `--primary-foreground` silently puts slate and blue back on the storefront — the exact leak this section exists to prevent. § B. Color below enumerates the full set, **one token per row, one value per row**; copy it whole rather than picking from it.
 2. `src/app/s/[slug]/layout.tsx` wraps `{children}` in `<div data-surface="storefront" className="flex min-h-full flex-1 flex-col">`.
 3. Every storefront page then uses the **same semantic utilities** (`bg-background`, `text-foreground`, `bg-primary`, `border-border`) and gets zinc for free.
 
@@ -276,7 +281,7 @@ A `switch` labelled `Visible in your store`, helper *"Hidden products stay in yo
 | Inline action | `ORDER_PLACED` on WhatsApp/COD → **`Confirm order`** (primary, `size="sm"`, `min-h-11`) directly in the row — D-02's one-tap confirm. `PAYMENT_CLAIMED` → `Review claim` (outline, `bell-ring`) linking to that claim in the queue. Every other state → `chevron-right` to the detail page. |
 | Confirm feedback | Optimistic row-state swap + `sonner` toast `Order {n} confirmed`. No dialog — D-02 makes this a one-tap action, and it is not destructive. |
 | Empty state | Heading `No orders yet` · Body *"Orders show up here the moment a customer checks out — through WhatsApp, Mobile Money, or cash on delivery."* No CTA (nothing for the merchant to do). |
-| Filtered-empty | Heading `Nothing here` · Body *"No orders match this filter."* · Ghost button `Show all orders` |
+| Filtered-empty | Heading `No matching orders` · Body *"No orders match this filter."* · Ghost button `Show all orders` |
 
 ### A4. Order detail — `/dashboard/orders/[id]`
 
@@ -360,27 +365,47 @@ Amounts: `tabular-nums`. Transaction reference input: `font-mono`.
 
 ## B. Color
 
-Zinc monochrome, editorial. **The 10% accent in this system is ink, not a hue** — that is the locked visual direction, not an oversight. Declared under `[data-surface="storefront"]`.
+Zinc monochrome, editorial. **The 10% accent in this system is ink, not a hue** — that is the locked visual direction, not an oversight.
 
-| Role | Token | Value | Usage |
+**This is the complete semantic token set for `[data-surface="storefront"]`.** Every row below must be written literally into that CSS block (§ Enforcement mechanism, step 1). One token per row, one value per row, no combined cells — a token omitted from the block inherits the merchant `:root` blue/gold/slate and reintroduces the exact leak the scope exists to prevent. shadcn components with `cssVariables: true` (`button`, `badge`, `input`, `form`, `dialog`, `alert-dialog`, `select`, `radio-group`, `switch`, `checkbox`, `textarea`, `sonner`) read these by default, which is why the full set — not just the four "interesting" tokens — has to be present.
+
+| Token | Value | 60/30/10 role | Usage |
 |---|---|---|---|
-| Dominant (60%) | `--background` | `oklch(1 0 0)` white | Page field on every storefront route |
-| Secondary (30%) | `--muted` / `--secondary` | `oklch(0.967 0.001 286.375)` zinc-100 | Image-tile placeholder fill, input fill, summary block, sticky header band, unselected payment card |
-| Accent (10%) | `--primary` / `--foreground` | `oklch(0.21 0.006 285.885)` zinc-900 / `oklch(0.141 0.005 285.823)` zinc-950 | See reserved-for list |
-| Destructive | `--destructive` | `oklch(0.577 0.245 27.325)` | Rejected-claim banner, form field errors. Nothing else. |
-| Hairlines | `--border` | `oklch(0.92 0.004 286.32)` zinc-200 | Every rule, tile border, card border, divider |
-| Helper text | `--muted-foreground` | `oklch(0.552 0.016 285.938)` zinc-500 | Helper text, secondary metadata |
-| Ring | `--ring` | `oklch(0.705 0.015 286.067)` | Focus ring |
-| Radius | `--radius` | **`0.25rem`** | Sharper than the merchant platform's `0.75rem`. This is a deliberate, visible difference. |
+| `--background` | `oklch(1 0 0)` white | **Dominant (60%)** | Page field on every storefront route |
+| `--foreground` | `oklch(0.141 0.005 285.823)` zinc-950 | Ink | Default body and heading text on `--background` |
+| `--card` | `oklch(1 0 0)` white | Dominant (60%) | Card fill — deliberately flush with the page field; on this surface cards are separated by `--border` hairlines, not by a fill change |
+| `--card-foreground` | `oklch(0.141 0.005 285.823)` zinc-950 | Ink | Text inside cards |
+| `--popover` | `oklch(1 0 0)` white | Dominant (60%) | Dialog, select popup and any floating panel fill |
+| `--popover-foreground` | `oklch(0.141 0.005 285.823)` zinc-950 | Ink | Text inside popovers and dialogs |
+| `--primary` | `oklch(0.21 0.006 285.885)` zinc-900 | **Accent (10%)** | Ink fill — see the reserved-for list below |
+| `--primary-foreground` | `oklch(0.985 0 0)` zinc-50 | — | Text and icons **on** an ink fill: primary CTA label, selected variant/operator chip, selected payment radio card |
+| `--secondary` | `oklch(0.967 0.001 286.375)` zinc-100 | **Secondary (30%)** | Summary block, sticky header band, unselected payment card |
+| `--secondary-foreground` | `oklch(0.21 0.006 285.885)` zinc-900 | — | Text on a `--secondary` fill |
+| `--muted` | `oklch(0.967 0.001 286.375)` zinc-100 | **Secondary (30%)** | Image-tile placeholder fill, input fill, copyable number/amount blocks, cart-count bubble |
+| `--muted-foreground` | `oklch(0.552 0.016 285.938)` zinc-500 | — | Helper text and secondary metadata only. Never body copy that carries meaning. |
+| `--accent` | `oklch(0.967 0.001 286.375)` zinc-100 | — | shadcn's **neutral hover/active slot**, not a brand accent. Hover fill on chips, thumbnails, menu rows. Do not read the token *name* as "the 10% accent" — that is `--primary`. |
+| `--accent-foreground` | `oklch(0.21 0.006 285.885)` zinc-900 | — | Text on a neutral hover fill |
+| `--destructive` | `oklch(0.577 0.245 27.325)` | — | Rejected-claim banner, form field errors. Nothing else. |
+| `--destructive-foreground` | `oklch(0.985 0 0)` zinc-50 | — | Text and icons on a destructive fill |
+| `--border` | `oklch(0.92 0.004 286.32)` zinc-200 | Hairlines | Every rule, tile border, card border, divider |
+| `--input` | `oklch(0.92 0.004 286.32)` zinc-200 | Hairlines | Input, textarea, select and file-zone border. **Must** be re-declared — omitting it renders storefront inputs with the merchant slate border. |
+| `--ring` | `oklch(0.705 0.015 286.067)` zinc-400 | — | Focus ring on every interactive element |
+| `--radius` | **`0.25rem`** | — | Sharper than the merchant platform's `0.75rem`. This is a deliberate, visible difference. |
 
-**`--success` and `--gold-accent` are NOT declared in this scope and must not be used.** Order status on the storefront is communicated by heading copy, an icon and a rule — not by a colour-coded chip. That is the editorial direction, and it also sidesteps a shopper reading green/gold as a payment guarantee this platform does not make.
+**Deliberately NOT declared in this scope:**
 
-**Accent (ink) reserved for exactly:**
+| Token(s) | Why |
+|---|---|
+| `--success`, `--gold-accent`, `--gold-accent-foreground` | Order status on the storefront is communicated by heading copy, an icon and a rule — not by a colour-coded chip. That is the editorial direction, and it also sidesteps a shopper reading green/gold as a payment guarantee this platform does not make. Ban #3 greps for them under `src/app/s/**`. |
+| `--sidebar*`, `--chart-*` | No storefront component reads them — the sidebar shell is Surface A only and this phase renders no charts. Leaving them to inherit is safe precisely because nothing under `src/app/s/**` resolves them. |
+| `.dark` overrides for this selector | Dark mode is authored but not shipped (§ Design System). Do not author a `[data-surface="storefront"]` dark block. |
+
+**Accent (ink, `--primary`) reserved for exactly:**
 1. Primary CTA fill — `Add to cart`, `Checkout`, the checkout submit, `I've paid`, `Send my corrected claim` (**one per page**)
 2. The store wordmark in the header
 3. Body/heading text (as `--foreground`)
 4. Focus ring
-5. The **selected** state of a variant chip, an operator chip, or a payment radio card (ink fill, white text)
+5. The **selected** state of a variant chip, an operator chip, or a payment radio card (ink fill, `--primary-foreground` text)
 
 **Accent is NOT for:** links (use `--foreground` + underline), input borders, card borders, icons, hover fills, the cart-count badge (use `--foreground` text on `--muted`), or "all interactive elements."
 
@@ -440,7 +465,7 @@ Empty: Heading `Your cart is empty` · Body *"Add something you like and it'll s
 
 **2. `How you'll pay` — the three-path selector**
 
-A **radio card list**, not tabs and not a dropdown. Each option is a full-width bordered row, `min-h-14`, containing an icon, a title (Label) and a one-line description (Body/`--muted-foreground`). Selected = ink fill, white text, `aria-checked`. The whole row is the label, so the whole row is the tap target.
+A **radio card list**, not tabs and not a dropdown. Each option is a full-width bordered row, `min-h-14`, containing an icon, a title (Label) and a one-line description (Body/`--muted-foreground`). Selected = ink fill, `--primary-foreground` text, `aria-checked`. The whole row is the label, so the whole row is the tap target.
 
 | Option | Icon | Title | Description |
 |---|---|---|---|
@@ -614,8 +639,8 @@ Surface B: `shopping-bag`, `chevron-left`, `chevron-down`, `plus`, `minus`, `x`,
 |---|---|
 | Primary CTA — Surface A | `Add product` (products list) · `Save product` (form) · `Confirm payment` (claims) · `Save payment settings` (settings) — **one per page** |
 | Primary CTA — Surface B | `Add to cart` (PDP) · `Checkout` (cart) · `Order on WhatsApp` / `Continue to payment` / `Place order` (checkout) · `I've paid` (tracking) |
-| Empty state heading | `No products yet` · `No orders yet` · `No claims to review` · `Your cart is empty` |
-| Empty state body | `Add your first product so customers have something to buy.` · `Orders show up here the moment a customer checks out — through WhatsApp, Mobile Money, or cash on delivery.` · `When a customer says they've paid by Mobile Money, their claim shows up here for you to check.` · `Add something you like and it'll show up here.` |
+| Empty state heading | `No products yet` · `No orders yet` · `No matching orders` (orders list, filtered) · `No claims to review` · `Your cart is empty` |
+| Empty state body | `Add your first product so customers have something to buy.` · `Orders show up here the moment a customer checks out — through WhatsApp, Mobile Money, or cash on delivery.` · `No orders match this filter.` · `When a customer says they've paid by Mobile Money, their claim shows up here for you to check.` · `Add something you like and it'll show up here.` |
 | Error state | Out of stock at placement: `Someone just bought the last one. We've updated your cart — check it and try again.` · Duplicate reference: `This reference has already been used. Check your confirmation SMS and enter the exact reference.` · Product cap: `You've reached your plan's {cap}-product limit. Upgrade your plan to add more.` · Generic: `Something went wrong. Try again in a moment.` (inherited from Phase 1) |
 | Destructive confirmation | **Reject claim** → `Why are you rejecting this?` / *"The customer sees this, and can send a corrected claim."* / confirm `Reject claim`, cancel `Go back`. **Confirm on amount mismatch** → *"The customer claimed {claimed} but the order total is {total}. Confirm anyway?"* / confirm `Confirm payment`, cancel `Cancel`. **Hide product** (reversible, not destructive-styled) → `Hide this product?` / *"Customers won't see {name} in your store and can't order it. Your past orders keep their record of it. You can bring it back any time."* / confirm `Hide product`, cancel `Keep it visible`. |
 
@@ -651,7 +676,7 @@ Surface B: `shopping-bag`, `chevron-left`, `chevron-down`, `plus`, `minus`, `x`,
 | Contract element | Source |
 |---|---|
 | Two-surface split, one token section each, unmissable heading | 03-CONTEXT.md § Canonical References ("do not conflate"); merchant-platform reference § Do-not-conflate |
-| `[data-surface="storefront"]` scoping mechanism | Researcher decision — `globals.css` `:root` resolves to merchant tokens today, so storefront pages would silently render blue without it |
+| `[data-surface="storefront"]` scoping mechanism, complete-token-set requirement | Researcher decision — `globals.css` `:root` resolves to merchant tokens today, so any token not re-declared under the storefront selector silently renders blue/gold/slate |
 | Blue/gold/slate, Outfit, `0.75rem`, `--ring` = brand-500 | `.planning/design-references/EINORT-COMMERCE-FRONT-END-MERCHANT-PLATFORM.md` § Confirmed token values |
 | Zinc monochrome, ink-as-accent, no Outfit on the storefront | 01-UI-SPEC.md §§ Color, Design System |
 | Spacing scale + 44px touch floor | 01-UI-SPEC.md / 02-UI-SPEC.md (inherited verbatim) |
