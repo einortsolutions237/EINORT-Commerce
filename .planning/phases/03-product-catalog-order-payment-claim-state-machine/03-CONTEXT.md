@@ -75,6 +75,15 @@ Covers: CAT-01, CAT-02, CAT-03, CHK-01, CHK-02, CHK-03, CHK-04, CHK-05, ORD-01, 
 ### Blocker this phase's research must resolve
 - `.planning/STATE.md` — Blockers/Concerns section: "MTN MoMo / Orange Money USSD merchant-code strings need re-verification against official Cameroon operator merchant docs before build" (now formalized as D-15)
 
+### Design references — TWO distinct systems for TWO distinct surfaces (do not conflate)
+
+This is the first phase that builds real UI on **both** surfaces at once, so both references apply — to different pages within this same phase:
+
+- `.planning/design-references/EINORT-COMMERCE-FRONT-END-MERCHANT-PLATFORM.md` — blue/gold/slate + Outfit headings. Governs every **merchant dashboard** page this phase adds: product management (create/edit/list/deactivate), the Orders list, the Payment Claims queue, and the payment-settings surface (D-14). These are extensions of the same `(dashboard)/dashboard/**` surface Phase 2 already retokenized — reuse its established tokens/components (`src/app/globals.css`, `src/components/ui/*`), don't reinvent.
+- `.planning/phases/01-multi-tenant-foundations-domain-resolution/01-UI-SPEC.md` (§ Color / the zinc-monochrome DTC/editorial direction) — governs every **customer-facing storefront** page this phase adds under `src/app/s/[slug]/**`: product listing, product detail, cart, checkout (all three payment paths), and the order-tracking-by-token page. This is the flagship template's visual direction (see project memory `project_einort_flagship_visual_reference` for the full origin/caveats) — it is NOT yet built out as reusable components (that's Phase 4's Theme/Section/Block system), so this phase's storefront pages should read as a plain, on-brand placeholder consistent with that direction rather than a fully themed storefront. Do not pull in the merchant-platform's blue/gold palette on any page under `src/app/s/[slug]/**`.
+
+**The UI researcher and planner must explicitly split UI-SPEC.md's scope along this line** — one design-token section per surface, with an unmissable heading noting which reference governs which route tree.
+
 ### Stack guidance already on file
 - `CLAUDE.md` — "Image Upload/Processing Pipeline" section (R2 + Sharp + presigned uploads) and "Job/Queue Pattern" section (relevant if order-placement notification work needs `waitUntil()`)
 
