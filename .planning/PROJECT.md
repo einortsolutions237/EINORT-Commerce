@@ -29,6 +29,8 @@ A merchant picks an industry, adds a logo and a few products, and within minutes
 - [ ] 10-day full-feature trial, server-side enforced
 - [ ] Merchant dashboard: orders (with payment confirmation queue), products/inventory, basic sales numbers
 - [ ] Super Admin dashboard for the platform owner (the user): merchants/stores list with suspend, payment-claims ledger view, domains, support contact — pilot-scoped, not the full ~20-module admin surface from the design reference
+- [ ] Merchant↔platform support messaging: a persistent, per-merchant in-app thread (text + file/image attachments) between the platform owner and each merchant, with an in-app badge and email nudge on new activity — no real-time/websocket infrastructure
+- [ ] Merchant subscription payment verification: a merchant pays their monthly plan via manual Mobile Money/Orange Money transfer and submits proof through the support-messaging thread; the platform owner confirms/rejects it there, reusing the same manual-claim-and-verify pattern built for customer→merchant payments with payer/payee reversed
 - [ ] Architecture decisions (schema, indexing, async job/queue pattern for order placement and notifications) made with a 2,000,000-store / 300-products-per-store target in mind, without building or load-testing at that scale in V1
 
 ### Out of Scope
@@ -69,6 +71,7 @@ Two prior planning documents inform this project and were reconciled during init
 | No live payment gateway in V1; manual Mobile Money/Orange Money transfer + claim + USSD tap-to-dial assist | Matches actual Cameroonian merchant/customer behavior per the user; avoids PSP approval/integration delays as a launch blocker | — Pending |
 | Zinc-monochrome DTC reference adopted as the fashion-segment flagship template direction | User-supplied visual reference judged as a tasteful, non-generic starting point superior to inventing a direction from adjectives | — Pending |
 | Architect for v4.0's 2,000,000-store / 300-products-per-store scale target without building or load-testing it in V1 | Cheap as a schema/indexing design discipline now; expensive to retrofit later; zero added engineering time at pilot scale | — Pending |
+| Merchant↔platform support messaging (SUB-03/ADM-05) built as a lightweight async in-app thread, not real-time chat, and slotted into Phase 6 rather than a new dedicated phase | User request (2026-08-23); async thread matches the manual-first pattern already established for payment claims and avoids new real-time infrastructure; Phase 6 already builds both the merchant dashboard and the Super Admin surface this thread lives in, and only has real subscription/claim data to work with once Phase 3 ships | — Pending |
 
 ## Evolution
 

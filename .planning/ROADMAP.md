@@ -189,17 +189,19 @@ Plans:
 
 ### Phase 6: Merchant Dashboard & Platform Admin
 
-**Goal**: A merchant can run their business day-to-day from a dashboard that surfaces what needs attention, and the platform owner can operate and support the pilot fleet of stores from a pilot-scoped Super Admin surface.
+**Goal**: A merchant can run their business day-to-day from a dashboard that surfaces what needs attention, and the platform owner can operate and support the pilot fleet of stores from a pilot-scoped Super Admin surface — including a direct messaging channel to every merchant and the ability to verify their subscription payments through it.
 **Mode:** mvp
 **Depends on**: Phase 3
-**Requirements**: DASH-01, DASH-02, ADM-01, ADM-02, ADM-03, ADM-04
+**Requirements**: DASH-01, DASH-02, ADM-01, ADM-02, ADM-03, ADM-04, ADM-05, SUB-03
 **Success Criteria** (what must be TRUE):
 
   1. Merchant dashboard shows orders (with the Payment Claims queue surfaced prominently), products/inventory, and basic sales numbers (revenue, order count, products sold).
   2. Dashboard answers "how is the business performing, what needs attention, what's next" at a glance — pending claims, low stock, and disputed orders are visible without digging.
   3. Platform owner can view and suspend merchants/stores from a Super Admin dashboard.
   4. Platform owner can view a global payment-claims ledger across all tenants, domain status per tenant, and a support-contact view.
-  5. Platform admin scope stays pilot-sized (the four items above only) — no broader admin modules are built in v1.
+  5. Platform admin scope stays pilot-sized (the items above only) — no broader admin modules are built in v1.
+  6. A merchant and the platform owner can exchange messages and file/image attachments in a persistent, per-merchant thread — visible in the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on new activity. No real-time/websocket infrastructure.
+  7. A merchant can submit their monthly subscription payment (Mobile Money/Orange Money transaction reference + receipt image) through that same thread, and the platform owner can confirm or reject it there, activating/extending the subscription on confirmation — reusing Phase 3's claim-and-verify pattern with payer/payee reversed.
 
 **Plans**: TBD
 **UI hint**: yes

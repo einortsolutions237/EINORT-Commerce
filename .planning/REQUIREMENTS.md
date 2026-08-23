@@ -69,6 +69,7 @@
 
 - [x] **SUB-01**: Starter, Business, and Professional plans run on one shared codebase, differentiated only by server-enforced entitlements (product limits, staff limits, editor capability, feature access) — never separate codebases or client-side-only gating
 - [x] **SUB-02**: Plan limits and trial state are checked server-side on every relevant write, not just hidden/disabled in the UI
+- [ ] **SUB-03**: A merchant can pay their monthly subscription via manual Mobile Money/Orange Money transfer and submit proof (transaction reference + receipt image) through the merchant↔platform support thread (ADM-05); the platform owner reviews and confirms/rejects it there, activating or extending the merchant's subscription on confirmation — reuses the same manual-claim-and-verify pattern already built for customer→merchant payments (Phase 3), with payer and payee reversed. Formalizes what Phase 2's `02-CONTEXT.md` (D-09/D-10) explicitly deferred pending Phase 3's claim infrastructure.
 
 ### Merchant Dashboard
 
@@ -80,7 +81,8 @@
 - [ ] **ADM-01**: Platform owner can view and suspend merchants/stores
 - [ ] **ADM-02**: Platform owner can view a global payment-claims ledger across all tenants
 - [ ] **ADM-03**: Platform owner can view domain status across tenants and has a support-contact view
-- [ ] **ADM-04**: Platform admin scope stays pilot-sized (the four items above) — the broader ~20-module admin surface referenced in prior planning docs is explicitly deferred
+- [ ] **ADM-04**: Platform admin scope stays pilot-sized (the items in this section) — the broader ~20-module admin surface referenced in prior planning docs is explicitly deferred
+- [ ] **ADM-05**: A merchant and the platform owner have a persistent, in-app messaging thread per merchant (text plus file/image attachments), surfaced in both the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on a new message. No real-time/websocket infrastructure — async, check-in-when-you-can, matching the manual-first pattern already established for payment claims. This is also the channel SUB-03's subscription-payment-claim flow runs through.
 
 ## v2 Requirements
 
@@ -162,16 +164,18 @@ Explicitly excluded. Documented to prevent scope creep.
 | DOM-02 | Phase 1 | Pending |
 | SUB-01 | Phase 2 | Complete |
 | SUB-02 | Phase 2 | Complete |
+| SUB-03 | Phase 6 | Pending |
 | DASH-01 | Phase 6 | Pending |
 | DASH-02 | Phase 6 | Pending |
 | ADM-01 | Phase 6 | Pending |
 | ADM-02 | Phase 6 | Pending |
 | ADM-03 | Phase 6 | Pending |
 | ADM-04 | Phase 6 | Pending |
+| ADM-05 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 44 total (corrected from initial count of 39 during roadmap creation — full line-by-line recount of this file's requirement list)
-- Mapped to phases: 44/44 ✓
+- v1 requirements: 46 total (44 from roadmap creation + SUB-03 and ADM-05, added 2026-08-23 per user request for a merchant↔platform support-messaging thread and the subscription-payment-claim flow it was always going to need)
+- Mapped to phases: 46/46 ✓
 - Unmapped: 0
 
 **Phase distribution:**
@@ -180,8 +184,8 @@ Explicitly excluded. Documented to prevent scope creep.
 - Phase 3 (Product Catalog & Order/Payment-Claim State Machine): 13 requirements
 - Phase 4 (Theme/Section/Block System & Flagship Template): 8 requirements
 - Phase 5 (Template Segment Expansion): 3 requirements
-- Phase 6 (Merchant Dashboard & Platform Admin): 6 requirements
+- Phase 6 (Merchant Dashboard & Platform Admin): 8 requirements
 
 ---
 *Requirements defined: 2026-08-16*
-*Last updated: 2026-08-16 after roadmap creation (traceability populated, requirement count corrected 39→44)*
+*Last updated: 2026-08-23 — added SUB-03 and ADM-05 (merchant↔platform support messaging + subscription-payment-claim flow), mapped to Phase 6*
