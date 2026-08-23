@@ -94,8 +94,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-04-PLAN.md — /login, sign-in/sign-out actions, the signup cross-link and distributed login throttling
-- [ ] 02-05-PLAN.md — /dashboard/plan switch during the trial, the read-only refusal after it, and the SUB-02 isolation suite
+- [x] 02-04-PLAN.md — /login, sign-in/sign-out actions, the signup cross-link and distributed login throttling
+- [x] 02-05-PLAN.md — /dashboard/plan switch during the trial, the read-only refusal after it, and the SUB-02 isolation suite
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -178,7 +178,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
-| 2. Merchant Auth, Entitlements & Trial | 3/7 | In Progress|  |
+| 2. Merchant Auth, Entitlements & Trial | 5/7 | In Progress|  |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
