@@ -1495,26 +1495,28 @@ The one adjacent item worth naming: **`src/app/s/[slug]/page.tsx` is live render
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does the phase need a `CANCELLED` order state?**
+All five questions below were resolved during planning; each recommendation was adopted by name in the plan noted.
+
+1. **Does the phase need a `CANCELLED` order state? (RESOLVED — 03-07)**
    - What we know: ORD-01 enumerates exactly six states and CONTEXT.md adds none. D-03 deliberately narrows `DISPUTED` so it cannot serve as a general escape hatch.
    - What's unclear: a customer who never pays leaves an order in `PAYMENT_PENDING` holding stock forever, which is a real inventory leak at pilot scale.
-   - Recommendation: **do not add the state** (it is scope the user did not ask for), but do build the release primitive so a Phase 6 "cancel stale order" action is a call, not a redesign. Optionally add a `SYSTEM`-actor sweep later. Raise it with the user before planning if the planner disagrees.
+   - Recommendation (adopted): **do not add the state** (it is scope the user did not ask for), but do build the release primitive so a Phase 6 "cancel stale order" action is a call, not a redesign. 03-07 builds `releaseStock` as exactly that primitive; no `SYSTEM`-actor sweep was added this phase.
 
-2. **What replaces the Phase-1 storefront placeholder, and when?**
+2. **What replaces the Phase-1 storefront placeholder, and when? (RESOLVED — 03-09)**
    - What we know: `src/app/s/[slug]/page.tsx` says Phase 4 replaces it wholesale; CONTEXT.md's `<code_context>` says "planner should confirm the exact transition condition."
-   - Recommendation: catalog becomes the page; the existing placeholder copy becomes the zero-active-products empty state. Confirm before planning.
+   - Recommendation (adopted): catalog becomes the page; the existing placeholder copy becomes the zero-active-products empty state.
 
-3. **Which merchant email address receives the claim notification?**
+3. **Which merchant email address receives the claim notification? (RESOLVED — 03-15)**
    - What we know: `Organization` has no email column; the owner's address lives on `User` via `Member`. Better Auth's `Member` join is reachable through `platformDb.member`.
-   - Recommendation: resolve owner email via `platformDb.member` → `user.email` at send time; skip the send with a warning if no owner is found. No new column.
+   - Recommendation (adopted): resolve owner email via `platformDb.member` → `user.email` at send time; skip the send with a warning if no owner is found. No new column.
 
-4. **Is `MANUAL_TRANSFER` selectable when the merchant has configured no receiving number?**
-   - Recommendation: no. Hide the channel entirely at checkout when `MerchantPaymentSettings` has neither an MTN nor an Orange number, and surface a dashboard nudge. Showing a payment method with no destination is worse than not offering it. Confirm.
+4. **Is `MANUAL_TRANSFER` selectable when the merchant has configured no receiving number? (RESOLVED — 03-08 / 03-12)**
+   - Recommendation (adopted): no. The channel is hidden entirely at checkout when `MerchantPaymentSettings` has neither an MTN nor an Orange number, both in the storefront markup and refused server-side in the checkout action.
 
-5. **Does the merchant confirm/reject flow need optimistic-locking against two dashboard tabs?**
-   - Recommendation: the `if (claim.status !== "PENDING") throw` guard inside the transaction is sufficient at this scale; the second tab gets a clear "already reviewed" message.
+5. **Does the merchant confirm/reject flow need optimistic-locking against two dashboard tabs? (RESOLVED — 03-13)**
+   - Recommendation (adopted): the `if (claim.status !== "PENDING") throw` guard inside the transaction is sufficient at this scale; the second tab gets a clear "already reviewed" message.
 
 ---
 
