@@ -1,5 +1,5 @@
 import { applySetCookies } from "better-auth/cookies";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { strings } from "@/lib/strings";
@@ -207,8 +207,23 @@ const probeRead = merchantAction({
   handler: async () => ({ ok: true as const }),
 });
 
-beforeEach(async () => {
+/**
+ * SEEDED ONCE PER FILE, NOT ONCE PER TEST (02-03-SUMMARY.md precedent).
+ *
+ * Every test below signs up its own merchant under its own email and slug
+ * and mutates only its own organization, so per-test isolation is a property
+ * of the fixtures rather than of the truncate. `seedTwoTenants` opens with a
+ * `TRUNCATE … CASCADE` inside a `$transaction` whose default `maxWait` is
+ * 2 000 ms; six of those per file against the remote Neon branch
+ * intermittently exceeded it. The per-test `beforeEach` still resets the
+ * request context — without it the previous test's session cookie would
+ * authenticate the next one.
+ */
+beforeAll(async () => {
   await seedTwoTenants();
+});
+
+beforeEach(() => {
   resetRequestContext();
   limitVerdict.slugCheck = true;
   limitVerdict.signup = true;

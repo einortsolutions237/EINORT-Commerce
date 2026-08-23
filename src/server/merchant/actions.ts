@@ -6,7 +6,8 @@ import { z } from "zod";
 import { strings } from "@/lib/strings";
 import { auth } from "@/server/auth/auth";
 import { platformDb } from "@/server/db/platform";
-import { PLAN_TIERS } from "@/server/entitlements/plans";
+import { PLAN_TIERS, PLANS } from "@/server/entitlements/plans";
+import { merchantAction } from "@/server/merchant/action";
 
 /**
  * Merchant-owned writes that run OUTSIDE the entitlement wrapper.
@@ -109,3 +110,60 @@ export async function selectPlan(input: unknown): Promise<SelectPlanResult> {
 
   return { ok: true, slug: updated.slug };
 }
+
+/**
+ * D-06 / SUB-02: change tier during an active trial.
+ *
+ * ---------------------------------------------------------------------------
+ * IDENTITY COMES FROM THE SESSION AND NOWHERE ELSE (T-02-26).
+ * ---------------------------------------------------------------------------
+ * The schema is `{ tier }` and nothing else — no organization id, no tenant
+ * id — so there is no field an attacker could set to retarget the write. The
+ * target is `ctx.tenantId`, which `merchantAction` resolved from
+ * `session.activeOrganizationId` before the handler ever ran.
+ *
+ * ---------------------------------------------------------------------------
+ * NO TRIAL CHECK LIVES IN THIS HANDLER (T-02-25).
+ * ---------------------------------------------------------------------------
+ * `mode: "write"` IS the check: the wrapper refuses an unwritable session
+ * before this handler is ever called, with `strings.trial.readOnlyBlocked`.
+ * Duplicating that refusal here would create a second place for the rule to
+ * drift, and CONTEXT.md's addendum resolves OQ-3 as **no** — an expired-trial
+ * merchant has no in-app switch path — which the wrapper's own refusal
+ * already delivers for free. This deliberately overrides 02-RESEARCH.md's
+ * earlier "allow it" recommendation for OQ-3, which predates the addendum.
+ */
+const switchPlanSchema = z.object({ tier: z.enum(PLAN_TIERS) });
+
+export const switchPlan = merchantAction({
+  mode: "write",
+  schema: switchPlanSchema,
+  handler: async (ctx, { tier }) => {
+    // Idempotent no-op: switching to the tier already held writes nothing.
+    if (tier === ctx.plan.tier) return { ok: true };
+
+    /**
+     * T-02-27: the server-side half of the downgrade confirmation. This must
+     * refuse even when the client skipped the inline confirm step — the
+     * confirmation copy is UX, this count is the control.
+     */
+    const memberCount = await platformDb.member.count({
+      where: { organizationId: ctx.tenantId },
+    });
+    const targetLimit = PLANS[tier].limits.members;
+    if (memberCount > targetLimit) {
+      const message = strings.plan.dashboard.memberLimitBlocked
+        .replace("{m}", String(memberCount))
+        .replace("{n}", String(targetLimit))
+        .replace("{plan}", strings.plan[tier].name);
+      return { ok: false, error: { form: [message] } };
+    }
+
+    await platformDb.organization.update({
+      where: { id: ctx.tenantId },
+      data: { planTier: tier, planSelectedAt: new Date() },
+    });
+
+    return { ok: true };
+  },
+});
