@@ -366,6 +366,53 @@ export const auth = betterAuth({
             });
           }
         },
+
+        /**
+         * T-02-30: refuses any incoming `slug` on `/organization/update`.
+         *
+         * A rename is not a single-column edit in this system — it needs a new
+         * `StoreSlugHistory` row, a `releasedAt` stamp on the old one, and
+         * `invalidateTenantHost` on both the old and new hostnames (Phase 4
+         * owns that flow, per `src/server/tenant/slug.ts` and
+         * `src/server/tenant/cache.ts`). Until it exists, letting this raw
+         * endpoint write a bare `slug` column would bypass the reserved-slug
+         * gate, orphan the slug-history record, and strand every inbound link
+         * to the old address — a half-done rename is worse than a refused one.
+         *
+         * THROW-OR-VOID, same discipline as the hooks above, even though this
+         * hook's re-spread only touches `ctx.body.data` rather than the whole
+         * body: a rule with an exception is a rule nobody follows.
+         */
+        beforeUpdateOrganization: async ({ organization }) => {
+          if ("slug" in organization && organization.slug !== undefined) {
+            throw new APIError("BAD_REQUEST", {
+              message: strings.dashboard.renameUnsupported,
+            });
+          }
+        },
+
+        /**
+         * T-02-31: refuses `/organization/delete` unconditionally.
+         *
+         * No product surface in V1 offers store deletion. An endpoint that
+         * lets an authenticated merchant destroy their own tenant from a curl
+         * command, with no UI behind it, is a self-inflicted denial-of-service
+         * hole rather than a feature.
+         */
+        beforeDeleteOrganization: async () => {
+          throw new APIError("FORBIDDEN", {
+            message: strings.dashboard.deleteUnsupported,
+          });
+        },
+
+        /**
+         * `remove-member`, `update-member-role` and `leave` were reviewed and
+         * left ungated in this phase: none of them can exceed a plan limit or
+         * change a hostname, so nothing on the SUB-01/SUB-02 threat surface
+         * this plan closes reaches them. The omission is a decision (T-02-37,
+         * disposition "accept"), not an oversight — a future phase can revisit
+         * it deliberately if a new threat surfaces on one of these three.
+         */
       },
     }),
 
