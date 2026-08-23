@@ -14,7 +14,7 @@ EINORT-Commerce goes from an empty repository to a working, trustworthy, Cameroo
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Multi-Tenant Foundations & Domain Resolution** - Structurally enforced tenant isolation and working subdomain resolution, from signup onward (completed 2026-08-17)
-- [x] **Phase 2: Merchant Auth, Entitlements & Trial** - Session-scoped merchant login with server-enforced plan limits and a 10-day trial (completed 2026-08-23)
+- [x] **Phase 2: Merchant Auth, Entitlements & Trial** - Session-scoped merchant login with server-enforced plan limits and a 10-day trial (completed 2026-08-23)
 - [ ] **Phase 3: Product Catalog & Order/Payment-Claim State Machine** - A customer can browse, buy, and pay by claim; a merchant can list products and confirm payment
 - [ ] **Phase 4: Theme/Section/Block System & Flagship Template** - Onboarding produces a live, branded, portfolio-quality storefront; merchants can customize it
 - [ ] **Phase 5: Template Segment Expansion** - ~20 structurally distinct template variations across real merchant segments
@@ -119,7 +119,41 @@ Plans:
   4. The customer always sees an explicit order status (e.g. "payment being confirmed") and the order moves through an auditable state machine (Cart → Order Placed → Payment Pending → Payment Claimed → Confirmed/Disputed → Fulfilled), with every transition logged (who/what/when).
   5. Merchant sees a Payment Claims queue (transaction reference + screenshot) and can one-tap confirm/reject; a claim is never auto-confirmed from the customer's self-report alone, duplicate transaction references per tenant are rejected, and concurrent orders cannot oversell the same stock unit.
 
-**Plans**: TBD
+**Plans**: 16 plans (6 waves)
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Prisma schema: nine tenant-scoped models, five enums, composite-FK guard, enum re-export, ScopedTx, migration, fixtures
+- [ ] 03-02-PLAN.md — The `[data-surface="storefront"]` token split, the R2/Sharp/Resend installs, the env surface and the surface-isolation grep test
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-03-PLAN.md — ORDER_TRANSITIONS, transitionOrder() as the single state writer, actor identity and the four rate limiters
+- [ ] 03-04-PLAN.md — The AppShell sidebar, the two-page migration, the pending-claims badge and the complete Phase-3 copy module
+- [ ] 03-05-PLAN.md — The R2 presign → Sharp enhance → derivative write-back image pipeline and its preset registry
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-06-PLAN.md — Catalog write layer, the product-count entitlement cap, and the A1 products list
+- [ ] 03-07-PLAN.md — Order placement engine: tracking token, idempotency, atomic stock hold/release, placeOrder and the CAT-03 race proof
+- [ ] 03-08-PLAN.md — Payment settings (D-14/16/17) and the pure phone / USSD / wa.me deep-link builders
+- [ ] 03-09-PLAN.md — Anonymous Redis cart, the storefront catalog grid and the product detail page with add-to-cart
+- [ ] 03-10-PLAN.md — Merchant orders list and detail, the one order-state chip module, confirm and mark-fulfilled
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-11-PLAN.md — The A2 product form: details, the D-10 image gallery and the D-05 live variant matrix
+- [ ] 03-12-PLAN.md — The cart review page and the three-path checkout with idempotent submission
+- [ ] 03-13-PLAN.md — The payment-claims queue: one-tap confirm, required-reason reject, stock release and reopen
+- [ ] 03-14-PLAN.md — The order-tracking page: exhaustive CHK-05 status map and the D-15 three-tier payment instructions
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 03-15-PLAN.md — Claim submission and D-11 resubmission: token-gated screenshot upload, ORD-04 enforcement, D-13 email
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 03-16-PLAN.md — Phase gate: requirement-coverage test, full suite/lint/typecheck/build, and the real-device iOS + Android walkthrough
 
 ### Phase 4: Theme/Section/Block System & Flagship Template
 
@@ -179,7 +213,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
-| 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
+| 3. Product Catalog & Order/Payment-Claim State Machine | 0/16 | Planned | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
