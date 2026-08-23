@@ -2,8 +2,8 @@
 phase: 2
 slug: merchant-auth-entitlements-trial
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-08-17
 ---
 
@@ -40,24 +40,24 @@ created: 2026-08-17
 
 | Req | Behavior | Test Type | Automated Command | File Exists |
 |-----|----------|-----------|-------------------|-------------|
-| ONB-05 | `resolveEntitlements` returns `trial.state === "active"` on day 1 and day 9 | unit | `npx vitest run tests/unit/entitlements.test.ts -t "trial active"` | ❌ W0 |
-| ONB-05 | Boundary: `now === endsAt` is expired, `now === endsAt - 1ms` is active | unit | `… -t "trial boundary"` | ❌ W0 |
-| ONB-05 | `daysLeft` is never negative and is 10 at t=0 | unit | `… -t "daysLeft"` | ❌ W0 |
-| ONB-05 | A real signup produces an org whose derived `trialEndsAt` is `createdAt + 10d` | integration | `npx dotenv -e .env.test -- npx vitest run tests/isolation/trial.test.ts -t "trial anchored to createdAt"` | ❌ W0 |
-| TEN-04 | `requireMerchantContext()` returns `tenantId === session.activeOrganizationId` after a real `signInEmail` | integration | `… tests/isolation/merchant-context.test.ts -t "tenant from session"` | ❌ W0 |
-| TEN-04 | No exported merchant function accepts a tenant id — source-level assertion over `src/server/merchant/**` | unit | `… tests/unit/no-tenant-id-param.test.ts` | ❌ W0 |
-| TEN-04 | Merchant A's session cannot read Merchant B's data through the DAL (two-tenant fixture) | integration | `… tests/isolation/merchant-context.test.ts -t "cross-tenant"` | ❌ W0 |
-| SUB-01 | `PLANS` is exhaustive over `PLAN_TIERS`, every tier has every limit key | unit | `… tests/unit/entitlements.test.ts -t "registry"` | ❌ W0 |
-| SUB-01 | `membershipLimit` resolves 1 / 4 / 11 per tier, and 1 (not 100) when `planTier` is null | unit | `… -t "member limit"` | ❌ W0 |
-| SUB-01 | `POST /organization/add-member` on a Starter org refused with `ORGANIZATION_MEMBERSHIP_LIMIT_REACHED` — through the real endpoint | integration | `… tests/isolation/entitlements.test.ts -t "starter refuses second member"` | ❌ W0 |
-| SUB-02 | A `mode: "write"` action returns the read-only error when the trial is expired | integration | `… tests/isolation/read-only.test.ts -t "write refused"` | ❌ W0 |
-| SUB-02 | A `mode: "read"` action still succeeds when the trial is expired (D-08: read-only, not lockout) | integration | `… -t "read still allowed"` | ❌ W0 |
-| SUB-02 | A forged `{ tier, organizationId: <other> }` payload cannot retarget the write | integration | `… -t "forged organizationId ignored"` | ❌ W0 |
-| SUB-02 | `POST /api/auth/organization/update {"data":{"slug":"admin"}}` refused (the live unguarded-endpoint gap) | integration | `… tests/isolation/org-endpoints.test.ts -t "update slug refused"` | ❌ W0 |
-| SUB-02 | `POST /api/auth/organization/delete` refused | integration | `… -t "delete refused"` | ❌ W0 |
-| SUB-02 (A7) | The 4th rapid `/sign-in/email` in a 10s window is refused — behaviourally, not by reading config | integration | `… tests/isolation/login.test.ts -t "login throttled"` | ❌ W0 |
-| D-05 (Ctx) | A merchant with `planTier === null` reaching the dashboard is redirected to `/onboarding/plan` | integration | `… tests/isolation/merchant-context.test.ts -t "plan gate"` | ❌ W0 |
-| D-11/D-12 | Banner urgency threshold flips at the documented day count | unit | `… tests/unit/entitlements.test.ts -t "urgency"` | ❌ W0 |
+| ONB-05 | `resolveEntitlements` returns `trial.state === "active"` on day 1 and day 9 | unit | `npx vitest run tests/unit/entitlements.test.ts -t "trial active"` | ✅ `tests/unit/entitlements.test.ts` |
+| ONB-05 | Boundary: `now === endsAt` is expired, `now === endsAt - 1ms` is active | unit | `… -t "trial boundary"` | ✅ `tests/unit/entitlements.test.ts` |
+| ONB-05 | `daysLeft` is never negative and is 10 at t=0 | unit | `… -t "daysLeft"` | ✅ `tests/unit/entitlements.test.ts` |
+| ONB-05 | A real signup produces an org whose derived `trialEndsAt` is `createdAt + 10d` | integration | `npx dotenv -e .env.test -- npx vitest run tests/isolation/trial.test.ts -t "trial anchored to createdAt"` | ✅ `tests/isolation/trial.test.ts` |
+| TEN-04 | `requireMerchantContext()` returns `tenantId === session.activeOrganizationId` after a real `signInEmail` | integration | `… tests/isolation/merchant-context.test.ts -t "tenant from session"` | ✅ `tests/isolation/merchant-context.test.ts` |
+| TEN-04 | No exported merchant function accepts a tenant id — source-level assertion over `src/server/merchant/**` | unit | `… tests/unit/no-tenant-id-param.test.ts` | ✅ `tests/unit/no-tenant-id-param.test.ts` |
+| TEN-04 | Merchant A's session cannot read Merchant B's data through the DAL (two-tenant fixture) | integration | `… tests/isolation/merchant-context.test.ts -t "cross-tenant"` | ✅ `tests/isolation/merchant-context.test.ts` |
+| SUB-01 | `PLANS` is exhaustive over `PLAN_TIERS`, every tier has every limit key | unit | `… tests/unit/entitlements.test.ts -t "registry"` | ✅ `tests/unit/entitlements.test.ts` |
+| SUB-01 | `membershipLimit` resolves 1 / 4 / 11 per tier, and 1 (not 100) when `planTier` is null | unit | `… -t "member limit"` | ✅ `tests/unit/entitlements.test.ts` |
+| SUB-01 | `POST /organization/add-member` on a Starter org refused with `ORGANIZATION_MEMBERSHIP_LIMIT_REACHED` — through the real endpoint | integration | `… tests/isolation/entitlements.test.ts -t "starter refuses second member"` | ✅ `tests/isolation/entitlements.test.ts` |
+| SUB-02 | A `mode: "write"` action returns the read-only error when the trial is expired | integration | `… tests/isolation/read-only.test.ts -t "write refused"` | ✅ `tests/isolation/read-only.test.ts` |
+| SUB-02 | A `mode: "read"` action still succeeds when the trial is expired (D-08: read-only, not lockout) | integration | `… -t "read still allowed"` | ✅ `tests/isolation/read-only.test.ts` |
+| SUB-02 | A forged `{ tier, organizationId: <other> }` payload cannot retarget the write | integration | `… -t "forged organizationId ignored"` | ✅ `tests/isolation/read-only.test.ts` |
+| SUB-02 | `POST /api/auth/organization/update {"data":{"slug":"admin"}}` refused (the live unguarded-endpoint gap) | integration | `… tests/isolation/org-endpoints.test.ts -t "update slug refused"` | ✅ `tests/isolation/org-endpoints.test.ts` |
+| SUB-02 | `POST /api/auth/organization/delete` refused | integration | `… -t "delete refused"` | ✅ `tests/isolation/org-endpoints.test.ts` |
+| SUB-02 (A7) | The 4th rapid `/sign-in/email` in a 10s window is refused — behaviourally, not by reading config | integration | `… tests/isolation/login.test.ts -t "login throttled"` | ✅ `tests/isolation/login.test.ts` |
+| D-05 (Ctx) | A merchant with `planTier === null` reaching the dashboard is redirected to `/onboarding/plan` | integration | `… tests/isolation/merchant-context.test.ts -t "plan gate"` | ✅ `tests/isolation/merchant-context.test.ts` |
+| D-11/D-12 | Banner urgency threshold flips at the documented day count | unit | `… tests/unit/entitlements.test.ts -t "urgency"` | ✅ `tests/unit/entitlements.test.ts` |
 | D-01/D-02 | Plan screen renders three tiers, correct prices, "Most Popular" on Business, English copy | manual-only | human-verify walkthrough (UI-SPEC) | n/a |
 | D-08 | Read-only dashboard reads as intentional, not broken | manual-only | human-verify walkthrough | n/a |
 
@@ -65,14 +65,14 @@ created: 2026-08-17
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/entitlements.test.ts` — ONB-05 (trial math, boundaries, urgency), SUB-01 (registry exhaustiveness, member limits)
-- [ ] `tests/unit/no-tenant-id-param.test.ts` — TEN-04 source-level guard over `src/server/merchant/**` and `src/server/entitlements/**`
-- [ ] `tests/isolation/merchant-context.test.ts` — TEN-04 (session-derived tenant, cross-tenant refusal, plan gate)
-- [ ] `tests/isolation/login.test.ts` — login round trip, `activeOrganizationId` on the new session, throttling (A7)
-- [ ] `tests/isolation/read-only.test.ts` — SUB-02 write gate, read allowance, forged-payload rejection
-- [ ] `tests/isolation/org-endpoints.test.ts` — raw calls to `/organization/{update,delete,add-member,invite-member}` (closes the live unguarded-endpoint gap the research found)
-- [ ] `tests/isolation/trial.test.ts` — trial anchored to `createdAt` through a real signup
-- [ ] No new framework, config, or fixture infrastructure required — `tests/setup/seed-two-tenants.ts` and the `signup.test.ts` cookie-jar harness already cover what these need.
+- [x] `tests/unit/entitlements.test.ts` — ONB-05 (trial math, boundaries, urgency), SUB-01 (registry exhaustiveness, member limits)
+- [x] `tests/unit/no-tenant-id-param.test.ts` — TEN-04 source-level guard over `src/server/merchant/**` and `src/server/entitlements/**`
+- [x] `tests/isolation/merchant-context.test.ts` — TEN-04 (session-derived tenant, cross-tenant refusal, plan gate)
+- [x] `tests/isolation/login.test.ts` — login round trip, `activeOrganizationId` on the new session, throttling (A7)
+- [x] `tests/isolation/read-only.test.ts` — SUB-02 write gate, read allowance, forged-payload rejection
+- [x] `tests/isolation/org-endpoints.test.ts` — raw calls to `/organization/{update,delete,add-member,invite-member}` (closes the live unguarded-endpoint gap the research found)
+- [x] `tests/isolation/trial.test.ts` — trial anchored to `createdAt` through a real signup
+- [x] No new framework, config, or fixture infrastructure required — `tests/setup/seed-two-tenants.ts` and the `signup.test.ts` cookie-jar harness already cover what these need.
 
 ---
 
@@ -87,11 +87,15 @@ created: 2026-08-17
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (all rows above currently ❌ W0)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s (quick) — inherited from Phase 1
-- [ ] `nyquist_compliant: true` set in frontmatter once Wave 0 lands
+- [x] All tasks have automated verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (every row in the per-task map above now resolves to an existing, passing spec file)
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s (quick) — inherited from Phase 1
+- [x] `nyquist_compliant: true` set in frontmatter once Wave 0 lands
 
-**Approval:** pending
+Automated gate, run 2026-08-23: `npm run test:full` — 250/250 tests, 19 files, 0 skipped. `npm run lint` (`--max-warnings=0`), `npm run typecheck`, `npx next build` all exit 0. Smoke check: unauthenticated `/dashboard` redirects to `/login`; `/signup` and `/login` both serve at the apex; a storefront subdomain's `/dashboard` path resolves to `Store not found` rather than the merchant dashboard, confirming the route group is apex-only.
+
+The two manual-only rows (D-01/D-02 plan-screen readability, D-08 read-only-dashboard readability) remain unticked pending the human walkthrough — see Task 2 of `02-07-PLAN.md`.
+
+**Approval:** pending human walkthrough (Task 2)
