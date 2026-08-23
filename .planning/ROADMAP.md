@@ -14,7 +14,7 @@ EINORT-Commerce goes from an empty repository to a working, trustworthy, Cameroo
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Multi-Tenant Foundations & Domain Resolution** - Structurally enforced tenant isolation and working subdomain resolution, from signup onward (completed 2026-08-17)
-- [ ] **Phase 2: Merchant Auth, Entitlements & Trial** - Session-scoped merchant login with server-enforced plan limits and a 10-day trial
+- [x] **Phase 2: Merchant Auth, Entitlements & Trial** - Session-scoped merchant login with server-enforced plan limits and a 10-day trial (completed 2026-08-23)
 - [ ] **Phase 3: Product Catalog & Order/Payment-Claim State Machine** - A customer can browse, buy, and pay by claim; a merchant can list products and confirm payment
 - [ ] **Phase 4: Theme/Section/Block System & Flagship Template** - Onboarding produces a live, branded, portfolio-quality storefront; merchants can customize it
 - [ ] **Phase 5: Template Segment Expansion** - ~20 structurally distinct template variations across real merchant segments
@@ -103,7 +103,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 02-07-PLAN.md — Phase gate (full suite, lint, typecheck, build) and the human walkthrough of the plan screen and read-only mode
+- [x] 02-07-PLAN.md — Phase gate (full suite, lint, typecheck, build) and the human walkthrough of the plan screen and read-only mode
 
 ### Phase 3: Product Catalog & Order/Payment-Claim State Machine
 
@@ -178,7 +178,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
-| 2. Merchant Auth, Entitlements & Trial | 6/7 | In Progress|  |
+| 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 0/TBD | Not started | - |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |

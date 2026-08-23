@@ -1,7 +1,7 @@
 ---
 phase: 2
 slug: merchant-auth-entitlements-trial
-status: draft
+status: approved
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-08-17
@@ -58,8 +58,8 @@ created: 2026-08-17
 | SUB-02 (A7) | The 4th rapid `/sign-in/email` in a 10s window is refused — behaviourally, not by reading config | integration | `… tests/isolation/login.test.ts -t "login throttled"` | ✅ `tests/isolation/login.test.ts` |
 | D-05 (Ctx) | A merchant with `planTier === null` reaching the dashboard is redirected to `/onboarding/plan` | integration | `… tests/isolation/merchant-context.test.ts -t "plan gate"` | ✅ `tests/isolation/merchant-context.test.ts` |
 | D-11/D-12 | Banner urgency threshold flips at the documented day count | unit | `… tests/unit/entitlements.test.ts -t "urgency"` | ✅ `tests/unit/entitlements.test.ts` |
-| D-01/D-02 | Plan screen renders three tiers, correct prices, "Most Popular" on Business, English copy | manual-only | human-verify walkthrough (UI-SPEC) | n/a |
-| D-08 | Read-only dashboard reads as intentional, not broken | manual-only | human-verify walkthrough | n/a |
+| D-01/D-02 | Plan screen renders three tiers, correct prices, "Most Popular" on Business, English copy | manual-only | human-verify walkthrough (UI-SPEC) | ✅ approved 2026-08-23 |
+| D-08 | Read-only dashboard reads as intentional, not broken | manual-only | human-verify walkthrough | ✅ approved 2026-08-23 |
 
 ---
 
@@ -80,8 +80,8 @@ created: 2026-08-17
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|--------------------|
-| Plan-selection screen renders correctly (three tiers, prices, "Most Popular" badge, English copy) | D-01/D-02 | Rendered appearance, not automatable | Human-verify walkthrough at phase gate |
-| Read-only dashboard reads as an intentional state, not a broken one | D-08 | Subjective UX judgment | Human-verify walkthrough at phase gate |
+| Plan-selection screen renders correctly (three tiers, prices, "Most Popular" badge, English copy) | D-01/D-02 | Rendered appearance, not automatable | Approved 2026-08-23 — 8-step walkthrough, all steps confirmed against localhost:3001 (port corrected from the plan's :3000) |
+| Read-only dashboard reads as an intentional state, not a broken one | D-08 | Subjective UX judgment | Approved 2026-08-23 — same walkthrough |
 
 ---
 
@@ -96,6 +96,6 @@ created: 2026-08-17
 
 Automated gate, run 2026-08-23: `npm run test:full` — 250/250 tests, 19 files, 0 skipped. `npm run lint` (`--max-warnings=0`), `npm run typecheck`, `npx next build` all exit 0. Smoke check: unauthenticated `/dashboard` redirects to `/login`; `/signup` and `/login` both serve at the apex; a storefront subdomain's `/dashboard` path resolves to `Store not found` rather than the merchant dashboard, confirming the route group is apex-only.
 
-The two manual-only rows (D-01/D-02 plan-screen readability, D-08 read-only-dashboard readability) remain unticked pending the human walkthrough — see Task 2 of `02-07-PLAN.md`.
+Human walkthrough (Task 2 of `02-07-PLAN.md`) completed and approved 2026-08-23. During the walkthrough the developer flagged one point of confusion (no sign-out control on the storefront subdomain) which was confirmed as correct-by-design — the storefront placeholder is deliberately chrome-less per `01-UI-SPEC.md` (no merchant session context there); sign-out lives in the dashboard header at the apex domain. No defect found; no fix required.
 
-**Approval:** pending human walkthrough (Task 2)
+**Approval:** approved 2026-08-23
