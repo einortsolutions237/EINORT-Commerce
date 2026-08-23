@@ -8,6 +8,7 @@ import { organization } from "better-auth/plugins";
 
 import { env } from "@/env";
 import { prismaBase } from "@/server/db/base";
+import { authRateLimitStorage } from "@/server/rate-limit";
 import { storeSlugSchema } from "@/server/tenant/slug";
 
 /**
@@ -45,6 +46,24 @@ export const auth = betterAuth({
   database: prismaAdapter(prismaBase, { provider: "postgresql" }),
 
   emailAndPassword: { enabled: true },
+
+  /**
+   * T-02-18/T-02-19: distributed throttling for the raw HTTP surface.
+   *
+   * `enabled: true` is explicit rather than left to the default
+   * (`?? isProduction`, `create-context.mjs:171`) precisely so the control is
+   * observable in local development and verified before production, not
+   * discovered missing there (02-RESEARCH.md Pattern 6).
+   *
+   * The storage option below is the ONLY one set here (Pitfall 10). The
+   * OTHER top-level option that could distribute rate-limit state instead
+   * flips `databaseStoresSessions` and moves session rows out of Postgres,
+   * silently breaking the Phase 1 `activeOrganizationId` back-fill and every
+   * isolation assertion against the `session` table. This option is
+   * documented to take precedence over the plain `storage` setting and
+   * touches nothing else — do not add that other option to this file.
+   */
+  rateLimit: { enabled: true, customStorage: authRateLimitStorage },
 
   user: {
     additionalFields: {

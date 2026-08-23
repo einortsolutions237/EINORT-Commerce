@@ -145,6 +145,41 @@ export const strings = {
     genericError: "Something went wrong. Try again in a moment.",
     /** The session lapsed between rendering a form and submitting it. */
     sessionExpired: "Your session expired. Sign in again to continue.",
+    /** Below the card, Body role, `--foreground` + underline on the link. */
+    loginLink: "Already have a store? Sign in",
+  },
+
+  /**
+   * `/login` — the returning-merchant sign-in (TEN-04, 02-UI-SPEC.md § `/login`).
+   *
+   * **Security-relevant copy rule:** `invalidCredentials` is the ONLY
+   * failure message for a wrong password and for an email with no matching
+   * account. A message that distinguishes the two is an account-enumeration
+   * oracle over the merchant base — the same class of leak `01-UI-SPEC.md`
+   * D-05 closes on the storefront side. One string, one code path — never a
+   * second variant naming which half of the credential pair was the problem.
+   */
+  login: {
+    /** Renders as "Sign in · EINORT" through the layout template. */
+    title: "Sign in",
+    heading: "Sign in",
+    subline: "Manage your store, your products and your orders.",
+
+    emailLabel: "Email address",
+    passwordLabel: "Password",
+
+    /** The one primary button on the page. */
+    cta: "Sign in",
+    /** Shown while the submit is in flight; the button keeps its width. */
+    ctaSubmitting: "Signing in…",
+
+    /** Every authentication failure maps to this ONE string. See above. */
+    invalidCredentials: "That email or password is incorrect.",
+    rateLimited: "Too many sign-in attempts. Try again in a minute.",
+    genericError: "Something went wrong. Try again in a moment.",
+
+    /** Below the card, Body role, `--foreground` + underline on the link. */
+    signupLink: "Don't have a store yet? Create one",
   },
 
   /**
