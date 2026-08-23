@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 02 UI-SPEC approved
-last_updated: "2026-08-17T22:51:13.054Z"
-last_activity: 2026-08-17 -- Phase 02 execution started
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-08-23T09:46:01.341Z"
+last_activity: 2026-08-23
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 14
-  completed_plans: 8
+  completed_plans: 13
   percent: 17
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 ## Current Position
 
 Phase: 02 (merchant-auth-entitlements-trial) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 02
-Last activity: 2026-08-17 -- Phase 02 execution started
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-08-23
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 02 P06 | 13min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Recent decisions affecting current work:
 
 - Roadmap: Multi-tenant foundations (Phase 1) and dashboard-session tenant resolution (TEN-04, deferred to Phase 2) are split because session-based resolution has no dashboard/auth to resolve against until Phase 2 exists.
 - Roadmap: Full onboarding (ONB-02/03/04) deferred to Phase 4 alongside the theme/template system, since a "live, branded storefront" cannot exist until the flagship template and Theme→Page→Section→Block system are built — Phase 1 only covers bare signup + subdomain provisioning.
+- [Phase 02-06]: beforeAddMember omitted (verified against crud-members.mjs/crud-org.mjs that membershipLimit already gates add-member and org creation never calls membershipLimit)
+- [Phase 02-06]: beforeUpdateOrganization refuses any incoming slug rather than validating it, pending Phase 4's real rename flow (StoreSlugHistory, invalidateTenantHost)
+- [Phase 02-06]: beforeDeleteOrganization refuses unconditionally; remove-member/update-member-role/leave left deliberately ungated (T-02-37, accepted)
 
 ### Pending Todos
 
@@ -83,6 +87,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-17T16:36:34.741Z
-Stopped at: Phase 02 UI-SPEC approved
-Resume file: .planning/phases/02-merchant-auth-entitlements-trial/02-UI-SPEC.md
+Last session: 2026-08-23T09:46:01.330Z
+Stopped at: Completed 02-06-PLAN.md
+Resume file: None

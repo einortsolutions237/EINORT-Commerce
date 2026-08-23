@@ -67,8 +67,8 @@
 
 ### Subscriptions & Entitlements
 
-- [ ] **SUB-01**: Starter, Business, and Professional plans run on one shared codebase, differentiated only by server-enforced entitlements (product limits, staff limits, editor capability, feature access) — never separate codebases or client-side-only gating
-- [ ] **SUB-02**: Plan limits and trial state are checked server-side on every relevant write, not just hidden/disabled in the UI
+- [x] **SUB-01**: Starter, Business, and Professional plans run on one shared codebase, differentiated only by server-enforced entitlements (product limits, staff limits, editor capability, feature access) — never separate codebases or client-side-only gating
+- [x] **SUB-02**: Plan limits and trial state are checked server-side on every relevant write, not just hidden/disabled in the UI
 
 ### Merchant Dashboard
 
@@ -160,8 +160,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | ORD-05 | Phase 3 | Pending |
 | DOM-01 | Phase 1 | Pending |
 | DOM-02 | Phase 1 | Pending |
-| SUB-01 | Phase 2 | Pending |
-| SUB-02 | Phase 2 | Pending |
+| SUB-01 | Phase 2 | Complete |
+| SUB-02 | Phase 2 | Complete |
 | DASH-01 | Phase 6 | Pending |
 | DASH-02 | Phase 6 | Pending |
 | ADM-01 | Phase 6 | Pending |
