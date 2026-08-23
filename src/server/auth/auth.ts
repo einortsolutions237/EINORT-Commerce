@@ -7,7 +7,10 @@ import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
 
 import { env } from "@/env";
+import { strings } from "@/lib/strings";
 import { prismaBase } from "@/server/db/base";
+import { platformDb } from "@/server/db/platform";
+import { memberLimitFor } from "@/server/entitlements/plans";
 import { authRateLimitStorage } from "@/server/rate-limit";
 import { storeSlugSchema } from "@/server/tenant/slug";
 
@@ -186,6 +189,38 @@ export const auth = betterAuth({
 
       creatorRole: "owner",
 
+      /**
+       * SUB-01's seat cap, read where the member and invitation endpoints
+       * actually enforce it (T-02-32, T-02-34).
+       *
+       * FUNCTION FORM, DELIBERATELY. Both call sites that consult this value
+       * resolve it as `ctx.context.orgOptions?.membershipLimit || 100`
+       * (verified: `node_modules/better-auth/dist/plugins/organization/routes/`
+       * `crud-members.mjs:62` for `/organization/add-member`,
+       * `crud-invites.mjs:275` for `/organization/accept-invitation`). A
+       * literal `0` is falsy, so Starter's "owner only" would silently become
+       * the library's 100-seat default — the tier with the tightest limit
+       * would receive the loosest one in the product. A function is truthy
+       * regardless of what it returns, so it is immune to that coalescing;
+       * only the return VALUE decides the limit, never the `||`.
+       *
+       * Starter's cap is expressed as `1`, never `0`: the owner is themselves
+       * a member and the library's guard is `count >= limit`, so `1 >= 1`
+       * correctly refuses a second person while leaving the owner's own row
+       * alone. A missing or unrecognised `planTier` also resolves to `1`
+       * (`memberLimitFor`'s fail-closed default) — a merchant who has not
+       * chosen a plan yet gets owner-only, never the library's default.
+       *
+       * `organization` here comes from `adapter.findOrganizationById`, which
+       * runs `filterOutputFields` before this is called, so the declared
+       * `planTier` additional field is already present on it — no second read
+       * of the database is needed.
+       */
+      membershipLimit: (_user, organization) =>
+        memberLimitFor(
+          organization as unknown as { planTier?: string | null },
+        ),
+
       schema: {
         organization: {
           additionalFields: {
@@ -291,6 +326,93 @@ export const auth = betterAuth({
             });
           }
         },
+
+        /**
+         * T-02-33: `membershipLimit` above is consulted only on
+         * `/organization/add-member` and `/organization/accept-invitation` —
+         * NOT when an invitation is created (verified: the only two call
+         * sites are `crud-members.mjs:62` and `crud-invites.mjs:275`;
+         * `/organization/invite-member` checks only `invitationLimit`,
+         * default 100). Without this hook a Starter merchant can send three
+         * invitations that all appear to succeed, and every recipient is
+         * refused only when THEY try to accept — a confusing failure that
+         * lands on the wrong person.
+         *
+         * Counts members plus PENDING invitations, because an accepted
+         * invitation becomes a member and a pending one is a seat already
+         * spoken for; counting only members would let a merchant queue up
+         * more invitations than seats exist.
+         *
+         * THROW-OR-VOID, same discipline as `beforeCreateOrganization` above.
+         */
+        beforeCreateInvitation: async ({ organization }) => {
+          const limit = memberLimitFor(
+            organization as unknown as { planTier?: string | null },
+          );
+          const [memberCount, pendingCount] = await Promise.all([
+            platformDb.member.count({
+              where: { organizationId: organization.id },
+            }),
+            platformDb.invitation.count({
+              where: { organizationId: organization.id, status: "pending" },
+            }),
+          ]);
+          if (memberCount + pendingCount >= limit) {
+            throw new APIError("FORBIDDEN", {
+              message: strings.entitlements.memberLimitReached.replace(
+                "{n}",
+                String(limit),
+              ),
+            });
+          }
+        },
+
+        /**
+         * T-02-30: refuses any incoming `slug` on `/organization/update`.
+         *
+         * A rename is not a single-column edit in this system — it needs a new
+         * `StoreSlugHistory` row, a `releasedAt` stamp on the old one, and
+         * `invalidateTenantHost` on both the old and new hostnames (Phase 4
+         * owns that flow, per `src/server/tenant/slug.ts` and
+         * `src/server/tenant/cache.ts`). Until it exists, letting this raw
+         * endpoint write a bare `slug` column would bypass the reserved-slug
+         * gate, orphan the slug-history record, and strand every inbound link
+         * to the old address — a half-done rename is worse than a refused one.
+         *
+         * THROW-OR-VOID, same discipline as the hooks above, even though this
+         * hook's re-spread only touches `ctx.body.data` rather than the whole
+         * body: a rule with an exception is a rule nobody follows.
+         */
+        beforeUpdateOrganization: async ({ organization }) => {
+          if ("slug" in organization && organization.slug !== undefined) {
+            throw new APIError("BAD_REQUEST", {
+              message: strings.dashboard.renameUnsupported,
+            });
+          }
+        },
+
+        /**
+         * T-02-31: refuses `/organization/delete` unconditionally.
+         *
+         * No product surface in V1 offers store deletion. An endpoint that
+         * lets an authenticated merchant destroy their own tenant from a curl
+         * command, with no UI behind it, is a self-inflicted denial-of-service
+         * hole rather than a feature.
+         */
+        beforeDeleteOrganization: async () => {
+          throw new APIError("FORBIDDEN", {
+            message: strings.dashboard.deleteUnsupported,
+          });
+        },
+
+        /**
+         * `remove-member`, `update-member-role` and `leave` were reviewed and
+         * left ungated in this phase: none of them can exceed a plan limit or
+         * change a hostname, so nothing on the SUB-01/SUB-02 threat surface
+         * this plan closes reaches them. The omission is a decision (T-02-37,
+         * disposition "accept"), not an oversight — a future phase can revisit
+         * it deliberately if a new threat surfaces on one of these three.
+         */
       },
     }),
 
