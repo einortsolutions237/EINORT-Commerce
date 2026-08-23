@@ -1,7 +1,7 @@
 ---
 phase: 3
 slug: product-catalog-order-payment-claim-state-machine
-status: draft
+status: approved
 shadcn_initialized: true
 preset: "style: base-nova · base: base-ui · cssVariables: true · iconLibrary: lucide (existing components.json)"
 created: 2026-08-23
