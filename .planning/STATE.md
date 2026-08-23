@@ -51,6 +51,12 @@ Progress: [█████████░] 93%
 - Last 5 plans: -
 - Trend: -
 
+## Quick Tasks Completed
+
+| Quick ID | Description | Duration | Status |
+|----------|-------------|----------|--------|
+| 260823-gu4 | Retrofit merchant-platform UI tokens (blue/gold/slate) + register design reference | 24min | complete ✓ |
+
 *Updated after each plan completion*
 | Phase 02 P06 | 13min | 3 tasks | 3 files |
 
