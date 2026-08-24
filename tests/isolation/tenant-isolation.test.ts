@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import type { Prisma } from "@/generated/prisma/client";
 import { adminDb } from "@/server/db/admin";
-import { scopedDb, TENANT_SCOPED_MODELS } from "@/server/db/tenant-scoped";
+import {
+  scopedCreateData,
+  scopedDb,
+  TENANT_SCOPED_MODELS,
+} from "@/server/db/tenant-scoped";
 
 import {
   delegateKeyFor,
@@ -84,7 +89,46 @@ interface ModelProbe {
   newRow: (nonce: string) => Row;
   /** A field mutation that touches no unique constraint. */
   mutation: () => Row;
+  /**
+   * Set when the model can hold at most ONE row per tenant.
+   *
+   * `MerchantPaymentSettings` declares `tenantId String @unique` (D-14: one
+   * settings row per merchant, addressable by `findUnique`/`upsert` on
+   * `tenantId` alone). The battery below inserts probe rows as tenant B while
+   * tenant B's fixture row already exists, which on such a model is a unique
+   * violation rather than an isolation finding — so the create-family cases
+   * free the slot first via `makeRoomForNewRows`.
+   *
+   * This is deliberately NOT "skip the model". The operations that could
+   * actually leak — every read, `update`, `updateMany`, `delete`, `deleteMany`,
+   * `upsert` — run identically here; only the row arithmetic differs.
+   */
+  singleRowPerTenant?: true;
 }
+
+/**
+ * Parents every probe row hangs off.
+ *
+ * Every create in this file runs as TENANT B (`scopedDb(TENANT_B.id)`), and the
+ * composite FKs are `(tenantId, <fk>)` — so a probe naming tenant A's parent
+ * would be rejected by Postgres and the test would fail for the right reason at
+ * the wrong moment. Hardcoding tenant B's fixture ids keeps the failure surface
+ * on the thing under test.
+ */
+const B_PRODUCT_ID = `${TENANT_B.id}-product-1`;
+const B_VARIANT_ID = `${TENANT_B.id}-variant-1`;
+const B_ORDER_ID = `${TENANT_B.id}-order-1`;
+
+/**
+ * `ProductImage` is unique on `(tenantId, productId, position)`, and all probe
+ * images hang off the same product, so `position` has to be the varying part.
+ * The fixture uses 0; probes start well clear of it.
+ */
+let probePosition = 100;
+
+/** ORD-04's normalisation: uppercase, non-alphanumerics stripped. */
+const normalizeReference = (reference: string): string =>
+  reference.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 const MODEL_PROBES: Record<string, ModelProbe> = {
   StoreSlugHistory: {
@@ -93,6 +137,127 @@ const MODEL_PROBES: Record<string, ModelProbe> = {
     // `releasedAt` is nullable and carries no constraint — the safest field to
     // scribble on when the assertion is about WHICH rows changed, not what to.
     mutation: () => ({ releasedAt: new Date("2030-06-01T00:00:00.000Z") }),
+  },
+
+  Category: {
+    // Unique on `(tenantId, slug)`.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      name: `Probe Category ${nonce}`,
+      slug: `probe-${nonce}`,
+    }),
+    mutation: () => ({ name: "probe-mutated" }),
+  },
+
+  Product: {
+    // `categoryId` left unset on purpose: the FK to `category` is
+    // `onDelete: Restrict`, and a probe product pointing at the fixture
+    // category would turn `category.deleteMany({})` — which this same battery
+    // runs — into a foreign-key error.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      name: `Probe Product ${nonce}`,
+      slug: `probe-${nonce}`,
+      basePriceXaf: 1000,
+    }),
+    mutation: () => ({ description: "probe-mutated" }),
+  },
+
+  ProductVariant: {
+    // Unique on `(tenantId, productId, option1Value, option2Value)`. The nonce
+    // rides on `option1Value`, which is exactly the axis Pitfall 2 is about.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      productId: B_PRODUCT_ID,
+      option1Value: `probe-${nonce}`,
+      option2Value: "",
+      stock: 3,
+    }),
+    mutation: () => ({ stock: 7 }),
+  },
+
+  ProductImage: {
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      productId: B_PRODUCT_ID,
+      position: ++probePosition,
+      storageKey: `probe/${nonce}`,
+      width: 100,
+      height: 100,
+    }),
+    mutation: () => ({ width: 999 }),
+  },
+
+  Order: {
+    // Two unique keys to dodge: `(tenantId, orderNumber)` and the GLOBAL
+    // `trackingTokenHash`. Both take the nonce.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      orderNumber: `probe-${nonce}`,
+      state: "ORDER_PLACED",
+      channel: "MANUAL_TRANSFER",
+      customerName: "Probe Customer",
+      customerPhone: "237600000000",
+      subtotalXaf: 1000,
+      totalXaf: 1000,
+      trackingTokenHash: `probe-tracking-${nonce}`,
+    }),
+    mutation: () => ({ customerNote: "probe-mutated" }),
+  },
+
+  OrderItem: {
+    // `productId`/`variantId` are plain columns here, not relations — only
+    // `orderId` carries a composite FK.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      orderId: B_ORDER_ID,
+      productId: B_PRODUCT_ID,
+      variantId: B_VARIANT_ID,
+      productName: `Probe Product ${nonce}`,
+      variantLabel: "Default",
+      unitPriceXaf: 1000,
+      quantity: 1,
+      lineTotalXaf: 1000,
+    }),
+    mutation: () => ({ productName: "probe-mutated" }),
+  },
+
+  OrderEvent: {
+    // The model is APPEND-ONLY for application code (ORD-05). This battery
+    // updates and deletes rows anyway, and that is not a contradiction: the
+    // append-only rule constrains what `src/**` may write, while these calls
+    // exist to prove that a foreign tenant cannot write here AT ALL. A model
+    // exempted from the battery because production never mutates it would be a
+    // model with nothing proving its boundary.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      orderId: B_ORDER_ID,
+      toState: "ORDER_PLACED",
+      actor: "SYSTEM",
+    }),
+    mutation: () => ({ reason: "probe-mutated" }),
+  },
+
+  PaymentClaim: {
+    // Unique on `(tenantId, referenceNormalized)` — ORD-04.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      orderId: B_ORDER_ID,
+      operator: "MTN_MOMO",
+      reference: `probe-${nonce}`,
+      referenceNormalized: normalizeReference(`probe-${nonce}`),
+      amountClaimedXaf: 1000,
+    }),
+    mutation: () => ({ rejectionReason: "probe-mutated" }),
+  },
+
+  MerchantPaymentSettings: {
+    singleRowPerTenant: true,
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      whatsappNumber: "237600000000",
+    }),
+    mutation: () => ({ payoutNotice: "probe-mutated" }),
   },
 };
 
@@ -115,6 +280,22 @@ const nextNonce = () => `${Date.now().toString(36)}-${++nonceCounter}`;
 /** Read a tenant's rows through the deliberately unscoped admin client. */
 async function adminRowsFor(key: string, tenantId: string): Promise<Row[]> {
   return delegateOf(adminDb, key).findMany({ where: { tenantId } });
+}
+
+/**
+ * Free tenant B's row slot on a one-row-per-tenant model, so a probe `create`
+ * can land without tripping a unique constraint that has nothing to do with
+ * tenant isolation.
+ *
+ * A no-op for every other model, and it goes through `adminDb` deliberately:
+ * clearing the way must not itself depend on the mechanism under test. Tenant
+ * A is never touched, so every "tenant A survived" assertion stays meaningful.
+ */
+async function makeRoomForNewRows(model: string, key: string): Promise<void> {
+  if (!probeFor(model).singleRowPerTenant) return;
+  await delegateOf(adminDb, key).deleteMany({
+    where: { tenantId: TENANT_B.id },
+  });
 }
 
 async function adminRowFor(key: string, tenantId: string): Promise<Row> {
@@ -229,6 +410,7 @@ for (const model of REGISTERED_MODELS) {
     });
 
     it("create ignores client-supplied tenantId and stores the row under B", async () => {
+      await makeRoomForNewRows(model, key);
       const nonce = nextNonce();
       const created = await delegateOf(scopedDb(TENANT_B.id), key).create({
         data: {
@@ -251,6 +433,7 @@ for (const model of REGISTERED_MODELS) {
 
     it("upsert cannot resurrect a tenant-A row", async () => {
       const before = await adminRowFor(key, TENANT_A.id);
+      await makeRoomForNewRows(model, key);
       const nonce = nextNonce();
 
       const result = await delegateOf(scopedDb(TENANT_B.id), key).upsert({
@@ -332,14 +515,26 @@ for (const model of REGISTERED_MODELS) {
         "grouped across tenants",
       );
 
+      // A one-row-per-tenant model cannot hold a batch, so its slot is freed
+      // before each create-family call and the batch shrinks to one. Every
+      // assertion below still runs; only the row arithmetic differs.
+      const batchSize = probe.singleRowPerTenant ? 1 : 2;
+
+      await makeRoomForNewRows(model, key);
       const created = await asB.create({ data: probe.newRow(nextNonce()) });
       check("create", created.tenantId === TENANT_B.id, "stamped the wrong tenant");
 
+      await makeRoomForNewRows(model, key);
       const madeMany = await asB.createMany({
-        data: [probe.newRow(nextNonce()), probe.newRow(nextNonce())],
+        data: Array.from({ length: batchSize }, () => probe.newRow(nextNonce())),
       });
-      check("createMany", madeMany.count === 2, "did not insert both rows");
+      check(
+        "createMany",
+        madeMany.count === batchSize,
+        `inserted ${madeMany.count} of ${batchSize} rows`,
+      );
 
+      await makeRoomForNewRows(model, key);
       const returned = await asB.createManyAndReturn({
         data: [probe.newRow(nextNonce())],
       });
@@ -349,14 +544,21 @@ for (const model of REGISTERED_MODELS) {
         "stamped the wrong tenant",
       );
 
+      // The B-owned row the single-row operations act on. On a one-row-per-
+      // tenant model `created` was cleared away by the calls that followed it,
+      // so the last row returned is the one still standing.
+      const ownId = (
+        probe.singleRowPerTenant ? returned[0]?.id : created.id
+      ) as string;
+
       const updatedOwn = await asB.update({
-        where: { id: created.id },
+        where: { id: ownId },
         data: probe.mutation(),
       });
       check("update", updatedOwn.tenantId === TENANT_B.id, "escaped the tenant");
 
       const upserted = await asB.upsert({
-        where: { id: created.id },
+        where: { id: ownId },
         update: probe.mutation(),
         create: probe.newRow(nextNonce()),
       });
@@ -369,11 +571,19 @@ for (const model of REGISTERED_MODELS) {
         "touched a different number of rows than tenant B owns",
       );
 
-      const deletedOne = await asB.delete({ where: { id: created.id } });
+      const deletedOne = await asB.delete({ where: { id: ownId } });
       check("delete", deletedOne.tenantId === TENANT_B.id, "escaped the tenant");
 
+      // Count tenant B's survivors FIRST: asserting `>= 1` would pass on a
+      // model whose slot the sweep had already emptied, which is exactly the
+      // one-row-per-tenant case.
+      const remainingB = (await adminRowsFor(key, TENANT_B.id)).length;
       const bulkDeleted = await asB.deleteMany({});
-      check("deleteMany", bulkDeleted.count >= 1, "deleted nothing");
+      check(
+        "deleteMany",
+        bulkDeleted.count === remainingB,
+        `deleted ${bulkDeleted.count} of tenant B's ${remainingB} row(s)`,
+      );
 
       // The whole point: after every write operation above ran unfiltered as
       // tenant B, tenant A must still own exactly its original row.
@@ -444,6 +654,40 @@ describe("the tenant boundary itself", () => {
     expect(await adminRowsFor(firstKey, TENANT_A.id)).toHaveLength(1);
   });
 
+  it("$transaction cannot updateMany another tenant's product", async () => {
+    /*
+     * The other half of assumption A1, and the shape that actually appears in
+     * Phases 3-6: a WRITE inside a transaction that names a row by id.
+     *
+     * The test above proves `tx` stamps `tenantId` on a create. This one proves
+     * it also injects the predicate into a `where` — the direction that matters
+     * for tampering, because `updateMany` reports a count instead of throwing.
+     * An unscoped `tx` here would return `count: 1` and quietly rename another
+     * merchant's product, with nothing in the call site looking wrong.
+     */
+    const bProductId = `${TENANT_B.id}-product-1`;
+    const before = await adminDb.product.findUniqueOrThrow({
+      where: { id: bProductId },
+    });
+
+    const { count } = await scopedDb(TENANT_A.id).$transaction(async (tx) =>
+      tx.product.updateMany({
+        where: { id: bProductId },
+        data: { name: "hijacked" },
+      }),
+    );
+
+    // Matched nothing: the injected `tenantId: A` and the row's `tenantId: B`
+    // cannot both hold.
+    expect(count).toBe(0);
+
+    const after = await adminDb.product.findUniqueOrThrow({
+      where: { id: bProductId },
+    });
+    expect(after.name).toBe(before.name);
+    expect(after.name).not.toBe("hijacked");
+  });
+
   it("throws rather than running unscoped for an unregistered model", async () => {
     /*
      * The negative control, and arguably the most important test in the file.
@@ -471,5 +715,108 @@ describe("the tenant boundary itself", () => {
 
   it("rejects an empty tenantId instead of scoping to nothing", async () => {
     expect(() => scopedDb("")).toThrow(/tenantId is required/);
+  });
+});
+
+describe("the Phase 3 schema guarantees", () => {
+  it("rejects a cross-tenant categoryId in Postgres, not in application code", async () => {
+    /*
+     * T-03-01. `scopedDb` stamps `tenantId: B` on the payload, so the composite
+     * FK resolves as `(B, <tenant A's category id>)` — a pair that exists in no
+     * row of `category`, and Postgres refuses the insert.
+     *
+     * The distinction this test defends is WHERE the refusal comes from.
+     * Nothing in `src/**` validates that a submitted `categoryId` belongs to
+     * the caller's tenant; if the FK were single-column `(categoryId)` the
+     * insert below would SUCCEED and tenant B would own a product filed under
+     * tenant A's category. The constraint is the check.
+     */
+    const nonce = nextNonce();
+    await expect(
+      scopedDb(TENANT_B.id).product.create({
+        data: scopedCreateData<Prisma.ProductUncheckedCreateInput>({
+          id: `probe-${nonce}`,
+          name: "Cross-tenant category probe",
+          slug: `probe-${nonce}`,
+          basePriceXaf: 1000,
+          categoryId: `${TENANT_A.id}-category-1`,
+        }),
+      }),
+    ).rejects.toThrow();
+
+    // Tenant A's category is untouched, and no orphan product landed.
+    expect(
+      await adminDb.product.count({ where: { tenantId: TENANT_B.id } }),
+    ).toBe(1);
+  });
+
+  it("scopes payment-claim reference uniqueness to the tenant, not the platform", async () => {
+    /*
+     * ORD-04 / T-03-04, both directions of `@@unique([tenantId,
+     * referenceNormalized])`.
+     *
+     * A merchant must be able to reject a reused reference (the same customer
+     * claiming one MoMo transfer against two orders), while two unrelated
+     * merchants must be able to see the same operator reference without one
+     * blocking the other — different merchants, different MoMo accounts,
+     * colliding reference formats.
+     */
+    const bClaim = await adminDb.paymentClaim.findFirstOrThrow({
+      where: { tenantId: TENANT_B.id },
+    });
+
+    // WITHIN a tenant: the index refuses the duplicate. Not a count() the
+    // application runs — an index, which cannot be raced.
+    await expect(
+      scopedDb(TENANT_B.id).paymentClaim.create({
+        data: scopedCreateData<Prisma.PaymentClaimUncheckedCreateInput>({
+          id: `probe-${nextNonce()}`,
+          orderId: B_ORDER_ID,
+          operator: "MTN_MOMO",
+          reference: bClaim.reference,
+          referenceNormalized: bClaim.referenceNormalized,
+          amountClaimedXaf: 1000,
+        }),
+      }),
+    ).rejects.toThrow();
+
+    // ACROSS tenants: the same normalized reference is accepted by both.
+    const shared = normalizeReference(`shared-ref-${nextNonce()}`);
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      const claim = await scopedDb(tenant.id).paymentClaim.create({
+        data: scopedCreateData<Prisma.PaymentClaimUncheckedCreateInput>({
+          id: `probe-${nextNonce()}`,
+          orderId: `${tenant.id}-order-1`,
+          operator: "ORANGE_MONEY",
+          reference: shared,
+          referenceNormalized: shared,
+          amountClaimedXaf: 1000,
+        }),
+      });
+      expect(claim.tenantId).toBe(tenant.id);
+    }
+
+    expect(
+      await adminDb.paymentClaim.count({
+        where: { referenceNormalized: shared },
+      }),
+    ).toBe(2);
+  });
+
+  it("gives an option-less product exactly one variant, so stock lives at one level", async () => {
+    // CAT-03 / D-04. `option1Name`/`option2Name` are NULL (no axes), and the
+    // single variant carries the empty-string sentinel pair from Pitfall 2 —
+    // NOT NULL, so the unique index can actually collide.
+    const product = await scopedDb(TENANT_B.id).product.findUniqueOrThrow({
+      where: { id: B_PRODUCT_ID },
+      include: { variants: true },
+    });
+
+    expect(product.option1Name).toBeNull();
+    expect(product.option2Name).toBeNull();
+    expect(product.variants).toHaveLength(1);
+    expect(product.variants[0]?.option1Value).toBe("");
+    expect(product.variants[0]?.option2Value).toBe("");
+    expect(product.variants[0]?.stock).toBe(10);
   });
 });
