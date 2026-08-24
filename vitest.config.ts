@@ -41,6 +41,19 @@ const serverOnlyStub = fileURLToPath(
  * The auth/domain values are placeholders that only have to be *valid*: the
  * isolation suite exercises the data layer, not the HTTP or auth surface. They
  * mirror the "optional overrides" block in `.env.test.example`.
+ *
+ * The `R2_*` placeholders (plan 03-02) exist for the same reason and are
+ * deliberately fake. `src/env.ts` marks them required — a real bucket must
+ * exist before the app boots, because product images have no fallback storage
+ * path — and `src/server/db/base.ts` imports `@/env`, so every isolation test
+ * pulls the whole schema in transitively and would fail validation without
+ * them. Supplying junk here rather than relaxing the schema keeps the boot-time
+ * guarantee intact where it matters (production) without putting live R2
+ * credentials on disk for a suite that never opens a socket to R2: presigning
+ * is a local signature computation and the image pipeline runs Sharp against a
+ * fixture file. `RESEND_*` are absent on purpose — they are `.optional()`, and
+ * leaving them unset is the configuration the degraded path must keep working
+ * under.
  */
 const testDatabaseUrl = process.env.TEST_DATABASE_URL ?? "";
 const isolationEnv = {
@@ -49,6 +62,11 @@ const isolationEnv = {
   BETTER_AUTH_SECRET: "0".repeat(48),
   BETTER_AUTH_URL: "http://localhost:3000",
   NEXT_PUBLIC_ROOT_DOMAIN: "localhost:3000",
+  R2_ACCOUNT_ID: "test-account",
+  R2_ACCESS_KEY_ID: "test-access-key",
+  R2_SECRET_ACCESS_KEY: "test-secret-key",
+  R2_BUCKET: "test-bucket",
+  R2_PUBLIC_BASE_URL: "https://r2.example.invalid",
 };
 
 /**

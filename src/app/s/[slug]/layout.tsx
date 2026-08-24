@@ -34,5 +34,27 @@ export default async function StorefrontLayout({
   // Renders the one branded body with a real 404 (D-04 / D-05).
   if (!tenant) notFound();
 
-  return <>{children}</>;
+  /*
+   * The surface boundary (03-UI-SPEC.md § "READ THIS FIRST").
+   *
+   * `globals.css`'s `:root` resolves every semantic token to the *merchant*
+   * blue/gold/slate. A storefront page that writes `bg-background` inherits
+   * those values unless something re-scopes them — which is why this attribute
+   * is here and not decoration. The matching block in `globals.css` re-declares
+   * the complete zinc set under it, so every page below this point uses the
+   * ordinary semantic utilities — `bg-background`, `text-foreground`,
+   * `bg-primary`, `border-border` — and gets zinc, plus the 0.25rem radius,
+   * for free.
+   *
+   * The corollary is the rule: reaching for a palette utility (`bg-zinc-50`,
+   * `text-slate-900`) anywhere under this tree is never necessary and is exactly
+   * the retrofit this attribute exists to prevent. `tests/unit/
+   * surface-token-isolation.test.ts` fails the build if one appears — there and
+   * on the merchant side both.
+   */
+  return (
+    <div data-surface="storefront" className="flex min-h-full flex-1 flex-col">
+      {children}
+    </div>
+  );
 }

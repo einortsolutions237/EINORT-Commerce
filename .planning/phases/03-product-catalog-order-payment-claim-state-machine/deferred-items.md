@@ -66,3 +66,50 @@ unordered and render them as a group.
 rather than its order and says so inline; `tests/isolation/order-audit.test.ts`
 uses `events.at(-1)` after separate transactions, where the timestamps genuinely
 differ.
+
+---
+
+## `stock-race.test.ts` fails when the Neon test branch is slow
+
+**Found during:** plan 03-02, full-suite verification. Out of scope for that
+plan, which touched CSS tokens, env keys and shadcn components only.
+
+**What.** All three concurrency cases in `tests/isolation/stock-race.test.ts`
+failed on a run where the whole suite took **43 min against master's 16.1 min**
+for effectively the same tests — a 2.7x slowdown. The failures are the shape a
+timeout produces, not the shape a logic bug produces:
+
+- `lets exactly one win…` — the loser threw `PrismaClientKnownRequestError`
+  instead of `OutOfStockError`. The `fulfilled`/`rejected` split was still 1/1,
+  so the race resolved correctly; only the error TYPE was wrong.
+- `both settle without a deadlock…` — `expected [ Array(1) ] to deeply equal []`
+  (a transaction left work behind).
+- `is a no-op for two concurrent releases…` — one of two releases rejected.
+
+**The smoking gun.** `src/server/orders/place.ts:371` sets
+`$transaction(..., { timeout: 15_000 })`. The two failing race cases took
+**21911ms** and **26182ms**. They exceeded the engine's own transaction timeout,
+so the loser's transaction was aborted by Prisma before the winner committed and
+the conditional `stock: { gte: quantity }` predicate could report a clean
+sold-out.
+
+**Why it is environmental.** The same session saw `npx prisma migrate deploy`
+return `P1001 Can't reach database server` on 2 of 3 consecutive attempts with
+TCP reachability to the endpoint confirmed good throughout. The branch was
+degraded or contended — plausibly by the other Wave 1 worktree agents running
+their own isolation suites against the same shared branch. Plan 03-02 changed no
+transaction, stock, or order code; its only test-path change adds five `??=` env
+placeholders to `applyDataLayerEnv`.
+
+**What to do.** Re-run `tests/isolation/stock-race.test.ts` on a quiet branch
+before treating this as a real defect. If it reproduces when the suite is back
+near 16 min, it IS a real defect and the question to ask is whether 15s is
+enough headroom for a lock wait on a scale-to-zero Postgres — in which case the
+fix belongs to 03-07, either by raising the timeout or by catching the timeout
+error and mapping it to `OutOfStockError` when the predicate did not match.
+
+**Also worth considering at the orchestration level.** The isolation suite
+truncates and reseeds a single shared Neon branch, and `fileParallelism: false`
+only serialises files WITHIN one run. Two Wave 1 agents running `test:full`
+concurrently will interleave truncates and fixtures. A branch per agent, or a
+lock, would make this class of failure impossible rather than merely unlikely.
