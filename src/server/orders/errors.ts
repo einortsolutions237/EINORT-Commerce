@@ -38,20 +38,39 @@ import type { OrderChannel, OrderState } from "@/server/db/enums";
  * legal, and the reader has to already know the order was placed over WhatsApp
  * for the refusal to make sense. Including the channel makes a single log line
  * self-explaining.
+ *
+ * `detail` exists for the same reason, one level down. Two of the four
+ * refusals in `transitionOrder` are NOT about the graph at all: `PAYMENT_CLAIMED
+ * -> CONFIRMED` by a customer (ORD-02) and `-> DISPUTED` with a blank reason
+ * (D-11) are both moves the graph permits, refused on other grounds. Without
+ * `detail` those log as "invalid transition: PAYMENT_CLAIMED -> CONFIRMED",
+ * which is not merely unhelpful but actively wrong — that transition is legal,
+ * and whoever reads the line will go looking for a bug in the registry. It also
+ * gives the Server Action layer the distinction it needs to tell a merchant
+ * "a rejection needs a reason" rather than "that move isn't allowed".
  */
 export class InvalidTransitionError extends Error {
   override readonly name = "InvalidTransitionError";
   readonly from: OrderState;
   readonly to: OrderState;
   readonly channel: OrderChannel;
+  /** Why, when the graph itself is not the reason. Undefined when it is. */
+  readonly detail: string | undefined;
 
-  constructor(from: OrderState, to: OrderState, channel: OrderChannel) {
+  constructor(
+    from: OrderState,
+    to: OrderState,
+    channel: OrderChannel,
+    detail?: string,
+  ) {
     super(
-      `Invalid order transition: ${from} -> ${to} on a ${channel} order.`,
+      `Invalid order transition: ${from} -> ${to} on a ${channel} order.` +
+        (detail ? ` ${detail}` : ""),
     );
     this.from = from;
     this.to = to;
     this.channel = channel;
+    this.detail = detail;
   }
 }
 
