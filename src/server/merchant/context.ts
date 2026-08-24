@@ -118,6 +118,23 @@ export const requireMerchantContext = cache(
     // The one place in the system that reads the clock for trial purposes. The
     // resolver stays pure and takes `now` as a parameter, which is what makes
     // the whole trial lifecycle expressible in the database-free unit project.
-    return resolveEntitlements(org, new Date());
+    //
+    // `userId` is spread in HERE rather than resolved there, and it comes from
+    // the same Better Auth session object that supplied
+    // `activeOrganizationId` above — so it is exactly as untrusted-free as the
+    // tenant id is, arriving through the signed cookie and never through a
+    // request body. It exists for exactly one purpose: to fill
+    // `OrderEvent.actorUserId` so an ORD-05 audit row can name who confirmed a
+    // payment or rejected a claim (T-03-16). No action schema accepts a user
+    // id, and none ever should — a forged one in a payload is the shape of
+    // attack this provenance closes.
+    //
+    // Note what did NOT change: `requireMerchantContext()` still takes no
+    // parameters. The session is the source of both identities, so neither
+    // has to be passed in.
+    return {
+      ...resolveEntitlements(org, new Date()),
+      userId: session.user.id,
+    };
   },
 );
