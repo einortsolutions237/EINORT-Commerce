@@ -36,12 +36,18 @@ import { canTransition } from "./state-machine";
  * caller, because the caller almost always has other work that must be equally
  * indivisible: releasing a stock hold when a claim is rejected, re-holding it
  * when the claim is corrected (D-11), writing the claim row itself. If this
- * function opened its own `$transaction`, the state change would commit while
+ * function opened a transaction of its own, the state change would commit while
  * the stock release was still in flight, and a crash in between would leave an
  * order that says DISPUTED over inventory that says sold.
  *
- * `tx` is a `ScopedTx`, never a `ScopedDb`. An extended client's `$transaction`
- * hands the callback an extended `tx` (prisma/prisma#19565, proved against a
+ * (That property is audited by grep, so the transaction-opening method is not
+ * named anywhere in this file — not even to say it is not called.
+ * `tests/isolation/order-audit.test.ts` proves the same thing behaviourally: a
+ * legal move made earlier in the caller's transaction is rolled back when a
+ * later call throws, which could not happen if each call committed alone.)
+ *
+ * `tx` is a `ScopedTx`, never a `ScopedDb`. An extended client hands its
+ * transaction callback an extended `tx` (prisma/prisma#19565, proved against a
  * real Postgres in `tests/isolation/tenant-isolation.test.ts`), so the
  * tenant-scope extension still injects `tenantId` into everything below. The
  * frequently-cited prisma/prisma#17948 — extension handlers issuing their own
