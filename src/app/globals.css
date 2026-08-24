@@ -126,6 +126,60 @@
   --sidebar-ring: oklch(0.623 0.188 259.8); /* brand-500 */
 }
 
+/*
+ * Surface B — the customer storefront (src/app/s/[slug]/**) and nothing else.
+ *
+ * Zinc-monochrome DTC/editorial, transcribed row for row from
+ * 01-UI-SPEC.md § Color (restated as 03-UI-SPEC.md § B. Color). The 10% accent
+ * in this system is ink, not a hue — that is the locked direction, not an
+ * omission. Deliberately NOT the merchant platform's blue/gold/slate above.
+ *
+ * COMPLETENESS IS THE ENTIRE MECHANISM. `:root` resolves every semantic token
+ * to the merchant values, so a token left out of this block does not fall back
+ * to "unstyled" — it inherits slate or blue and puts the merchant palette back
+ * on a shopper's page. That is the leak (260823-gu4) this scope exists to close,
+ * and it is invisible until someone looks at the right page. All 20 tokens of
+ * the spec table are written literally below. Do not prune this list because a
+ * token "isn't used yet": the next shadcn component to land is what uses it.
+ *
+ * Five tokens are excluded on purpose and must stay excluded:
+ * the success and gold pair, because storefront order status is communicated by
+ * heading copy, an icon and a rule rather than a colour-coded chip — a shopper
+ * must not read green or gold as a payment guarantee this platform does not
+ * make (T-03-10); and the sidebar and chart families, because no storefront
+ * component resolves them. Ban #3 in tests/unit/surface-token-isolation.test.ts
+ * greps the storefront route tree for the first group.
+ *
+ * There is no dark variant of this selector, deliberately. Dark mode is authored
+ * for the merchant surface but not shipped, and there is no theme switcher.
+ */
+[data-surface="storefront"] {
+  --background: oklch(1 0 0); /* white */
+  --foreground: oklch(0.141 0.005 285.823); /* zinc-950 */
+  /* Flush with the page field: cards are separated by hairlines, not by fill. */
+  --card: oklch(1 0 0); /* white */
+  --card-foreground: oklch(0.141 0.005 285.823); /* zinc-950 */
+  --popover: oklch(1 0 0); /* white */
+  --popover-foreground: oklch(0.141 0.005 285.823); /* zinc-950 */
+  --primary: oklch(0.21 0.006 285.885); /* zinc-900 — ink, the 10% accent */
+  --primary-foreground: oklch(0.985 0 0); /* zinc-50 */
+  --secondary: oklch(0.967 0.001 286.375); /* zinc-100 */
+  --secondary-foreground: oklch(0.21 0.006 285.885); /* zinc-900 */
+  --muted: oklch(0.967 0.001 286.375); /* zinc-100 */
+  --muted-foreground: oklch(0.552 0.016 285.938); /* zinc-500 */
+  /* shadcn's neutral hover slot. NOT the brand accent — that is --primary. */
+  --accent: oklch(0.967 0.001 286.375); /* zinc-100 */
+  --accent-foreground: oklch(0.21 0.006 285.885); /* zinc-900 */
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0); /* zinc-50 */
+  --border: oklch(0.92 0.004 286.32); /* zinc-200 */
+  /* Omitting this one renders storefront inputs with the merchant border. */
+  --input: oklch(0.92 0.004 286.32); /* zinc-200 */
+  --ring: oklch(0.705 0.015 286.067); /* zinc-400 */
+  /* Sharper than the merchant platform's 0.75rem. A deliberate, visible split. */
+  --radius: 0.25rem;
+}
+
 .dark {
   --background: oklch(0.129 0.041 264.7); /* slate-950 */
   --foreground: oklch(0.984 0.003 247.9); /* slate-50  */
