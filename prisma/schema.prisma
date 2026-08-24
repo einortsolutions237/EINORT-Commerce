@@ -233,3 +233,336 @@ model StoreSlugHistory {
   @@index([tenantId, claimedAt])
   @@map("store_slug_history")
 }
+
+// ---------------------------------------------------------------------------
+// Catalog / order / payment-claim enums (Phase 3)
+//
+// Enums are not models, so the "must be registered" rule above does not apply
+// to them — but everything they are used by is tenant-scoped, so they live in
+// this section rather than at the top of the file.
+//
+// Feature code may NOT import these from `@/generated/prisma*`:
+// `eslint.config.mjs` bans that import outside `src/server/db/**`,
+// `src/server/tenant/**` and `src/server/auth/**`, and that lint gate is the
+// TEN-02/TEN-05 enforcement mechanism. `src/server/db/enums.ts` is the single
+// sanctioned door (RESEARCH.md Pitfall 10).
+// ---------------------------------------------------------------------------
+
+/// The order lifecycle (ORD-01). Deliberately has NO `CANCELLED` member:
+/// RESEARCH.md Open Question 1 resolved cancellation out of V1, and an enum
+/// member no transition can reach is a state the machine must still defend
+/// against forever.
+enum OrderState {
+  ORDER_PLACED
+  PAYMENT_PENDING
+  PAYMENT_CLAIMED
+  CONFIRMED
+  DISPUTED
+  FULFILLED
+}
+
+/// How the order reached the merchant. Drives which payment instructions and
+/// which confirmation path the order follows.
+enum OrderChannel {
+  WHATSAPP
+  MANUAL_TRANSFER
+  CASH_ON_DELIVERY
+}
+
+/// The two Cameroonian mobile-money operators V1 supports. No live PSP exists
+/// in V1 — these name the rails the customer used, not an integration.
+enum PaymentOperator {
+  MTN_MOMO
+  ORANGE_MONEY
+}
+
+/// Merchant verdict on a proof-of-payment claim (ORD-04).
+enum ClaimStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+/// Who caused an `OrderEvent` (ORD-05). Repudiation defence: every state change
+/// records an actor, so "the order changed state and nobody knows who" is not a
+/// representable outcome.
+enum EventActor {
+  CUSTOMER
+  MERCHANT
+  SYSTEM
+}
+
+/// A merchant-defined product grouping (D-06). Free-form, unique within the
+/// merchant only.
+model Category {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+
+  products Product[]
+
+  @@unique([tenantId, id]) // enables the composite FK below
+  @@unique([tenantId, slug]) // D-06: free-form but unique within the merchant
+  @@index([tenantId])
+  @@map("category")
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+
+  /// Whole XAF. No minor unit exists in common use, so no Decimal and no
+  /// conversion. Overridable per variant.
+  basePriceXaf Int
+
+  /// D-08: deactivate-only. There is no delete path anywhere in this phase.
+  active Boolean @default(true)
+
+  /// D-05: at most two option axes. NULL means "this axis is unused".
+  option1Name String?
+  option2Name String?
+
+  categoryId String?
+
+  /// COMPOSITE FK (T-03-01). `references: [tenantId, id]` is what makes a
+  /// forged cross-tenant `categoryId` a Postgres rejection rather than a
+  /// convention the application is trusted to remember.
+  ///
+  /// `onDelete` is stated explicitly because it has to be: this relation is
+  /// optional, so Prisma's default action would be `SetNull` — and `SetNull`
+  /// is invalid here because one half of the FK (`tenantId`) is required and
+  /// can never be nulled. `Restrict` is also the semantically correct choice
+  /// under D-08: a category holding products is not disposable.
+  category Category? @relation(fields: [tenantId, categoryId], references: [tenantId, id], onDelete: Restrict)
+
+  variants  ProductVariant[]
+  images    ProductImage[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, slug])
+  @@index([tenantId, active])
+  @@index([tenantId, categoryId])
+  @@map("product")
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  tenantId  String
+  productId String
+  /// `onDelete: Cascade` — a variant has no meaning without its product, and an
+  /// orphan variant would hold stock nothing can sell. No application code in
+  /// this phase deletes a product (D-08 is deactivate-only); this states what
+  /// the database does if one is ever deleted, rather than leaving orphan rows
+  /// possible.
+  product   Product @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Cascade)
+
+  /// EMPTY STRING, NOT NULL — see RESEARCH.md Pitfall 2. Postgres treats NULLs
+  /// as distinct in a unique index, so two all-NULL variant rows would both be
+  /// permitted and the matrix would silently accept duplicates.
+  option1Value String @default("")
+  option2Value String @default("")
+
+  /// NULL inherits Product.basePriceXaf. Whole XAF.
+  priceXaf Int?
+
+  /// D-04 / CAT-03: the ONLY place stock lives. Every product has at least one
+  /// variant row, so there is exactly one decrement code path.
+  stock  Int     @default(0)
+  sku    String?
+  active Boolean @default(true)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, productId, option1Value, option2Value])
+  @@index([tenantId, productId])
+  @@map("product_variant")
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  tenantId  String
+  productId String
+  /// `onDelete: Cascade` — same reasoning as ProductVariant.
+  product   Product @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Cascade)
+
+  /// R2 object key prefix; derivative suffixes are appended by the pipeline.
+  storageKey String
+
+  /// D-10: 0 is the primary/hero image used everywhere a single thumbnail is
+  /// needed.
+  position  Int
+  width     Int
+  height    Int
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, productId, position])
+  @@index([tenantId, productId])
+  @@map("product_image")
+}
+
+model Order {
+  id       String @id @default(cuid())
+  tenantId String
+
+  /// Short, typeable, read back over WhatsApp. nanoid over an unambiguous
+  /// alphabet.
+  orderNumber String
+  state       OrderState
+  channel     OrderChannel
+
+  customerName    String
+  customerPhone   String
+  deliveryAddress String?
+  customerNote    String?
+
+  subtotalXaf Int
+  totalXaf    Int
+
+  /// D-12 / T-03-05. SHA-256 hex of the plaintext token. The plaintext is NEVER
+  /// persisted, so a database read cannot yield a working tracking link.
+  trackingTokenHash String
+
+  /// Idempotent stock-hold marker — see RESEARCH.md Pattern 2b. Guards double
+  /// release (Pitfall 6).
+  stockHeld Boolean @default(false)
+
+  items  OrderItem[]
+  events OrderEvent[]
+  claims PaymentClaim[]
+
+  placedAt    DateTime  @default(now())
+  confirmedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, orderNumber])
+  /// Deliberately GLOBAL, like StoreSlugHistory.slug — a collision anywhere is
+  /// a correctness bug, and the constraint costs nothing.
+  @@unique([trackingTokenHash])
+  @@index([tenantId, state, placedAt])
+  @@map("order")
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  tenantId String
+  orderId  String
+  /// `onDelete: Cascade` — a line item cannot outlive its order.
+  order    Order  @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Cascade)
+
+  /// Plain columns, NOT relations. D-08 keeps products forever, but a merchant
+  /// can rename or reprice one; an order must show what was actually bought at
+  /// the price actually charged.
+  productId    String
+  variantId    String
+  productName  String
+  variantLabel String
+  unitPriceXaf Int
+  quantity     Int
+  lineTotalXaf Int
+  imageKey     String?
+
+  @@index([tenantId, orderId])
+  @@map("order_item")
+}
+
+/// ORD-05. APPEND-ONLY. Nothing in this codebase may update or delete a row
+/// here.
+model OrderEvent {
+  id       String @id @default(cuid())
+  tenantId String
+  orderId  String
+  /// `onDelete: Cascade` — the audit trail is scoped to the order it describes.
+  order    Order  @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Cascade)
+
+  /// NULL only on the genesis event written by placeOrder.
+  fromState OrderState?
+  toState   OrderState
+  actor     EventActor
+
+  /// user.id when actor = MERCHANT. NULL for CUSTOMER and SYSTEM.
+  actorUserId String?
+
+  /// D-11: the merchant's rejection reason, shown to the customer.
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, orderId, createdAt])
+  @@map("order_event")
+}
+
+model PaymentClaim {
+  id       String @id @default(cuid())
+  tenantId String
+  orderId  String
+  /// `onDelete: Cascade` — a claim cannot outlive the order it is a claim
+  /// against.
+  order    Order  @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Cascade)
+
+  operator PaymentOperator
+
+  /// Exactly as the customer typed it — this is what the merchant compares
+  /// against their SMS receipt.
+  reference String
+
+  /// ORD-04's actual uniqueness key. Uppercased, non-alphanumerics stripped.
+  referenceNormalized String
+  amountClaimedXaf    Int
+
+  /// R2 object key. NULL when the customer skipped the optional screenshot.
+  screenshotKey String?
+
+  status           ClaimStatus @default(PENDING)
+  rejectionReason  String?
+  submittedAt      DateTime    @default(now())
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+
+  @@unique([tenantId, id])
+  /// ORD-04 / T-03-04. A unique index cannot be raced; an application-level
+  /// count() can.
+  @@unique([tenantId, referenceNormalized])
+  @@index([tenantId, status, submittedAt])
+  @@index([tenantId, orderId])
+  @@map("payment_claim")
+}
+
+/// D-14 / D-16. One row per tenant. Deliberately NOT columns on Organization:
+/// Organization is Better Auth's generated model with `input: false` markers,
+/// and these fields are merchant-editable, so they belong behind scopedDb and
+/// merchantAction rather than behind a widened Better Auth write path.
+model MerchantPaymentSettings {
+  id String @id @default(cuid())
+
+  /// SINGLE-FIELD `@unique`, not `@@unique([tenantId, …])`, so
+  /// `findUnique({ where: { tenantId } })` and `upsert({ where: { tenantId } })`
+  /// work directly and `scopedDb`'s upsert branch (which stamps both `where`
+  /// and `create`) is enough. Do NOT add a second unique key.
+  tenantId String @unique
+
+  /// Normalized to 2376XXXXXXXX (no +, no spaces) for wa.me.
+  whatsappNumber String?
+  mtnMomoNumber  String?
+
+  /// D-15: OPTIONAL. Present only for merchants registered for MTN MoMoPay.
+  /// Six digits. Its presence is what unlocks the fully-parametrized tel: link.
+  mtnMerchantCode   String?
+  orangeMoneyNumber String?
+
+  /// D-15: OPTIONAL. Orange's #150*47# takes no parameters, so this improves
+  /// only the on-screen instructions, not the deep link.
+  orangeMerchantCode String?
+
+  codEnabled   Boolean @default(true)
+  payoutNotice String?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("merchant_payment_settings")
+}

@@ -1,5 +1,7 @@
 import "server-only";
 
+import type * as runtime from "@prisma/client/runtime/client";
+
 import type { Prisma } from "@/generated/prisma/client";
 
 import { prismaBase } from "./base";
@@ -38,8 +40,28 @@ import { prismaBase } from "./base";
  * non-tenant-scoped table wrongly added here would have `tenantId` injected
  * into queries against a column that does not exist (also loud). There is no
  * silent-failure path in either direction, which is the point.
+ *
+ * ORDER IS LOAD-BEARING, not alphabetical. `TENANT_SCOPED_MODELS` preserves
+ * this insertion order, and `tests/setup/seed-two-tenants.ts` drives its single
+ * batched `$transaction` off that iteration order. Postgres checks foreign keys
+ * immediately rather than at commit, so a child row inserted before its parent
+ * fails the whole fixture. The list below is therefore in dependency order:
+ * Category -> Product -> ProductVariant/ProductImage, then
+ * Order -> OrderItem/OrderEvent/PaymentClaim. `MerchantPaymentSettings` has no
+ * parent and sits last. Re-sorting this array will break the seed.
  */
-const REGISTERED_MODELS: readonly Prisma.ModelName[] = ["StoreSlugHistory"];
+const REGISTERED_MODELS: readonly Prisma.ModelName[] = [
+  "StoreSlugHistory",
+  "Category",
+  "Product",
+  "ProductVariant",
+  "ProductImage",
+  "Order",
+  "OrderItem",
+  "OrderEvent",
+  "PaymentClaim",
+  "MerchantPaymentSettings",
+];
 
 export const TENANT_SCOPED_MODELS: Set<string> = new Set(REGISTERED_MODELS);
 
@@ -124,6 +146,41 @@ export function scopedDb(tenantId: string) {
 }
 
 export type ScopedDb = ReturnType<typeof scopedDb>;
+
+/**
+ * The transaction client handed to `scopedDb(tenantId).$transaction(cb)`.
+ *
+ * STILL SCOPED. `tx` is a different object from the client the transaction was
+ * opened on, so the question "does the tenant extension follow it?" is a real
+ * one — and the answer is yes: an extended client's `$transaction` hands the
+ * callback an extended `tx` (prisma/prisma#19565), so `$allOperations` above
+ * still rewrites `args` for every operation issued inside the block. The
+ * frequently-cited prisma/prisma#20738 is about the *TypeScript* surface, not
+ * runtime behaviour.
+ *
+ * The other issue a reviewer will find, prisma/prisma#17948 — extension
+ * handlers that issue their own side queries escaping the transaction context —
+ * does NOT apply here. `scopedDb`'s extension mutates `args` and calls
+ * `query(a)`; it never opens a query of its own, so there is nothing that could
+ * escape.
+ *
+ * None of that is taken on trust: `tests/isolation/tenant-isolation.test.ts`
+ * proves it against a real Postgres, both that a write inside the transaction
+ * is stamped with the caller's tenant and that a `updateMany` naming another
+ * tenant's row matches nothing.
+ *
+ * WHY THE ALIAS LIVES HERE. Naming `runtime.ITXClientDenyList` requires
+ * importing generated/Prisma-internal types, which is only sanctioned in
+ * `src/server/db/**` — the same reason `ScopedDb` and `ScopedCreateData` are
+ * here. Feature code that needs to pass `tx` to a helper imports this;
+ * transaction bodies kept inline never need it, because TypeScript infers it.
+ *
+ * Derived from `ScopedDb`, deliberately, rather than from the bare
+ * `PrismaClient`: the extension changes the client's type parameters, so a
+ * `PrismaClient`-derived alias would describe a different (unextended) shape
+ * than the object `$transaction` actually yields.
+ */
+export type ScopedTx = Omit<ScopedDb, runtime.ITXClientDenyList>;
 
 /**
  * A create payload for a tenant-scoped model with `tenantId` deliberately
