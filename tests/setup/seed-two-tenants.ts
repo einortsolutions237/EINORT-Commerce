@@ -209,6 +209,20 @@ export function resolveSeedTargetUrl(explicit?: string): string {
  * block documented in `.env.test.example`: the fixture exercises the data
  * layer, not the HTTP or auth surface, so auth/domain values only need to be
  * *valid*, not real.
+ *
+ * THIS FUNCTION, NOT `test.env`, IS WHAT SATISFIES `@/env` HERE — and the
+ * distinction is the whole reason this list has to be maintained. `isolationEnv`
+ * in `vitest.config.ts` is applied to the *worker* processes that run test
+ * files. This module is reached from `globalSetup`, which Vitest runs in the
+ * *main* process, where `test.env` has not been applied and `.env.test` carries
+ * only `TEST_DATABASE_URL`. So a key that exists in `isolationEnv` but not here
+ * is undefined at seed time, and the suite dies during global setup with
+ * "Invalid environment variables" and zero tests collected — a failure that
+ * looks like a broken config rather than like a missing line in this function.
+ *
+ * The rule that follows: every key added to the REQUIRED set in `src/env.ts`
+ * must be added in BOTH places. The R2 block below is plan 03-02 paying that
+ * cost the first time.
  */
 function applyDataLayerEnv(connectionString: string): void {
   process.env.DATABASE_URL ??= connectionString;
@@ -216,6 +230,18 @@ function applyDataLayerEnv(connectionString: string): void {
   process.env.BETTER_AUTH_SECRET ??= "0".repeat(48);
   process.env.BETTER_AUTH_URL ??= "http://localhost:3000";
   process.env.NEXT_PUBLIC_ROOT_DOMAIN ??= "localhost:3000";
+  /*
+   * Deliberately fake, and identical to `isolationEnv`. The seed opens no
+   * socket to R2 — it only needs `@/env` to finish validating so the dynamic
+   * `@/server/db/tenant-scoped` import below can resolve. Junk here rather than
+   * relaxing the schema keeps the boot-time guarantee (T-03-08) intact where it
+   * actually matters, and keeps live R2 credentials off the test path.
+   */
+  process.env.R2_ACCOUNT_ID ??= "test-account";
+  process.env.R2_ACCESS_KEY_ID ??= "test-access-key";
+  process.env.R2_SECRET_ACCESS_KEY ??= "test-secret-key";
+  process.env.R2_BUCKET ??= "test-bucket";
+  process.env.R2_PUBLIC_BASE_URL ??= "https://r2.example.invalid";
 }
 
 /** One tenant's fixed identity. Never randomised — see `TENANT_A` below. */
