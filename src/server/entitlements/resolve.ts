@@ -60,6 +60,23 @@ export interface OrgRow {
 
 export interface MerchantContext {
   readonly tenantId: string;
+  /**
+   * ORD-05's *who*. The signed-in user behind the current request.
+   *
+   * Every merchant-initiated order transition writes an `OrderEvent`, and an
+   * audit row that cannot name an actor is a record that a change happened
+   * rather than a record of who made it — which is the difference between an
+   * audit trail and a changelog (T-03-12). Confirming a payment claim is the
+   * case that matters: it is the one action in the product that turns "a
+   * customer says they paid" into "the merchant agrees they paid", and a
+   * shop with two staff accounts needs to know which of them agreed.
+   *
+   * This is NOT part of what `resolveEntitlements` computes — see
+   * `MerchantEntitlements` below. The resolver turns an organization row into
+   * a plan and a trial; the user is a property of the *session*, not of the
+   * organization, and only `requireMerchantContext()` has one.
+   */
+  readonly userId: string;
   readonly storeName: string;
   readonly storeSlug: string;
   readonly plan: PlanDefinition;
@@ -72,7 +89,27 @@ export interface MerchantContext {
   readonly canWrite: boolean;
 }
 
-export function resolveEntitlements(org: OrgRow, now: Date): MerchantContext {
+/**
+ * Everything a `MerchantContext` holds EXCEPT the acting user.
+ *
+ * Declared as a subtraction rather than as its own interface so the two shapes
+ * cannot drift: add a field to `MerchantContext` and it appears here
+ * automatically, which keeps `requireMerchantContext`'s one-line spread
+ * (`{ ...resolveEntitlements(org, now), userId }`) exhaustive by construction.
+ *
+ * The alternative — giving `resolveEntitlements` a third `userId` parameter —
+ * was rejected deliberately. It would force an edit to every existing call
+ * site in `tests/unit/entitlements.test.ts` for a value the resolver has no
+ * use for, and it would quietly make a pure function of an organization row
+ * into a function of a session, which is the coupling this split exists to
+ * prevent.
+ */
+export type MerchantEntitlements = Omit<MerchantContext, "userId">;
+
+export function resolveEntitlements(
+  org: OrgRow,
+  now: Date,
+): MerchantEntitlements {
   // Derive, don't store. `createdAt` is stamped by Better Auth's own endpoint
   // and spread last over the request body, so it cannot be forged, and there is
   // no nullable window between the insert and a back-fill. `trialEndsAt` is an
@@ -120,8 +157,15 @@ export function resolveEntitlements(org: OrgRow, now: Date): MerchantContext {
  * Only an *active* trial can be urgent. A subscribed organization has nothing
  * to count down, and an expired one is past urgency — it gets the read-only
  * treatment (D-08/D-10), which is a different surface with different copy.
+ *
+ * Takes `Pick<MerchantContext, "trial">` rather than the whole context: this
+ * function reads one field, and asking for the whole shape would mean a bare
+ * `resolveEntitlements(...)` result — which has no `userId` — could no longer
+ * be passed to it. Narrowing the parameter to what is actually read keeps both
+ * the full request context and the resolver's own output valid arguments, with
+ * no cast at either call site.
  */
-export function isUrgentTrial(ctx: MerchantContext): boolean {
+export function isUrgentTrial(ctx: Pick<MerchantContext, "trial">): boolean {
   return (
     ctx.trial.state === "active" && ctx.trial.daysLeft <= TRIAL_URGENT_DAYS
   );

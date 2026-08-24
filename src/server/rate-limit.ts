@@ -15,8 +15,10 @@ import { env } from "@/env";
  * versa, so an attacker could deny the availability check to every visitor by
  * hammering signup — and the operator would see one undifferentiated counter in
  * Upstash while trying to work out which surface was under load. The prefixes
- * are `rl:slugcheck` and `rl:signup`, and they are the key namespace of this
- * module the way `tenant:host:` is `src/server/tenant/cache.ts`'s (C-11).
+ * (`rl:slugcheck`, `rl:signup`, `rl:login`, and Phase 3's `rl:order`,
+ * `rl:claim`, `rl:track`, `rl:upload`) are the key namespace of this module the
+ * way `tenant:host:` is `src/server/tenant/cache.ts`'s (C-11). Every one is
+ * distinct, and adding a surface means adding a prefix — never reusing one.
  *
  * **There is deliberately no in-process counter fallback.** When Upstash is
  * unconfigured the limiter degrades to allow-all with one loud warning. A
@@ -177,6 +179,109 @@ export const loginLimiter: RateLimiter = createLimiter({
   tokens: 10,
   window: "1 m",
   surface: "merchant login",
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * Phase 3: the four unauthenticated order surfaces (T-03-17).
+ * ---------------------------------------------------------------------------
+ * Each gets its OWN prefix, for the reason the module header already gives:
+ * a shared budget means a checkout flood starves claim submission, and the
+ * merchant then sees "customers cannot tell me they paid" while the actual
+ * attack is somewhere else entirely. Four prefixes also means four separate
+ * counters in Upstash, which is what makes "which surface is under load?"
+ * answerable without instrumentation.
+ *
+ * All four numbers are TUNABLE, not structural (RESEARCH.md assumption A4).
+ * They are first estimates of "generous for a human, useless for a script" on
+ * a market where a shopper may be on an intermittent mobile connection and
+ * legitimately retry. Raising one is a config change, not a design change —
+ * what must not change is that they stay four distinct budgets.
+ *
+ * All four inherit `createLimiter`'s fail-open-and-log contract. That is the
+ * same accepted trade as T-01-35: an Upstash outage must degrade throttling,
+ * never take checkout offline. Failing closed here would convert a
+ * third-party blip into "no Cameroonian merchant can take an order", which is
+ * a strictly worse outcome than a window of unthrottled traffic.
+ */
+
+/**
+ * Order placement (`placeOrder`).
+ *
+ * 10 per 5 minutes per caller IP — the tightest of the four relative to its
+ * traffic, because each SUCCESS writes an order row and DECREMENTS stock. An
+ * unthrottled flood is therefore not just noise in a table: it is an
+ * inventory-denial attack that can take a merchant's entire catalogue to zero
+ * available units, and every held unit is a real sale the merchant cannot
+ * make until the holds are unwound by hand.
+ *
+ * 10 leaves room for a shopper who retries a timing-out submit several times
+ * and then orders again from a second device.
+ */
+export const orderPlacementLimiter: RateLimiter = createLimiter({
+  prefix: "rl:order",
+  tokens: 10,
+  window: "5 m",
+  surface: "order placement",
+});
+
+/**
+ * Payment-claim submission (`submitPaymentClaim`).
+ *
+ * 5 per 10 minutes, keyed by the ORDER's tracking-token hash rather than by
+ * IP — callers apply an IP bucket as well, and the two answer different
+ * questions. Keying on the order caps resubmission spam against one order
+ * (D-11 makes a rejected claim resubmittable, so "submit again" is a
+ * legitimate and repeatable action) without punishing a shared NAT: in Douala
+ * a whole neighbourhood can egress from one address, and an IP-only budget
+ * here would let one abusive claimant lock out every other customer on the
+ * same connection.
+ *
+ * The key is the token HASH, never the plaintext token: the plaintext is what
+ * a link-holder possesses, and it must not become an Upstash key that outlives
+ * the request (T-03-05).
+ */
+export const claimSubmissionLimiter: RateLimiter = createLimiter({
+  prefix: "rl:claim",
+  tokens: 5,
+  window: "10 m",
+  surface: "payment claim submission",
+});
+
+/**
+ * Order tracking lookup (the customer's `/track/[token]` read).
+ *
+ * 60 per minute per caller IP — much looser, because this is a READ that a
+ * legitimately anxious customer refreshes repeatedly while waiting for a
+ * merchant to confirm. It is not a credential-stuffing surface; the token
+ * space is a 256-bit hash preimage and is not walkable in practice. The limit
+ * is here to blunt a scripted walk and to keep one client from turning a
+ * refresh loop into a database load problem, not to be a security boundary.
+ */
+export const orderTrackingLimiter: RateLimiter = createLimiter({
+  prefix: "rl:track",
+  tokens: 60,
+  window: "1 m",
+  surface: "order tracking lookup",
+});
+
+/**
+ * Presigned-upload mint for claim screenshots.
+ *
+ * 20 per 5 minutes per caller IP. This is the one upload path reachable with
+ * NO account at all — a customer proving they paid attaches a screenshot —
+ * so it is the only place an anonymous caller can cause the platform to mint
+ * a credential against object storage. Each mint is cheap, but an unthrottled
+ * mint endpoint is a free URL generator pointed at the project's R2 bucket.
+ *
+ * 20 rather than 5: a claim can carry more than one screenshot, and a failed
+ * upload on a flaky connection legitimately re-mints.
+ */
+export const uploadPresignLimiter: RateLimiter = createLimiter({
+  prefix: "rl:upload",
+  tokens: 20,
+  window: "5 m",
+  surface: "claim screenshot upload presign",
 });
 
 /**
