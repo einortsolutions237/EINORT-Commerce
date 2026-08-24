@@ -135,7 +135,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 03-06-PLAN.md — Catalog write layer, the product-count entitlement cap, and the A1 products list
-- [ ] 03-07-PLAN.md — Order placement engine: tracking token, idempotency, atomic stock hold/release, placeOrder and the CAT-03 race proof
+- [x] 03-07-PLAN.md — Order placement engine: tracking token, idempotency, atomic stock hold/release, placeOrder and the CAT-03 race proof
 - [ ] 03-08-PLAN.md — Payment settings (D-14/16/17) and the pure phone / USSD / wa.me deep-link builders
 - [ ] 03-09-PLAN.md — Anonymous Redis cart, the storefront catalog grid and the product detail page with add-to-cart
 - [ ] 03-10-PLAN.md — Merchant orders list and detail, the one order-state chip module, confirm and mark-fulfilled
@@ -215,7 +215,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
-| 3. Product Catalog & Order/Payment-Claim State Machine | 2/16 | In Progress|  |
+| 3. Product Catalog & Order/Payment-Claim State Machine | 3/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
