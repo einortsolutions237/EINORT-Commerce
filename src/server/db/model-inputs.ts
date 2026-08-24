@@ -42,3 +42,27 @@ import type { Prisma } from "@/generated/prisma/client";
  * nested create would therefore slip past the `tenantId` stamp.
  */
 export type OrderEventCreateInput = Prisma.OrderEventUncheckedCreateInput;
+
+/**
+ * `Order` at genesis, written by `openOrderAtGenesis` in
+ * `src/server/orders/transition.ts` and by nothing else.
+ *
+ * The `Unchecked` variant for the same reason as the audit row above: the row
+ * is created with scalar columns only, never through a nested relation write,
+ * because the tenant-scope extension hooks client operations rather than the
+ * generated SQL and a nested create would land without a `tenantId` stamp
+ * (Pitfall 1/4).
+ */
+export type OrderCreateInput = Prisma.OrderUncheckedCreateInput;
+
+/**
+ * One `OrderItem` row inside a `createMany` batch, written by
+ * `src/server/orders/place.ts`.
+ *
+ * `createManyInput` and NOT `UncheckedCreateInput`: `createMany` takes an array
+ * of a distinct, flatter type, and it is the one batch operation the extension
+ * DOES intercept — `$allOperations` normalises the array and stamps every row.
+ * That is precisely why the line items are a separate `createMany` call rather
+ * than an `items: { create: [...] }` nested off the order.
+ */
+export type OrderItemCreateManyInput = Prisma.OrderItemCreateManyInput;

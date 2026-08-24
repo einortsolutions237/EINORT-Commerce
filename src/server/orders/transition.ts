@@ -1,7 +1,10 @@
 import "server-only";
 
-import type { EventActor, OrderState } from "@/server/db/enums";
-import type { OrderEventCreateInput } from "@/server/db/model-inputs";
+import type { EventActor, OrderChannel, OrderState } from "@/server/db/enums";
+import type {
+  OrderCreateInput,
+  OrderEventCreateInput,
+} from "@/server/db/model-inputs";
 import { scopedCreateData, type ScopedTx } from "@/server/db/tenant-scoped";
 
 import { InvalidTransitionError } from "./errors";
@@ -60,6 +63,134 @@ import { canTransition } from "./state-machine";
  * of the read is rewritten by the extension: pass another tenant's order id and
  * `findUniqueOrThrow` finds nothing and throws, rather than transitioning it.
  */
+
+/**
+ * The first state every order has. `openOrderAtGenesis` is the only writer.
+ *
+ * Named rather than inlined because the genesis state is a fact about the
+ * lifecycle — ORD-01's entry point — and not a parameter a caller may choose. A
+ * `placeOrder` that could pick its own starting state could place an order
+ * directly into `CONFIRMED` and skip every guard in this file.
+ */
+const GENESIS_STATE: OrderState = "ORDER_PLACED";
+
+/**
+ * Everything an order needs at birth EXCEPT its state, which is not the
+ * caller's to supply.
+ *
+ * No `state`, no `confirmedAt`, no `placedAt`: the first is fixed by
+ * `GENESIS_STATE`, and the other two are stamped by the schema. What is left is
+ * exactly the data the placement gathered — the channel, the customer, the
+ * amounts it re-derived from the database, and the digest of the tracking
+ * token.
+ */
+export interface OpenOrderArgs {
+  readonly orderNumber: string;
+  readonly channel: OrderChannel;
+  readonly customerName: string;
+  readonly customerPhone: string;
+  readonly deliveryAddress: string | null;
+  readonly customerNote: string | null;
+  readonly subtotalXaf: number;
+  readonly totalXaf: number;
+  /** The SHA-256 digest. The plaintext token is never persisted (D-12). */
+  readonly trackingTokenHash: string;
+  /** Whether the caller has already decremented inventory for these lines. */
+  readonly stockHeld: boolean;
+  /** ORD-05's *who* for the genesis row. `CUSTOMER` for a real checkout. */
+  readonly actor: EventActor;
+  readonly actorUserId?: string;
+}
+
+/**
+ * ORD-05's genesis — create the order AND its first audit row, together.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS LIVES HERE AND NOT IN `place.ts`.
+ * ---------------------------------------------------------------------------
+ * 03-03 left the genesis write for a later plan and predicted exactly what
+ * would happen when that plan arrived: `placeOrder` would call
+ * `tx.order.create({ data: { …, state: "ORDER_PLACED" } })`, and
+ * `tests/unit/single-order-state-writer.test.ts` would fire, because that IS a
+ * second writer of `Order.state` by every definition the guard uses. The two
+ * ways out were to add `place.ts` to the guard's allowlist, or to do what the
+ * guard's own failure message says:
+ *
+ *   "If a genuinely new state-writing path is ever needed, it belongs INSIDE
+ *    src/server/orders/transition.ts, not beside it."
+ *
+ * This is that. The allowlist route would have been the weaker choice by a wide
+ * margin: an allowlist with two entries is an allowlist with three next quarter,
+ * and the invariant would have decayed from "one writer" to "the writers we
+ * happen to have blessed" — which is not a property anybody can check by
+ * reading a file.
+ *
+ * Putting the create here makes the invariant STRONGER than 03-03 left it.
+ * Before, "the genesis event is always written" was a promise held by whoever
+ * wrote the placement. Now it is structural: there is no way to bring an
+ * `Order` row into existence without the matching `OrderEvent` landing in the
+ * same transaction, because the only function that can do the first also does
+ * the second. Every row in `order` has a complete history from its first
+ * instant, with no gap for a dispute to fall into (T-03-12, T-03-14).
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IT DOES NOT DO.
+ * ---------------------------------------------------------------------------
+ * No `canTransition` check, because there is nothing to check: a genesis has no
+ * `from` state, and `ORDER_TRANSITIONS` is a map keyed by the state being left.
+ * That asymmetry is the reason this is a separate function rather than a
+ * `from: null` special case threaded through `transitionOrder` — a null-`from`
+ * branch would put an `if` in front of every guard in that function and make
+ * each one answer "does this apply to a creation?", which is four new ways to
+ * get the ordinary path wrong.
+ *
+ * It also does NOT hold stock, price anything, or decide the channel's next
+ * hop. `place.ts` owns all three; this function's whole job is that the row and
+ * its first audit line are indivisible. `stockHeld` is passed in rather than
+ * inferred for the same reason: whether inventory moved is a fact the caller
+ * establishes, and inferring it here would be this module guessing about work
+ * it did not do.
+ *
+ * Like `transitionOrder`, it takes the caller's `tx` and never opens one.
+ */
+export async function openOrderAtGenesis(
+  tx: ScopedTx,
+  args: OpenOrderArgs,
+): Promise<{ id: string; orderNumber: string }> {
+  const order = await tx.order.create({
+    data: scopedCreateData<OrderCreateInput>({
+      orderNumber: args.orderNumber,
+      state: GENESIS_STATE,
+      channel: args.channel,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      deliveryAddress: args.deliveryAddress,
+      customerNote: args.customerNote,
+      subtotalXaf: args.subtotalXaf,
+      totalXaf: args.totalXaf,
+      trackingTokenHash: args.trackingTokenHash,
+      stockHeld: args.stockHeld,
+    }),
+    select: { id: true, orderNumber: true },
+  });
+
+  // `fromState: null` exactly once per order, and only here. That null is what
+  // makes the audit trail readable end to end: the row with no predecessor is
+  // unambiguously the beginning, so "how did this order get to DISPUTED?" is a
+  // walk from a known origin rather than a guess about which row came first.
+  await tx.orderEvent.create({
+    data: scopedCreateData<OrderEventCreateInput>({
+      orderId: order.id,
+      fromState: null,
+      toState: GENESIS_STATE,
+      actor: args.actor,
+      actorUserId: args.actorUserId ?? null,
+      reason: null,
+    }),
+  });
+
+  return order;
+}
 
 export interface TransitionOrderArgs {
   readonly orderId: string;
