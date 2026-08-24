@@ -33,3 +33,36 @@ person does not start from zero):
   dominates.
 - Split a fast `test:isolation:smoke` (one representative model) for the
   per-task gate, keeping the full matrix for the per-plan gate.
+
+---
+
+## Same-transaction `OrderEvent` rows share a `createdAt`
+
+**Found during:** plan 03-07, task 3 (`placeOrder`).
+
+**What.** `OrderEvent.createdAt` is `@default(now())`, which Prisma maps to the
+column's Postgres `DEFAULT CURRENT_TIMESTAMP`. In Postgres that resolves to the
+TRANSACTION's start time, not the statement's. A `MANUAL_TRANSFER` placement
+writes two events in one transaction — the `fromState: null` genesis and the
+`ORDER_PLACED -> PAYMENT_PENDING` hop — and both land with byte-identical
+timestamps. Ordering them by `createdAt` is a tie-break, not a sequence.
+
+**Why it was not fixed here.** Every remedy is a schema change or a clock
+change, and both belong to whoever owns the timeline UI rather than to the
+placement engine:
+
+- a monotonic `sequence` integer per order, assigned by the writer;
+- `clock_timestamp()` as the default, which breaks the "one transaction, one
+  timestamp" property other queries may already rely on;
+- application-supplied `new Date()` per event, which reintroduces clock skew
+  between the app and the database.
+
+**Who is affected.** 03-13 (customer tracking timeline) and 03-16 (merchant
+order detail) both render an event history. Either order by `createdAt` and
+then a stable secondary key, or accept that same-transaction events are
+unordered and render them as a group.
+
+**Not affected.** `tests/isolation/checkout-trust.test.ts` asserts the event SET
+rather than its order and says so inline; `tests/isolation/order-audit.test.ts`
+uses `events.at(-1)` after separate transactions, where the timestamps genuinely
+differ.
