@@ -265,6 +265,20 @@ export const TENANTS: readonly TenantFixture[] = Object.freeze([
 const FIXTURE_EPOCH = new Date("2026-01-01T00:00:00.000Z");
 
 /**
+ * ORD-04's normalisation, reproduced here rather than imported.
+ *
+ * The production implementation lands in plan 03-05 under `src/server/**`, and
+ * this module is deliberately importable from a plain `tsx` script (see the
+ * header). Importing it would also make the fixture agree with the code under
+ * test by construction — if the normaliser regressed, both sides would move
+ * together and the isolation suite would stay green. Two independent
+ * expressions of the same rule is the point.
+ */
+function normalizeReference(reference: string): string {
+  return reference.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/**
  * Per-model row builders for the tenant-scoped registry.
  *
  * The seed loop is driven by `TENANT_SCOPED_MODELS`, not by this map, so
@@ -288,6 +302,167 @@ const MODEL_FIXTURES: Record<
     slug: tenant.slug,
     claimedAt: FIXTURE_EPOCH,
     releasedAt: null,
+  }),
+
+  Category: (tenant) => ({
+    id: `${tenant.id}-category-1`,
+    name: `${tenant.name} Category`,
+    slug: `${tenant.slug}-cat`,
+    createdAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * `categoryId` is deliberately NULL.
+   *
+   * The composite FK to `category` is `onDelete: Restrict` (D-08 — a category
+   * holding products is not disposable), so a fixture product pointing at the
+   * fixture category would make `category.deleteMany({})` a foreign-key
+   * violation — and that is exactly the call the generic isolation battery in
+   * `tests/isolation/tenant-isolation.test.ts` makes against every registered
+   * model. Leaving the link unset keeps both rows present and independently
+   * assertable. Plan 03-02's own tests own the linked case.
+   *
+   * `option1Name`/`option2Name` NULL is the no-options product of D-05, whose
+   * single implicit variant below is what proves CAT-03's "stock lives at
+   * exactly one level".
+   */
+  Product: (tenant) => ({
+    id: `${tenant.id}-product-1`,
+    name: `${tenant.name} Product`,
+    slug: `${tenant.slug}-product-1`,
+    description: null,
+    basePriceXaf: 5000,
+    active: true,
+    option1Name: null,
+    option2Name: null,
+    categoryId: null,
+    createdAt: FIXTURE_EPOCH,
+    // `@updatedAt` would otherwise stamp `now()` and break byte-identity
+    // between runs. Prisma allows an explicit value, so the fixture sets one.
+    updatedAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * The implicit default variant (D-04 / CAT-03). Empty-string option values,
+   * NOT NULL — see RESEARCH.md Pitfall 2 and the `@@unique` on the model.
+   */
+  ProductVariant: (tenant) => ({
+    id: `${tenant.id}-variant-1`,
+    productId: `${tenant.id}-product-1`,
+    option1Value: "",
+    option2Value: "",
+    priceXaf: null,
+    stock: 10,
+    sku: null,
+    active: true,
+  }),
+
+  ProductImage: (tenant) => ({
+    id: `${tenant.id}-image-1`,
+    productId: `${tenant.id}-product-1`,
+    // D-10: position 0 is the hero image.
+    position: 0,
+    storageKey: `${tenant.id}/product-1/original`,
+    width: 1200,
+    height: 1200,
+    createdAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * `trackingTokenHash` is under a GLOBAL unique index (T-03-05), so the two
+   * tenants must not collide — deriving it from `tenant.id` guarantees they
+   * cannot.
+   */
+  Order: (tenant) => ({
+    id: `${tenant.id}-order-1`,
+    orderNumber: `${tenant.slug}-0001`,
+    state: "ORDER_PLACED",
+    channel: "MANUAL_TRANSFER",
+    customerName: `${tenant.name} Customer`,
+    customerPhone: "237600000000",
+    deliveryAddress: null,
+    customerNote: null,
+    subtotalXaf: 5000,
+    totalXaf: 5000,
+    trackingTokenHash: `${tenant.id}-tracking-token-hash`,
+    stockHeld: true,
+    placedAt: FIXTURE_EPOCH,
+    confirmedAt: null,
+    updatedAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * `productId`/`variantId` are plain columns, not relations — the line item
+   * records what was bought at the price charged, independent of any later
+   * rename or reprice.
+   */
+  OrderItem: (tenant) => ({
+    id: `${tenant.id}-order-item-1`,
+    orderId: `${tenant.id}-order-1`,
+    productId: `${tenant.id}-product-1`,
+    variantId: `${tenant.id}-variant-1`,
+    productName: `${tenant.name} Product`,
+    variantLabel: "Default",
+    unitPriceXaf: 5000,
+    quantity: 1,
+    lineTotalXaf: 5000,
+    imageKey: null,
+  }),
+
+  /** The genesis event (ORD-05): `fromState` NULL, written by placeOrder. */
+  OrderEvent: (tenant) => ({
+    id: `${tenant.id}-order-event-1`,
+    orderId: `${tenant.id}-order-1`,
+    fromState: null,
+    toState: "ORDER_PLACED",
+    actor: "CUSTOMER",
+    actorUserId: null,
+    reason: null,
+    createdAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * A DIFFERENT `referenceNormalized` per tenant, on purpose.
+   *
+   * ORD-04's constraint is `@@unique([tenantId, referenceNormalized])` — unique
+   * WITHIN a tenant, not across the platform. Giving the two tenants distinct
+   * references leaves a reference value unclaimed in both, so a later test can
+   * insert the same one into each tenant and prove the constraint really is
+   * tenant-led rather than global.
+   */
+  PaymentClaim: (tenant) => ({
+    id: `${tenant.id}-payment-claim-1`,
+    orderId: `${tenant.id}-order-1`,
+    operator: "MTN_MOMO",
+    reference: `${tenant.slug}-ref-0001`,
+    referenceNormalized: normalizeReference(`${tenant.slug}-ref-0001`),
+    amountClaimedXaf: 5000,
+    screenshotKey: null,
+    status: "PENDING",
+    submittedAt: FIXTURE_EPOCH,
+    reviewedAt: null,
+    reviewedByUserId: null,
+  }),
+
+  /**
+   * ONE ROW PER TENANT — `tenantId` is a single-field `@unique` here (D-14).
+   * The isolation battery treats this model specially for that reason; see
+   * `SINGLE_ROW_MODELS` in `tests/isolation/tenant-isolation.test.ts`.
+   *
+   * `mtnMerchantCode` NULL is the common case (D-15): most merchants are not
+   * registered for MoMoPay, and the instructions must still work without it.
+   */
+  MerchantPaymentSettings: (tenant) => ({
+    id: `${tenant.id}-payment-settings`,
+    whatsappNumber:
+      tenant.id === TENANT_A.id ? "237670000001" : "237690000002",
+    mtnMomoNumber: tenant.id === TENANT_A.id ? "237670000001" : "237690000002",
+    mtnMerchantCode: null,
+    orangeMoneyNumber: null,
+    orangeMerchantCode: null,
+    codEnabled: true,
+    payoutNotice: null,
+    updatedAt: FIXTURE_EPOCH,
   }),
 };
 
@@ -313,9 +488,36 @@ let cached:
   | { url: string; db: PrismaClient; truncateSql?: string | null }
   | undefined;
 
+/**
+ * Prisma's default transaction timeout is 5000 ms, and the fixture outgrew it.
+ *
+ * The whole reseed is one `$transaction([...])` (see `seedTwoTenants`), and the
+ * Rust-free client issues each statement in the array as its own round trip
+ * inside the BEGIN/COMMIT. Phase 3 took the batch from 4 statements to 14, and
+ * the `TRUNCATE` over 17 tables is itself not free — against a remote Neon
+ * branch the whole thing lands around 6 s, which the 5 s default aborted with
+ * "a commit cannot be executed on an expired transaction". It failed as a
+ * scattering of unrelated-looking isolation tests, because whichever test
+ * happened to own the slowest reseed was the one that reported it.
+ *
+ * Raised rather than worked around. Splitting the reseed into several smaller
+ * transactions would trade a bounded, well-understood wait for a fixture that
+ * can be left half-applied — and a half-applied fixture reads as a mysterious
+ * isolation failure, which is exactly what the single-transaction design in
+ * `seedTwoTenants` exists to prevent. 30 s stays comfortably under the
+ * `hookTimeout: 60_000` that `vitest.config.ts` gives `beforeEach`, so a
+ * genuine hang still surfaces as a hang.
+ *
+ * This is a TEST-FIXTURE setting and applies to no production client.
+ */
+const SEED_TRANSACTION_OPTIONS = { maxWait: 15_000, timeout: 30_000 } as const;
+
 function unscopedClientFor(connectionString: string): PrismaClient {
   if (cached && cached.url === connectionString) return cached.db;
-  const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  const db = new PrismaClient({
+    adapter: new PrismaPg({ connectionString }),
+    transactionOptions: SEED_TRANSACTION_OPTIONS,
+  });
   cached = { url: connectionString, db };
   return db;
 }
@@ -450,6 +652,15 @@ export async function seedTwoTenants(databaseUrl?: string): Promise<void> {
   // One row per registered tenant-scoped model, per tenant. Driven by the
   // registry so Phase 3's Product/Order are covered the moment they are
   // registered (and loudly incomplete until a builder is added).
+  //
+  // ITERATION ORDER IS LOAD-BEARING. `TENANT_SCOPED_MODELS` is a `Set` built
+  // from `REGISTERED_MODELS`, and a JS Set preserves insertion order — so this
+  // loop appends statements in registry order. That array is deliberately kept
+  // in composite-FK dependency order (Category -> Product -> variants/images,
+  // Order -> items/events/claims) because Postgres checks foreign keys
+  // immediately rather than at commit, so a child row batched ahead of its
+  // parent aborts the whole fixture. No separate ordered list is maintained
+  // here: a second copy of the order would be one more thing to drift.
   for (const model of TENANT_SCOPED_MODELS) {
     const build = MODEL_FIXTURES[model];
     if (!build) {
