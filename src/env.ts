@@ -28,6 +28,36 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: z.string().min(32),
     /** Apex origin Better Auth issues cookies and callbacks against. */
     BETTER_AUTH_URL: z.url(),
+    /*
+     * Cloudflare R2 — all five REQUIRED (threat T-03-08).
+     *
+     * There is no fallback storage path: CAT-02 product images and CHK-04 claim
+     * screenshots are uploaded direct-to-R2 via a presigned PUT, so a missing
+     * bucket does not degrade the product — it makes product creation and claim
+     * submission impossible. Required here means the failure lands at boot with
+     * a named error on the deploy that broke it, instead of on a merchant's
+     * first upload hours later. Combined with `emptyStringAsUndefined` below, a
+     * key left blank in a deploy dashboard fails the same way a missing one does.
+     */
+    R2_ACCOUNT_ID: z.string().min(1),
+    R2_ACCESS_KEY_ID: z.string().min(1),
+    R2_SECRET_ACCESS_KEY: z.string().min(1),
+    R2_BUCKET: z.string().min(1),
+    /** Public origin objects are served from (r2.dev subdomain or custom domain). */
+    R2_PUBLIC_BASE_URL: z.url(),
+    /*
+     * Resend — both OPTIONAL (threat T-03-09), following the `UPSTASH_*`
+     * precedent above.
+     *
+     * The only thing these keys buy is D-13's proactive merchant email when a
+     * payment claim arrives. The in-app claims badge is the reliable channel and
+     * does not depend on them. Making these required would mean an expired
+     * Resend key takes claim submission offline for every merchant — trading a
+     * missing notification for a broken checkout. The claim path degrades to a
+     * `console.warn` instead.
+     */
+    RESEND_API_KEY: z.string().min(1).optional(),
+    RESEND_FROM_EMAIL: z.email().optional(),
   },
   client: {
     /** `localhost:3000` in dev, `einort.com` in production. Never blank. */
@@ -46,6 +76,13 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+    R2_BUCKET: process.env.R2_BUCKET,
+    R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     NEXT_PUBLIC_ROOT_DOMAIN: process.env.NEXT_PUBLIC_ROOT_DOMAIN,
   },
   /**
