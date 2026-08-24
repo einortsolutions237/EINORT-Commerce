@@ -123,7 +123,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Prisma schema: nine tenant-scoped models, five enums, composite-FK guard, enum re-export, ScopedTx, migration, fixtures
+- [x] 03-01-PLAN.md — Prisma schema: nine tenant-scoped models, five enums, composite-FK guard, enum re-export, ScopedTx, migration, fixtures
 - [ ] 03-02-PLAN.md — The `[data-surface="storefront"]` token split, the R2/Sharp/Resend installs, the env surface and the surface-isolation grep test
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -215,7 +215,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
-| 3. Product Catalog & Order/Payment-Claim State Machine | 0/16 | Planned | - |
+| 3. Product Catalog & Order/Payment-Claim State Machine | 1/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
