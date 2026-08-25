@@ -1,3 +1,11 @@
+import { AppSidebar } from "@/components/app-sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { strings } from "@/lib/strings";
+import { pendingClaimCount } from "@/server/claims/queries";
 import { isUrgentTrial } from "@/server/entitlements/resolve";
 import { requireMerchantContext } from "@/server/merchant/context";
 
@@ -32,6 +40,27 @@ import { TrialBanner } from "./trial-banner";
  * session, which is per-request and can expire mid-visit.)
  *
  * ---------------------------------------------------------------------------
+ * PHASE 3 REPLACED THE BARE COLUMN WITH THE SIDEBAR SHELL.
+ * ---------------------------------------------------------------------------
+ * Phase 2 wrote here that there was "nothing to navigate to yet". Phase 3 adds
+ * four destinations, so `AppSidebar` is now mandatory — see its own header for
+ * why the active item is not blue and why gold appears exactly twice in the
+ * phase.
+ *
+ * Two consequences worth stating, because both look like omissions:
+ *
+ *   - This layout no longer owns a `max-w-3xl` column. Content width is now a
+ *     per-page decision (forms and settings `max-w-3xl`, list pages
+ *     `max-w-5xl`, per 03-UI-SPEC.md § Spacing Scale), so every page under this
+ *     group supplies its own. A page that forgets renders full-bleed, which is
+ *     visible immediately — that is the point.
+ *   - The pending-claims count is fetched HERE rather than inside the rail,
+ *     because the rail is a Client Component and the count is a tenant-scoped
+ *     database read. It is a live `count()` on every dashboard render, not a
+ *     maintained counter — `src/server/claims/queries.ts` explains why that is
+ *     the cheaper of the two.
+ *
+ * ---------------------------------------------------------------------------
  * THIS ROUTE GROUP IS APEX-ONLY, AND IT IS ALREADY ENFORCED — DO NOT "FIX" IT.
  * ---------------------------------------------------------------------------
  * `src/proxy.ts` classifies any storefront subdomain as `kind: "store"` and
@@ -50,41 +79,53 @@ export default async function DashboardLayout({
   // `LayoutRoutes` union rather than assumed from the folder name.
 }: LayoutProps<"/">) {
   const ctx = await requireMerchantContext();
+  const pendingClaims = await pendingClaimCount(ctx.tenantId);
 
   return (
-    <main className="flex flex-1 flex-col items-center px-4 py-10 sm:px-8">
-      {/*
-       * Single content column, max-w-3xl. No sidebar: there is nothing to
-       * navigate to yet, and a placeholder nav rail would be Phase 3's
-       * decision made early and badly.
-       */}
-      <div className="flex w-full max-w-3xl flex-col gap-6">
+    <SidebarProvider>
+      <AppSidebar pendingClaims={pendingClaims} />
+
+      <SidebarInset>
         {/*
-         * The header band. The store name, so the merchant can see at a glance
-         * which store they are looking at — the one fact the whole dashboard
-         * is scoped to.
+         * The header band, retained from Phase 2 and extended with the sheet
+         * trigger. The store name is still here because it is the one fact the
+         * whole dashboard is scoped to, and a merchant with two stores open in
+         * two tabs needs to be able to tell them apart at a glance.
+         *
+         * The trigger is hidden at `lg` and above, where the rail is already
+         * on screen. Its accessible name comes from `strings` rather than the
+         * registry's own hardcoded sr-only text, so the one string a screen
+         * reader announces here is copy like every other.
          */}
-        <header className="flex items-center justify-between gap-4 border-b border-border pb-4">
+        <header className="flex min-h-14 items-center gap-3 border-b border-border px-4 sm:px-8">
+          <SidebarTrigger
+            aria-label={strings.dashboard.nav.openNavigation}
+            className="lg:hidden"
+          />
           <span className="text-sm leading-normal font-semibold text-foreground">
             {ctx.storeName}
           </span>
           {/* Calls the signOutMerchant server action; see sign-out-button.tsx. */}
-          <SignOutButton />
+          <div className="ml-auto">
+            <SignOutButton />
+          </div>
         </header>
 
-        {/*
-         * Above the content, full column width, on every dashboard route
-         * (D-11). `isUrgentTrial` owns the threshold so the banner never
-         * compares against a literal day count of its own.
-         */}
-        <TrialBanner
-          daysLeft={ctx.trial.daysLeft}
-          state={ctx.trial.state}
-          urgent={isUrgentTrial(ctx)}
-        />
+        <div className="flex flex-1 flex-col gap-6 px-4 py-8 sm:px-8">
+          {/*
+           * Above the content on every dashboard route (D-11). `isUrgentTrial`
+           * owns the threshold so the banner never compares against a literal
+           * day count of its own.
+           */}
+          <TrialBanner
+            daysLeft={ctx.trial.daysLeft}
+            state={ctx.trial.state}
+            urgent={isUrgentTrial(ctx)}
+          />
 
-        {children}
-      </div>
-    </main>
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
