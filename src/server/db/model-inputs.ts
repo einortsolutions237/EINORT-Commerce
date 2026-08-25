@@ -66,3 +66,17 @@ export type OrderCreateInput = Prisma.OrderUncheckedCreateInput;
  * than an `items: { create: [...] }` nested off the order.
  */
 export type OrderItemCreateManyInput = Prisma.OrderItemCreateManyInput;
+
+/**
+ * `MerchantPaymentSettings` (D-14), written by `savePaymentSettings` in
+ * `src/server/payments/actions.ts` and by nothing else.
+ *
+ * The `Unchecked` variant, for the same Pitfall 1/4 reason as the rows above:
+ * the row is written with scalar columns only. It is needed for the `create`
+ * half of an UPSERT rather than a plain create — `scopedDb` stamps `tenantId`
+ * into both `where` and `create`, so the caller must not name it, but the
+ * generated input still demands it because every tenant-scoped model declares
+ * `tenantId` required with no default.
+ */
+export type MerchantPaymentSettingsCreateInput =
+  Prisma.MerchantPaymentSettingsUncheckedCreateInput;
