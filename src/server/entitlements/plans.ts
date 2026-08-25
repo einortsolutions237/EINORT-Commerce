@@ -53,7 +53,20 @@ export interface PlanLimits {
    * itself a member, so 1 is both correct and safe.
    */
   readonly members: number;
-  /** ENFORCED FROM PHASE 3 (catalog). Registered now. `null` is unlimited. */
+  /**
+   * Total ACTIVE products in the merchant's catalogue. `null` is unlimited.
+   *
+   * ENFORCED, as of Phase 3, by `createProduct` in
+   * `src/server/catalog/actions.ts` — which counts before it writes and refuses
+   * at `count >= limit` with `strings.entitlements.productLimitReached`. The
+   * disabled `Add product` button on `/dashboard/products` is a courtesy; the
+   * action is the control (SUB-01), because a Server Action is reachable by a
+   * direct POST that never loaded the page.
+   *
+   * Deactivated products do NOT count. D-08 forbids deletion, so counting
+   * hidden rows would ratchet the cap permanently downward with no recovery
+   * path — which reads to a merchant as a bug rather than as a limit.
+   */
   readonly products: number | null;
   /** ENFORCED FROM PHASE 4 (EDIT-03, editor sections). Registered now. */
   readonly editorSections: number | null;
@@ -154,4 +167,33 @@ export function memberLimitFor(org: { planTier?: string | null }): number {
   return isPlanTier(tier)
     ? PLANS[tier].limits.members
     : PLANS.starter.limits.members;
+}
+
+/**
+ * The organization's ACTIVE-product cap (CAT-01 / SUB-01). `null` is unlimited.
+ *
+ * Mirrors `memberLimitFor` line for line, deliberately: same structural
+ * parameter shape, same registry lookup, same fail-closed fallback. Two caps
+ * that resolve differently are two chances to be wrong, and the second one is
+ * always the one nobody re-reads.
+ *
+ * Fails **closed**: an absent, null or unrecognised tier resolves to the
+ * Starter cap, never to `null`. `organization.planTier` is a `String?` column
+ * and nothing at the type level stops it holding `"enterprise"` after a bad
+ * backfill — and returning `null` (unlimited) for an unknown tier would let one
+ * such backfill grant every merchant on the platform an unlimited catalogue.
+ * The tighter answer is the recoverable one: a merchant who is wrongly capped
+ * complains, a merchant who is wrongly uncapped is discovered at the bill.
+ *
+ * `null` rather than `Infinity` for the genuinely unlimited tier, matching
+ * `limitFor`: a caller who forgets to handle unlimited gets a type error rather
+ * than a comparison that quietly always passes.
+ */
+export function productLimitFor(org: {
+  planTier?: string | null;
+}): number | null {
+  const tier = org.planTier;
+  return isPlanTier(tier)
+    ? PLANS[tier].limits.products
+    : PLANS.starter.limits.products;
 }
