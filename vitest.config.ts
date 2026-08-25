@@ -55,10 +55,7 @@ const serverOnlyStub = fileURLToPath(
  * leaving them unset is the configuration the degraded path must keep working
  * under.
  */
-const testDatabaseUrl = process.env.TEST_DATABASE_URL ?? "";
-const isolationEnv = {
-  DATABASE_URL: testDatabaseUrl,
-  DIRECT_URL: testDatabaseUrl,
+const placeholderEnv = {
   BETTER_AUTH_SECRET: "0".repeat(48),
   BETTER_AUTH_URL: "http://localhost:3000",
   NEXT_PUBLIC_ROOT_DOMAIN: "localhost:3000",
@@ -67,6 +64,33 @@ const isolationEnv = {
   R2_SECRET_ACCESS_KEY: "test-secret-key",
   R2_BUCKET: "test-bucket",
   R2_PUBLIC_BASE_URL: "https://r2.example.invalid",
+};
+
+const testDatabaseUrl = process.env.TEST_DATABASE_URL ?? "";
+const isolationEnv = {
+  DATABASE_URL: testDatabaseUrl,
+  DIRECT_URL: testDatabaseUrl,
+  ...placeholderEnv,
+};
+
+/**
+ * The `unit` project needs the same placeholders (plan 03-05) for a narrower
+ * reason: `src/server/images/r2.ts` opens with `import { env } from "@/env"`,
+ * and `createEnv` validates at module evaluation, so importing the pure
+ * `objectKeyFor` helper transitively pulls the whole schema in and would throw
+ * before a single assertion ran.
+ *
+ * The alternative — hiding the env read behind a lazy getter purely to keep the
+ * unit project happy — would make production code contort around test wiring
+ * and would drop the boot-time failure that `src/env.ts` exists to provide. The
+ * database URL below points at nothing on purpose: the unit project opens no
+ * socket, and a syntactically valid URL is all `z.url()` asks for. If a unit
+ * test ever manages to connect to it, that is the bug, and it will fail loudly.
+ */
+const unitEnv = {
+  DATABASE_URL: "postgresql://unit:unit@127.0.0.1:5432/never-connected",
+  DIRECT_URL: "postgresql://unit:unit@127.0.0.1:5432/never-connected",
+  ...placeholderEnv,
 };
 
 /**
@@ -91,6 +115,7 @@ export default defineConfig({
           name: "unit",
           environment: "node",
           include: ["tests/unit/**/*.test.ts"],
+          env: unitEnv,
         },
       },
       {
