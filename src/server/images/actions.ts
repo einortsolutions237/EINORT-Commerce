@@ -38,11 +38,16 @@ import { isAllowedContentType, objectKeyFor, presignUpload } from "./r2";
 /**
  * Ten megabytes.
  *
- * This is a declared size, not a measured one — the browser can lie, and the
- * real ceiling is R2's own and Sharp's `limitInputPixels` in the finalize step.
- * What it buys is a cheap early refusal so an obviously oversized upload is
- * rejected before a grant is minted, rather than after eight megabytes have
- * crossed the network (T-03-25). A modern phone photo lands comfortably under it.
+ * The browser declares this size and the browser can lie — but it can only lie
+ * once, and only against itself. `presignUpload` signs the declared value as
+ * `content-length`, so R2 refuses any body that is not exactly that many bytes
+ * (403, verified against the live bucket). A caller who understates the size to
+ * slip under this ceiling has minted a grant its real file cannot use.
+ *
+ * That makes this a real ceiling rather than an advisory one, and it is the
+ * cheapest layer of the decompression-bomb defence (T-03-25): the refusal costs
+ * one signature check at Cloudflare's edge instead of a Sharp decode inside a
+ * Vercel function. A modern phone photo lands comfortably under it.
  */
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
@@ -69,7 +74,12 @@ const UNSUPPORTED_TYPE_MESSAGE =
  * import instead of restating the three fields.
  */
 export type ProductImageUploadGrant = {
-  /** The presigned PUT. Five minutes, one key, one content type. */
+  /**
+   * The presigned PUT. Five minutes, one key, one content type, one exact byte
+   * count. The browser must send the file with EXACTLY the `contentType` it
+   * declared and exactly `byteSize` bytes — both are inside the signature, so
+   * anything else is a 403 from Cloudflare rather than a stored object.
+   */
   uploadUrl: string;
   /** The `original` object key. Echoed back so the caller can finalize it. */
   key: string;
@@ -83,7 +93,7 @@ export const requestProductImageUpload = merchantAction<
 >({
   mode: "write",
   schema: requestProductImageUploadSchema,
-  handler: async (ctx, { contentType }) => {
+  handler: async (ctx, { contentType, byteSize }) => {
     /*
      * The allowlist is checked here, before signing, because the signature is
      * what makes the content type binding: R2 refuses an upload whose actual
@@ -101,7 +111,7 @@ export const requestProductImageUpload = merchantAction<
      */
     const uploadId = crypto.randomUUID();
     const key = objectKeyFor(ctx.tenantId, "products", uploadId);
-    const uploadUrl = await presignUpload(key, contentType);
+    const uploadUrl = await presignUpload(key, contentType, byteSize);
 
     return { ok: true as const, uploadUrl, key, uploadId };
   },

@@ -150,25 +150,58 @@ const r2 = new S3Client({
 });
 
 /**
- * Mint a time-limited write grant for exactly one key and one content type.
+ * Mint a time-limited write grant for exactly one key, one content type and one
+ * exact byte count.
  *
- * `ContentType` inside the command is a SECURITY CONTROL, not metadata. It is
- * part of the signed payload, so R2 answers `403 SignatureDoesNotMatch` when the
- * browser's actual `Content-Type` header differs from the one signed here.
- * Pinning it is what stops a grant issued for a JPEG being reused to store an
- * HTML document at the same key (T-03-24). Omit it and the grant becomes
- * "write anything you like to this path for five minutes".
+ * ---------------------------------------------------------------------------
+ * `signableHeaders` IS THE CONTROL. `ContentType` ALONE IS NOT.
+ * ---------------------------------------------------------------------------
+ * This is the one thing in this file that was verified against the real bucket
+ * rather than taken from documentation, because the documented behaviour is
+ * wrong in a way that fails open.
+ *
+ * SigV4 presigning signs the `host` header and NOTHING ELSE by default. Setting
+ * `ContentType` on the command without listing `content-type` in
+ * `signableHeaders` puts the value in the request the SDK would have sent — and
+ * leaves it entirely out of the signature. Measured against
+ * `einort-commerce` on Cloudflare R2: a presigned PUT minted with
+ * `ContentType: "image/jpeg"` and no `signableHeaders` accepted a body sent as
+ * `Content-Type: text/html` with **200 OK**. With `content-type` signed, the
+ * same request is refused **403**. The grant is only "one content type" because
+ * of the option below; without it, it is "write anything you like to this path
+ * for five minutes", which is precisely the reuse T-03-24 is about.
+ *
+ * `content-length` is signed for the same reason and buys the same kind of
+ * promise: the 10 MB ceiling in the mint action's schema stops being a number
+ * the browser is asked to respect and becomes one R2 enforces. Verified the same
+ * way — the exact declared size uploads 200, one kilobyte more is refused 403.
  *
  * Five minutes because a grant is a capability: long enough for a slow Douala
  * mobile connection to finish a multi-megabyte PUT, short enough that a leaked
  * URL in a browser history or a shared screenshot is worthless by the time
  * anyone reads it. R2 permits 1s–604800s; the ceiling is not a target.
+ *
+ * The corollary for every caller: the browser must PUT with EXACTLY the signed
+ * `Content-Type` and exactly `byteSize` bytes. Anything else is a 403 from
+ * Cloudflare, and that 403 is the feature.
  */
-export function presignUpload(key: string, contentType: string): Promise<string> {
+export function presignUpload(
+  key: string,
+  contentType: string,
+  byteSize: number,
+): Promise<string> {
   return getSignedUrl(
     r2,
-    new PutObjectCommand({ Bucket: env.R2_BUCKET, Key: key, ContentType: contentType }),
-    { expiresIn: 300 },
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET,
+      Key: key,
+      ContentType: contentType,
+      ContentLength: byteSize,
+    }),
+    {
+      expiresIn: 300,
+      signableHeaders: new Set(["content-type", "content-length"]),
+    },
   );
 }
 
