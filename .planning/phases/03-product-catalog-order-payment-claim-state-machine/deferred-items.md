@@ -113,3 +113,18 @@ truncates and reseeds a single shared Neon branch, and `fileParallelism: false`
 only serialises files WITHIN one run. Two Wave 1 agents running `test:full`
 concurrently will interleave truncates and fixtures. A branch per agent, or a
 lock, would make this class of failure impossible rather than merely unlikely.
+
+**Addendum (orchestrator, post-03-04/03-05 merge verification).** Recurred a
+third time, but this time with **no sibling worktree running** — a solo,
+sequential `npm run test:full` (~27 min, all 30 files) produced the same three
+`stock-race.test.ts` failures with the identical `PrismaClientKnownRequestError`
+shape, and an immediate isolated re-run of just that file passed 6/6 in ~68s
+both times it was tried. This weakens the "contention from parallel worktrees"
+explanation as the *sole* cause — a long enough solo suite run reproduces it
+too, which is more consistent with the 15s transaction timeout being generically
+too tight for this test's concurrency pattern on a scale-to-zero Neon branch
+whenever the branch's compute has throttled down or warmed up mid-run, not only
+under multi-agent contention. Reinforces the fix options already listed above,
+particularly raising `place.ts:371`'s `timeout` or mapping a timed-out
+transaction to `OutOfStockError` only when the stock predicate provably did not
+match.

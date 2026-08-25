@@ -129,8 +129,8 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 03-03-PLAN.md — ORDER_TRANSITIONS, transitionOrder() as the single state writer, actor identity and the four rate limiters
-- [ ] 03-04-PLAN.md — The AppShell sidebar, the two-page migration, the pending-claims badge and the complete Phase-3 copy module
-- [ ] 03-05-PLAN.md — The R2 presign → Sharp enhance → derivative write-back image pipeline and its preset registry
+- [x] 03-04-PLAN.md — The AppShell sidebar, the two-page migration, the pending-claims badge and the complete Phase-3 copy module
+- [x] 03-05-PLAN.md — The R2 presign → Sharp enhance → derivative write-back image pipeline and its preset registry
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -215,7 +215,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
-| 3. Product Catalog & Order/Payment-Claim State Machine | 4/16 | In Progress|  |
+| 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
