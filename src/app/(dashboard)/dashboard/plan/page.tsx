@@ -53,7 +53,8 @@ export default async function DashboardPlanPage() {
 
   if (ctx.trial.state === "expired") {
     return (
-      <div className="flex flex-col gap-4">
+      /* The page owns its column now — see the return below. */
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.plan.dashboard.expiredHeading}
         </h1>
@@ -108,7 +109,13 @@ export default async function DashboardPlanPage() {
         );
 
   return (
-    <div className="flex flex-col gap-6">
+    /*
+     * The content column is the PAGE's, not the layout's, since Phase 3 moved
+     * this page inside the sidebar shell. `max-w-3xl` is the form/settings
+     * width from 03-UI-SPEC.md § Spacing Scale and is the same column this page
+     * read at in Phase 2 — only its owner changed.
+     */
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.plan.dashboard.heading}

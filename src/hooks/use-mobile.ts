@@ -1,6 +1,21 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+/**
+ * `lg`, not the registry's `md`.
+ *
+ * The only consumer of this hook is the sidebar shell, and 03-UI-SPEC.md
+ * § A. Navigation Shell fixes that shell's breakpoint at 1024px: the rail is
+ * visible at `lg` and above, and below it the rail is replaced by an off-canvas
+ * sheet opened from the header trigger. At the registry's 768px a 900px-wide
+ * tablet would render a 256px rail beside content that has no room for it.
+ *
+ * The two hardcoded `lg:` utilities in `src/components/ui/sidebar.tsx` (the
+ * wrapper's `lg:block` and the container's `lg:flex`) are the CSS half of this
+ * same decision and must move together with it — a mismatch between the media
+ * query the JS reads and the one the CSS applies renders both the rail and the
+ * sheet trigger in the gap between them.
+ */
+const MOBILE_BREAKPOINT = 1024
 const MOBILE_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
 /**

@@ -59,7 +59,13 @@ export default async function DashboardPage() {
   const ctx = await requireMerchantContext();
 
   return (
-    <div className="flex flex-col gap-6">
+    /*
+     * The content column is the PAGE's, not the layout's, since Phase 3 moved
+     * this page inside the sidebar shell. `max-w-3xl` is the form/settings
+     * width from 03-UI-SPEC.md § Spacing Scale and is the same column this page
+     * read at in Phase 2 — only its owner changed.
+     */
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         {/* Heading role: 24px / 600 / 1.2 */}
         <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
