@@ -88,10 +88,20 @@ function reachableStates(channel: OrderChannel): Set<OrderState> {
   return seen;
 }
 
-/** Every value in `strings.orders`, so a label can be proved to come from it. */
-const ORDER_STRINGS: string[] = Object.values(strings.orders).filter(
-  (value): value is string => typeof value === "string",
-);
+/**
+ * Every value in `strings.orders`, so a label can be proved to come from it.
+ *
+ * Widened to `Record<string, unknown>` before the filter on purpose. Without
+ * it the narrowing predicate is a type error — `Object.values` on a literal
+ * object yields the union of the literal strings, and `value is string` is not
+ * assignable to that — and the obvious "fix" of dropping the predicate would
+ * make this list silently follow the namespace's exact shape, so the day a
+ * nested group is added the filter would stop compiling for a reason that has
+ * nothing to do with what is being asserted here.
+ */
+const ORDER_STRINGS: readonly string[] = Object.values(
+  strings.orders as Record<string, unknown>,
+).filter((value): value is string => typeof value === "string");
 
 describe("the chip config covers the enum", () => {
   it("did not sweep an empty set", () => {
