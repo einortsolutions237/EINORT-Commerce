@@ -452,6 +452,31 @@ export const strings = {
     viewStoreLabel: "(opens your store)",
     signOut: "Sign out",
 
+    /**
+     * 03-UI-SPEC.md § A. Navigation Shell — the six rail destinations, in the
+     * order the rail renders them.
+     *
+     * Every label in `src/components/app-sidebar.tsx` is read from here and
+     * `tests/unit/dashboard-nav.test.ts` fails if a visible string is inlined
+     * there instead. Nested under `dashboard` rather than given a top-level
+     * namespace because the rail is a property of this surface, not a surface
+     * of its own — it has no page, no heading and no empty state.
+     *
+     * `openNavigation` is the accessible name on the header trigger that opens
+     * the off-canvas sheet below `lg`. The registry's `SidebarTrigger` ships its
+     * own hardcoded "Toggle Sidebar" sr-only label; the rail passes this instead
+     * so the one string a screen-reader user hears is copy like every other.
+     */
+    nav: {
+      overview: "Overview",
+      products: "Products",
+      orders: "Orders",
+      claims: "Payment claims",
+      plan: "Plan",
+      paymentSettings: "Payment settings",
+      openNavigation: "Open navigation",
+    },
+
     emptyHeading: "Your store is live",
     emptyBody:
       "Your storefront is ready at your address. Open it to see what your customers see.",
@@ -478,6 +503,574 @@ export const strings = {
   entitlements: {
     memberLimitReached:
       "Your plan includes {n} team members, including you. Choose a larger plan to add more.",
+
+    /**
+     * SUB-01, Phase 3. `{cap}` is `PLANS[tier].limits.products`, read on the
+     * server and rendered by the caller — the same placeholder convention
+     * `memberLimitReached` uses, and for the same reason: the limit a merchant
+     * reads must come from the registry that enforces it, never from a number
+     * typed into copy.
+     *
+     * The products list disables `Add product` when the cap is reached; that is
+     * a courtesy, and this string is what the SERVER returns when the action is
+     * called anyway. 03-UI-SPEC.md § Copywriting Contract fixes the wording.
+     */
+    productLimitReached:
+      "You've reached your plan's {cap}-product limit. Upgrade your plan to add more.",
+  },
+
+  /* =======================================================================
+   * PHASE 3 — the product catalog, the order lifecycle and the payment claim.
+   * =======================================================================
+   * Everything from here to `suspended` is transcribed from 03-UI-SPEC.md,
+   * landed in ONE pass by plan 03-04 before any Phase-3 page is written. Later
+   * plans in this phase READ these namespaces; none of them appends to this
+   * file. That is deliberate: eight plans each adding a few keys to the same
+   * object is eight merge conflicts and eight chances for the same sentence to
+   * be written twice, slightly differently.
+   *
+   * The copywriting contract in 03-UI-SPEC.md is absolute and every string
+   * below was checked against it: English, second person, no exclamation marks,
+   * no emoji. Never the hard-removal verb for a product (D-08 — products are
+   * hidden, never removed), never the confirmed-number adjective for a payment
+   * number (D-17 — there is no verification step, so no copy may imply one),
+   * and never "Payment received"
+   * before a merchant confirms (ORD-02), and never an internal identifier — no
+   * enum member, no module name, no route shape. Dashboard copy says "your
+   * store"; storefront copy says "the seller".
+   */
+
+  /**
+   * 03-UI-SPEC.md §§ A1, A2 — the products list and the create/edit form.
+   *
+   * `{n}`, `{cap}`, `{name}` and `{value}` are all replaced at the call site.
+   * There is no delete copy in this namespace and there must never be one: a
+   * product is referenced by every order line that ever contained it, so the
+   * only safe "remove it from my store" is `Hide`, which is what the merchant
+   * actually means. The hide dialog is deliberately NOT worded or styled as a
+   * destructive confirmation — calling a reversible action red teaches
+   * merchants to fear a safe one.
+   */
+  products: {
+    /** Renders as "Products · EINORT" through the layout template. */
+    title: "Products",
+    heading: "Products",
+
+    /** A1's meter. The first is used when the plan caps products, the second
+     * when `PLANS[tier].limits.products` is `null`. */
+    meterWithCap: "{n} of {cap} products",
+    meterNoCap: "{n} products",
+
+    /** The one primary button on the list page, and the one on the form. */
+    addCta: "Add product",
+    saveCta: "Save product",
+    /** Named for what it does — the form holds unsaved edits. */
+    discardCta: "Discard changes",
+    saveSubmitting: "Saving…",
+
+    detailsCardTitle: "Product details",
+    imagesCardTitle: "Images",
+    optionsCardTitle: "Options and stock",
+    visibilityCardTitle: "Visibility",
+
+    nameLabel: "Name",
+    descriptionLabel: "Description",
+    categoryLabel: "Category",
+    /** D-06 categories are free-form, so creating one cannot need a page. */
+    newCategoryOption: "New category",
+    newCategoryLabel: "New category name",
+    priceLabel: "Price",
+    /** A suffix adornment beside the input, not part of a formatted number. */
+    priceSuffix: "FCFA",
+    priceHelper: "Whole francs. No decimals.",
+
+    imagesAddCta: "Add images",
+    imagesHelper:
+      "Up to 5 photos. The first one is what customers see in your store.",
+    imagesCounter: "{n} of 5",
+    imagesFull:
+      "You've added the maximum of 5 photos. Remove one to add another.",
+    imagePrimaryBadge: "Main photo",
+    imageMakePrimary: "Make main photo",
+    imageRemove: "Remove photo",
+    imageUploadFailed: "Upload failed. Tap to try again.",
+
+    stockLabel: "Stock",
+    stockHelper: "How many you have to sell.",
+    addOptionCta: "Add an option",
+    optionNameLabel: "Option name",
+    optionValuesLabel: "Option values",
+    /** D-05 caps the axes at two; these are placeholders, never labels. */
+    optionOnePlaceholder: "Size",
+    optionTwoPlaceholder: "Color",
+
+    variantColumnVariant: "Variant",
+    variantColumnPrice: "Price",
+    variantColumnStock: "Stock",
+    variantColumnSku: "SKU",
+    variantColumnActive: "Active",
+    variantPriceHelper: "Leave blank to use the product price",
+    variantLimitExceeded:
+      "That's {n} variants — more than the 50 this form can handle. Use fewer option values.",
+    /** A warning, never a block: the merchant may genuinely mean it. */
+    optionValueRemovalWarning:
+      "Removing '{value}' will remove {n} variants and their stock counts.",
+
+    visibleLabel: "Visible in your store",
+    visibleHelper:
+      "Hidden products stay in your records and on past orders — customers just can't see or order them.",
+
+    columnProduct: "Product",
+    columnPrice: "Price",
+    columnStock: "Stock",
+    columnStatus: "Status",
+    columnActions: "Actions",
+
+    statusActive: "Active",
+    statusHidden: "Hidden",
+
+    rowEdit: "Edit",
+    rowDeactivate: "Deactivate",
+    rowReactivate: "Reactivate",
+
+    /** A1's stock cell. Zero is destructive text, 1–5 is muted. */
+    stockOut: "Out of stock",
+    stockLow: "{n} left",
+
+    deactivateTitle: "Hide this product?",
+    deactivateBody:
+      "Customers won't see {name} in your store and can't order it. Your past orders keep their record of it. You can bring it back any time.",
+    deactivateConfirm: "Hide product",
+    deactivateCancel: "Keep it visible",
+
+    emptyHeading: "No products yet",
+    emptyBody: "Add your first product so customers have something to buy.",
+    emptyCta: "Add product",
+
+    /** A stay-on-list confirmation after a redirect; a toast is correct here. */
+    savedToast: "Product saved",
+  },
+
+  /**
+   * 03-UI-SPEC.md §§ A3, A4 and § A. Order-State Display Contract — the orders
+   * list and the order detail page.
+   *
+   * The six `state*` keys are the MERCHANT chip labels and the only place an
+   * order state is ever named for a merchant. They are keyed in camelCase
+   * rather than by the enum member so no internal identifier is spelled in this
+   * file; the component owns the `Record<OrderState, …>` that maps one to the
+   * other.
+   *
+   * D-02 is why `channel*` exists beside them: a WhatsApp or cash-on-delivery
+   * order only ever moves New order → Confirmed → Fulfilled, so the channel
+   * chip is what makes a two-state row legible next to a six-state transfer
+   * row. The pair is always rendered together.
+   *
+   * The three `actor*` keys are ORD-05's audit trail. An event is attributed to
+   * `You`, to the customer by name, or to `Automatic` — never to the raw actor
+   * value, which is an internal identifier and means nothing to a merchant.
+   */
+  orders: {
+    /** Renders as "Orders · EINORT" through the layout template. */
+    title: "Orders",
+    heading: "Orders",
+
+    filterAll: "All",
+    /** New orders and claimed payments — the default landing filter. */
+    filterNeedsAttention: "Needs attention",
+    filterAwaitingPayment: "Awaiting payment",
+    filterConfirmed: "Confirmed",
+    filterFulfilled: "Fulfilled",
+    filterDisputed: "Disputed",
+
+    stateOrderPlaced: "New order",
+    statePaymentPending: "Awaiting payment",
+    statePaymentClaimed: "Payment claimed",
+    stateConfirmed: "Confirmed",
+    stateDisputed: "Disputed",
+    stateFulfilled: "Fulfilled",
+
+    /** lucide ships no WhatsApp glyph — the word carries it. */
+    channelWhatsapp: "WhatsApp",
+    channelCashOnDelivery: "Cash on delivery",
+    channelManualTransfer: "Mobile Money",
+    operatorMtn: "MTN",
+    operatorOrange: "Orange",
+
+    columnOrder: "Order",
+    columnCustomer: "Customer",
+    columnChannel: "Channel",
+    columnTotal: "Total",
+    columnStatus: "Status",
+    columnAction: "Action",
+
+    /** D-02's one-tap confirm, inline in the row. No dialog. */
+    confirmOrder: "Confirm order",
+    reviewClaim: "Review claim",
+    markFulfilled: "Mark as fulfilled",
+    confirmedToast: "Order {n} confirmed",
+
+    itemsCardTitle: "Items",
+    subtotal: "Subtotal",
+    total: "Total",
+    customerCardTitle: "Customer",
+    channelCardTitle: "Channel",
+
+    historyCardTitle: "Order history",
+    actorMerchant: "You",
+    actorSystem: "Automatic",
+    /** The first event of every order, which has no previous state. */
+    genesisEvent: "Order placed",
+
+    emptyHeading: "No orders yet",
+    emptyBody:
+      "Orders show up here the moment a customer checks out — through WhatsApp, Mobile Money, or cash on delivery.",
+    filteredEmptyHeading: "No matching orders",
+    filteredEmptyBody: "No orders match this filter.",
+    filteredEmptyCta: "Show all orders",
+  },
+
+  /**
+   * 03-UI-SPEC.md § A5 — the payment-claims queue (ORD-03 / ORD-04 / D-11).
+   *
+   * Nothing here may say a payment was received. A claim is a customer's
+   * assertion; only the merchant's confirmation makes it a fact (ORD-02), and
+   * copy that blurs the two would have this platform guaranteeing a transfer it
+   * has no way to see.
+   *
+   * `rejectDialogBody` is load-bearing rather than decorative: D-11 makes the
+   * reason REQUIRED because the customer reads it and can send a corrected
+   * claim from it. The three canned reasons cover the cases a merchant actually
+   * meets; `Something else` reveals a free-text field.
+   */
+  claims: {
+    /** Renders as "Payment claims · EINORT" through the layout template. */
+    title: "Payment claims",
+    heading: "Payment claims",
+    subline: "{n} awaiting review",
+    /** The subline when the queue is empty but the page is not. */
+    sublineEmpty: "Nothing waiting",
+
+    /** Shown beneath the claimed amount when it differs from the order total. */
+    amountMismatch: "Order total is {total}.",
+    noScreenshot: "No screenshot",
+    screenshotAlt: "Payment screenshot for order {n}",
+    viewScreenshot: "View screenshot",
+    closeScreenshot: "Close",
+    copyReference: "Copy reference",
+    copiedReference: "Copied",
+    /** ORD-04. Inline, and it does NOT disable the buttons — the merchant is
+     * the judge of their own duplicate. */
+    duplicateReference: "This reference was already submitted on order {n}.",
+
+    operatorMtn: "MTN Mobile Money",
+    operatorOrange: "Orange Money",
+
+    confirmCta: "Confirm payment",
+    rejectCta: "Reject",
+
+    mismatchDialogBody:
+      "The customer claimed {claimed} but the order total is {total}. Confirm anyway?",
+    mismatchDialogConfirm: "Confirm payment",
+    mismatchDialogCancel: "Go back",
+
+    rejectDialogTitle: "Why are you rejecting this?",
+    rejectDialogBody: "The customer sees this, and can send a corrected claim.",
+    rejectReasonAmount: "Amount doesn't match",
+    rejectReasonReference: "Reference not found",
+    rejectReasonNotReceived: "Payment not received",
+    rejectReasonOther: "Something else",
+    rejectReasonOtherLabel: "Tell the customer why",
+
+    rejectDialogConfirm: "Reject claim",
+    rejectDialogCancel: "Go back",
+
+    confirmedToast: "Payment confirmed for order {n}",
+    rejectedToast: "Claim rejected — the customer can send a corrected one.",
+
+    emptyHeading: "No claims to review",
+    emptyBody:
+      "When a customer says they've paid by Mobile Money, their claim shows up here for you to check.",
+
+    /**
+     * D-13's second channel. The in-app badge is the reliable one — this send
+     * is fired from `after()` and is allowed to fail — so the email says only
+     * what a notification needs to say and sends the merchant to the queue to
+     * do the actual work. `{order}` is the order number, never an internal id.
+     */
+    email: {
+      subject: "New payment claim on order {order}",
+      heading: "A customer says they've paid",
+      body: "{customer} submitted a claim of {amount} against order {order}. Open your payment claims to check the reference and confirm or reject it.",
+      cta: "Review the claim",
+    },
+  },
+
+  /**
+   * 03-UI-SPEC.md § A6 — payment settings (D-14 / D-16 / D-17).
+   *
+   * D-17 IS A COPY RULE BEFORE IT IS A CODE RULE. There is no verification step
+   * on a payment number: no code, no pending state, no badge, and therefore no
+   * string in this namespace that could imply one. Saved is live. A merchant
+   * who reads a confirmation badge here would reasonably believe this platform
+   * checked the number with the operator, which it cannot do.
+   *
+   * The prefix warnings never block, because Cameroon has number portability
+   * and an MTN prefix on an Orange line is an ordinary fact, not an error.
+   */
+  paymentSettings: {
+    /** Renders as "Payment settings · EINORT" through the layout template. */
+    title: "Payment settings",
+    heading: "Payment settings",
+
+    whatsappCardTitle: "WhatsApp orders",
+    whatsappNumberLabel: "WhatsApp number",
+    whatsappHelper:
+      "Customers' orders arrive as a WhatsApp message to this number.",
+
+    mtnCardTitle: "MTN Mobile Money",
+    mtnNumberLabel: "Receiving number",
+    mtnMerchantCodeLabel: "Merchant code",
+    mtnHelper:
+      "Only if you're registered for MTN MoMoPay. With a merchant code, customers can tap once to dial the exact amount.",
+
+    orangeCardTitle: "Orange Money",
+    orangeNumberLabel: "Receiving number",
+    orangeMerchantCodeLabel: "Merchant code",
+    orangeHelper:
+      "Only if Orange gave you a merchant code. It'll show in your payment instructions.",
+
+    codCardTitle: "Cash on delivery",
+    codLabel: "Accept cash on delivery",
+    codHelper: "Let customers pay the courier when their order arrives.",
+
+    /** A fixed, non-editable adornment — the merchant types 9 digits. */
+    phonePrefix: "+237",
+
+    /** Destructive, because a store nobody can check out of is broken. */
+    nothingConfigured:
+      "No payment method is set up yet. Customers can't check out until you add at least one.",
+
+    prefixWarningOrange:
+      "That prefix is usually an Orange number. Save it anyway if it's correct.",
+    prefixWarningMtn:
+      "That prefix is usually an MTN number. Save it anyway if it's correct.",
+
+    numberFormatError: "Enter a 9-digit Cameroon mobile number starting with 6.",
+    merchantCodeFormatError: "An MTN merchant code is exactly 6 digits.",
+
+    saveCta: "Save payment settings",
+    saveSubmitting: "Saving…",
+    /** Stay-on-page save, so a toast is the correct success signal. */
+    savedToast: "Payment settings saved",
+  },
+
+  /**
+   * 03-UI-SPEC.md §§ B1, B2 — the storefront catalog and product page.
+   *
+   * Storefront voice: this addresses the SHOPPER and calls the merchant "the
+   * seller", never "your store". D-09 is why `outOfStock` is a chip label
+   * rather than a reason the tile is missing — an out-of-stock product stays in
+   * the grid, stays linkable and stays shareable.
+   */
+  catalog: {
+    /** The first category chip, rendered only when there are two or more. */
+    allCategories: "All",
+    outOfStock: "Out of stock",
+    inStock: "In stock",
+    lowStock: "Only {n} left",
+    /** Disabled and relabelled `outOfStock` when the variant has none. */
+    addToCart: "Add to cart",
+    /** The CTA label until every declared option axis has a selection. */
+    chooseAnOption: "Choose an option",
+    backToProducts: "All products",
+    addedToast: "Added to your cart",
+    addedToastAction: "View cart",
+  },
+
+  /**
+   * 03-UI-SPEC.md § B3 — the cart.
+   *
+   * There is no shipping line and no tax line, and no string here for one. V1
+   * has neither, and a `0 FCFA` shipping row invents a promise the seller never
+   * made. The two stock notes are informational and never block checkout — the
+   * server re-derives both price and stock at placement regardless.
+   */
+  cart: {
+    /** Renders as "Your cart · EINORT" through the layout template. */
+    title: "Your cart",
+    heading: "Your cart",
+    subtotal: "Subtotal",
+    total: "Total",
+    checkoutCta: "Checkout",
+    quantityReduced: "Only {n} left — we've updated your quantity.",
+    itemUnavailable: "{name} is no longer available and has been removed.",
+    emptyHeading: "Your cart is empty",
+    emptyBody: "Add something you like and it'll show up here.",
+    emptyCta: "Browse products",
+  },
+
+  /**
+   * 03-UI-SPEC.md § B4 — checkout (CHK-02 / D-16).
+   *
+   * The three payment paths are radio cards, and a path the seller has not
+   * configured is NOT RENDERED — not rendered and disabled. A shopper must
+   * never be shown a way to pay this seller cannot accept.
+   *
+   * The submit label changes with the selected path because the three do
+   * genuinely different things: one hands off to WhatsApp, one continues to
+   * payment instructions, one places the order outright. A single "Continue"
+   * would hide that difference at the exact moment it matters.
+   *
+   * D-12: `tracking*` is shown on-screen immediately after placement on every
+   * path. The link is the only way back to the order, so the copy says so.
+   */
+  checkout: {
+    /** Renders as "Checkout · EINORT" through the layout template. */
+    title: "Checkout",
+
+    detailsHeading: "Your details",
+    paymentHeading: "How you'll pay",
+    summaryHeading: "Order summary",
+
+    nameLabel: "Name",
+    phoneLabel: "Phone",
+    phonePrefix: "+237",
+    phoneHelper: "We'll send your order link here on WhatsApp.",
+    /** Required only once cash on delivery is the selected path. */
+    addressLabel: "Delivery address",
+    noteLabel: "Note for the seller",
+
+    whatsappTitle: "Order on WhatsApp",
+    whatsappDescription:
+      "Send your order to the seller on WhatsApp and agree how to pay.",
+    transferTitle: "Mobile Money transfer",
+    transferDescription:
+      "Send the money yourself, then tell us the transaction reference.",
+    codTitle: "Cash on delivery",
+    codDescription: "Pay the courier when your order arrives.",
+
+    /** D-16 — revealed by the transfer card, filtered to what is configured. */
+    operatorMtn: "MTN Mobile Money",
+    operatorOrange: "Orange Money",
+
+    /** The collapsed summary row below `md`. */
+    summaryCollapsed: "{n} items · {total}",
+
+    submitWhatsapp: "Order on WhatsApp",
+    submitTransfer: "Continue to payment",
+    submitCod: "Place order",
+    /** The disabled label when no path is selected. */
+    submitNoSelection: "Choose how you'll pay",
+    submittingWhatsapp: "Preparing your order…",
+    submittingTransfer: "Placing your order…",
+    submittingCod: "Placing your order…",
+
+    trackingHeading: "Your order link",
+    trackingBody:
+      "Bookmark this link. It's how you check on your order — we've also sent it on WhatsApp.",
+    trackingCopy: "Copy link",
+    trackingCopied: "Copied",
+  },
+
+  /**
+   * 03-UI-SPEC.md §§ B5, B6, B7 — the order tracking page, the manual-transfer
+   * payment instructions and the claim form (CHK-03 / CHK-04 / CHK-05 / D-15).
+   *
+   * CHK-05 IS ABSOLUTE: every order state has a heading and a body here, so
+   * there is no state in which a customer reaches this page and reads nothing.
+   * `ORDER_PLACED` splits by channel — a WhatsApp order was SENT and awaits a
+   * conversation, a cash-on-delivery order was RECEIVED and awaits a courier —
+   * which is why there are seven heading keys for six states. A state without a
+   * row is a requirement violation, not a gap to fill at render time with a
+   * spinner or a raw value.
+   *
+   * `{store}` is the store name and `{amount}` a server-formatted XAF total.
+   * The dial codes are separated from the steps so the component can set them
+   * in `font-mono` without parsing a sentence, and because D-15's tap-to-dial
+   * tiers need the code as a value, not as prose.
+   */
+  orderStatus: {
+    /** Label/uppercase eyebrow at the top of the page. */
+    orderNumberEyebrow: "Order {orderNumber}",
+
+    placedWhatsappHeading: "Order sent",
+    placedWhatsappBody:
+      "We've sent your order to {store}. They'll confirm it with you on WhatsApp.",
+    placedCodHeading: "Order received",
+    placedCodBody:
+      "{store} will confirm your order and arrange delivery. Pay the courier when it arrives.",
+    paymentPendingHeading: "Waiting for your payment",
+    paymentPendingBody:
+      "Send {amount} to {store}, then tell us the transaction reference.",
+    paymentClaimedHeading: "Payment being confirmed",
+    paymentClaimedBody:
+      "{store} is checking your transaction reference. This usually takes a few hours.",
+    confirmedHeading: "Order confirmed",
+    confirmedBody: "{store} confirmed your order and is getting it ready.",
+    disputedHeading: "We couldn't confirm your payment",
+    disputedBody: "{store} couldn't match your payment.",
+    /** Rendered beneath the merchant's quoted reason. D-11 is recoverable. */
+    disputedInstruction:
+      "Check your confirmation SMS and send the corrected details.",
+    fulfilledHeading: "Order complete",
+    fulfilledBody:
+      "This order has been delivered. Thank you for shopping with {store}.",
+
+    /** The only action on a WhatsApp order — reopens the same conversation. */
+    openWhatsappAgain: "Open WhatsApp again",
+
+    /* --- B5: the payment-instructions block ----------------------------- */
+
+    payHeading: "Send {amount} to {store}",
+    payNumberLabel: "{operator} number",
+    payAmountLabel: "Exact amount",
+    payAmountHelper:
+      "Send this exact amount — a different amount is harder for the seller to match.",
+    /** The copy button swaps to this for two seconds, at the point of action. */
+    copy: "Copy",
+    copied: "Copied",
+
+    mtnDialCode: "*126#",
+    mtnSteps: [
+      "Dial {code}",
+      "Choose Transfer money",
+      "Enter the number and the exact amount",
+      "Confirm with your PIN",
+    ],
+    orangeDialCode: "#150*47#",
+    orangeSteps: [
+      "Dial {code}",
+      "Choose Send money",
+      "Enter the number and the exact amount",
+      "Confirm with your secret code",
+    ],
+
+    /** D-15 tier A only: MTN, a 6-digit merchant code, and not on iOS. */
+    dialCta: "Dial the payment code",
+    dialHelper:
+      "This opens your phone's dialler with the code already filled in. Press call, then enter your PIN.",
+    /** D-15 tier B: Orange takes no parameters, so the code is copyable text. */
+    merchantCodeLabel: "Merchant code",
+
+    /* --- B6: the claim form --------------------------------------------- */
+
+    claimOperatorLabel: "Which network did you send from?",
+    claimReferenceLabel: "Transaction reference",
+    claimReferenceHelper: "The reference in the confirmation SMS from {operator}.",
+    claimScreenshotLabel: "Add a screenshot (optional)",
+    claimScreenshotHelper: "It helps the seller find your payment faster.",
+    claimSubmit: "I've paid",
+    claimSubmitting: "Sending…",
+    /** ORD-04, field-level and destructive — never a toast. */
+    claimDuplicateReference:
+      "This reference has already been used. Check your confirmation SMS and enter the exact reference.",
+    /** Matches the Phase 1 wording exactly; one rate-limit voice, not two. */
+    claimRateLimited: "Too many attempts. Try again in a minute.",
+    /** The submit label when resubmitting after a rejection (D-11). */
+    claimResubmit: "Send corrected details",
+    /** The read-only recap shown while a claim is being checked. */
+    claimSummaryHeading: "What you sent",
   },
 
   /**
