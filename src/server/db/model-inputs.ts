@@ -80,3 +80,43 @@ export type OrderItemCreateManyInput = Prisma.OrderItemCreateManyInput;
  */
 export type MerchantPaymentSettingsCreateInput =
   Prisma.MerchantPaymentSettingsUncheckedCreateInput;
+
+/**
+ * `Category` (D-06), written by `createCategory` in
+ * `src/server/catalog/actions.ts` and by nothing else.
+ *
+ * The `Unchecked` variant for the same reason as every entry above: the row is
+ * written with scalar columns only, never through a nested relation write.
+ */
+export type CategoryCreateInput = Prisma.CategoryUncheckedCreateInput;
+
+/**
+ * `Product` (CAT-01), written by `createProduct` in
+ * `src/server/catalog/actions.ts` and by nothing else.
+ *
+ * `Unchecked` is load-bearing here beyond the usual reason. The checked variant
+ * would expose `category: { connect: … }`, and a nested connect on a
+ * tenant-scoped relation is precisely the shape Pitfall 1/4 warns about — it
+ * does not pass through the scope extension. The unchecked variant offers only
+ * the `categoryId` scalar, whose composite foreign key makes a cross-tenant
+ * value a Postgres rejection (T-03-29) rather than a silent link.
+ */
+export type ProductCreateInput = Prisma.ProductUncheckedCreateInput;
+
+/**
+ * One `ProductVariant` row inside a `createMany` batch, written by
+ * `src/server/catalog/actions.ts`.
+ *
+ * `CreateManyInput` and NOT `UncheckedCreateInput`, exactly as the order lines
+ * above: `createMany` takes an array of a distinct, flatter type, and it is one
+ * of the batch operations the scope extension DOES intercept. That is why the
+ * variant matrix is written as its own `createMany` call rather than nested off
+ * the product.
+ */
+export type ProductVariantCreateManyInput = Prisma.ProductVariantCreateManyInput;
+
+/**
+ * One `ProductImage` row inside a `createMany` batch (D-10), written by
+ * `src/server/catalog/actions.ts`. Same reasoning as the variant batch above.
+ */
+export type ProductImageCreateManyInput = Prisma.ProductImageCreateManyInput;
