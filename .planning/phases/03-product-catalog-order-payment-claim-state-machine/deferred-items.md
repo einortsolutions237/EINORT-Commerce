@@ -128,3 +128,21 @@ under multi-agent contention. Reinforces the fix options already listed above,
 particularly raising `place.ts:371`'s `timeout` or mapping a timed-out
 transaction to `OutOfStockError` only when the stock predicate provably did not
 match.
+
+**Addendum 2 (orchestrator, post-03-08 merge verification, Wave 3).** A
+qualitatively different and much larger failure this time: 77 tests across 13
+of 33 isolation files failed in one `npm run test:full` run, with no shared
+error shape — raw-query `PrismaClientKnownRequestError`s, plain assertion
+mismatches, unrelated files (`login.test.ts`, `trial.test.ts`,
+`resolve.test.ts`) that touch none of 03-08's payment code. This run happened
+while three OTHER Wave-3 executor agents (03-06, 03-09, 03-10) were each
+independently running their own `npm run test:full` in separate worktrees
+against the same shared Neon test branch — i.e. four concurrent
+truncate-and-reseed cycles racing each other, exactly the failure mode this
+file's "Also worth considering at the orchestration level" section predicted
+for Wave 1. Not investigated further as a code regression; the plan is to
+re-run `test:full` solo once all four Wave-3 agents finish, and treat this
+run's failures as environmental unless they reproduce on a quiet branch. If a
+later wave hits this again, a branch-per-agent or a cross-worktree lock
+around the isolation suite would remove the failure mode outright rather than
+requiring a solo re-run every time.
