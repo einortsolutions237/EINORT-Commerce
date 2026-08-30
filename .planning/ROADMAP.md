@@ -134,11 +134,11 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-06-PLAN.md — Catalog write layer, the product-count entitlement cap, and the A1 products list
+- [x] 03-06-PLAN.md — Catalog write layer, the product-count entitlement cap, and the A1 products list
 - [x] 03-07-PLAN.md — Order placement engine: tracking token, idempotency, atomic stock hold/release, placeOrder and the CAT-03 race proof
-- [ ] 03-08-PLAN.md — Payment settings (D-14/16/17) and the pure phone / USSD / wa.me deep-link builders
-- [ ] 03-09-PLAN.md — Anonymous Redis cart, the storefront catalog grid and the product detail page with add-to-cart
-- [ ] 03-10-PLAN.md — Merchant orders list and detail, the one order-state chip module, confirm and mark-fulfilled
+- [x] 03-08-PLAN.md — Payment settings (D-14/16/17) and the pure phone / USSD / wa.me deep-link builders
+- [x] 03-09-PLAN.md — Anonymous Redis cart, the storefront catalog grid and the product detail page with add-to-cart
+- [x] 03-10-PLAN.md — Merchant orders list and detail, the one order-state chip module, confirm and mark-fulfilled
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
