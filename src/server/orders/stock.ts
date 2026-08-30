@@ -137,6 +137,43 @@ export async function holdStockForLines(
 }
 
 /**
+ * Record that an order holds its units again, after a re-hold (D-04).
+ *
+ * ---------------------------------------------------------------------------
+ * THIS LIVES HERE BECAUSE `stockHeld` BELONGS TO THIS MODULE, NOT TO A CALLER.
+ * ---------------------------------------------------------------------------
+ * `releaseStock` below is keyed ENTIRELY on this flag, so the flag and the
+ * release have to agree or neither means anything. There are exactly two writers
+ * of it: `openOrderAtGenesis` sets it at placement, and this pair sets and clears
+ * it thereafter. A caller flipping it with its own `order.update` would put half
+ * the invariant in a claims module and half in an inventory module, which is the
+ * shape that drifts — the next person to change the release rule would have no
+ * reason to look in `src/server/claims/`.
+ *
+ * The failure this exists to prevent is specific and silent. `reopenClaim`
+ * re-holds the units of a rejected claim; if the flag stayed `false`, the NEXT
+ * rejection of that claim would call `releaseStock`, match zero rows, return
+ * having released nothing, and strand the decrement forever. The merchant's
+ * dashboard would under-report stock they physically have, with nothing in the
+ * audit trail to explain it.
+ *
+ * Deliberately NOT conditional on the current value. Unlike the release — whose
+ * whole job is to claim the flag atomically so only one caller proceeds to the
+ * increments — setting it is not a decision, and this function performs no
+ * inventory movement of its own. The caller has already held the units with
+ * `holdStockForLines` and is recording that fact.
+ */
+export async function markStockHeld(
+  tx: ScopedTx,
+  orderId: string,
+): Promise<void> {
+  await tx.order.updateMany({
+    where: { id: orderId },
+    data: { stockHeld: true },
+  });
+}
+
+/**
  * Return an order's held units to inventory, at most once (Pattern 2b).
  *
  * ---------------------------------------------------------------------------
