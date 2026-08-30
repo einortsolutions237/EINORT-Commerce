@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { Toaster } from "@/components/ui/sonner";
 import { resolveTenantBySlug } from "@/server/tenant/resolve";
 
 /**
@@ -55,6 +56,15 @@ export default async function StorefrontLayout({
   return (
     <div data-surface="storefront" className="flex min-h-full flex-1 flex-col">
       {children}
+      {/*
+       * Mounted inside the scoped `div` above, not at the root layout, so the
+       * toast reads zinc `--popover`/`--border` tokens rather than the
+       * merchant palette (sonner does not portal to `document.body`, so its
+       * CSS custom properties resolve from its actual DOM position). 03-09 is
+       * the first storefront surface to call `toast()` — the add-to-cart
+       * confirmation (03-UI-SPEC.md § B2 "Add feedback").
+       */}
+      <Toaster />
     </div>
   );
 }

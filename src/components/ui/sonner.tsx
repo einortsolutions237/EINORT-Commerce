@@ -33,9 +33,11 @@ import {
  *
  * The `--normal-*` custom properties are left exactly as the registry ships
  * them: they already read semantic tokens, so the toast inherits whichever
- * surface scope it renders under. Toasts are Surface A only (03-UI-SPEC.md
- * § Component Inventory — "non-blocking success toasts only, never for a
- * blocking error"), so in practice that is the merchant palette.
+ * surface scope it renders under — the merchant palette from a `<Toaster />`
+ * mounted in the dashboard shell, zinc from the one 03-09 mounts inside
+ * `src/app/s/[slug]/layout.tsx`'s `data-surface="storefront"` div. Both are
+ * "non-blocking success toasts only, never for a blocking error"
+ * (03-UI-SPEC.md § Component Inventory); neither surface is exclusive.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
