@@ -113,11 +113,16 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    "**/.next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
     // Prisma 7 client output (plan 01-02) — generated, never hand-edited.
     "src/generated/**",
+    // GSD executor worktrees live inside the repo root, each with its own
+    // .next build output. Without this, ESLint recurses into every worktree
+    // still checked out and lints their generated route types.
+    ".claude/worktrees/**",
   ]),
 ]);
 
