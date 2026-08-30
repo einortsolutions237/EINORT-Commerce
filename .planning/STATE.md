@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-08-23T15:18:33.523Z"
-last_activity: 2026-08-23
+stopped_at: Phase 3 Wave 3 merged (03-06 through 03-10), verified and pushed
+last_updated: "2026-08-30T16:00:00.000Z"
+last_activity: 2026-08-30
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 30
+  completed_plans: 24
   percent: 33
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 
 ## Current Position
 
-Phase: 03 (product-catalog-order-payment-claim-state-machine) — PLANNING
-Status: Context, research, and UI-SPEC all approved. Ready for gsd-planner.
-Last activity: 2026-08-23
+Phase: 03 (product-catalog-order-payment-claim-state-machine) — EXECUTING
+Status: Waves 1-3 complete and merged to master (03-01 through 03-10, 10/16 plans). Waves 4-6 (03-11 through 03-16) not yet started. Phase 3's own completion gate (verifier + code-review + phase.complete) has not yet run — will fire once Wave 6 lands.
+Last activity: 2026-08-30
 
-Progress: [██████░░░░] 33% (2/6 phases complete)
+Progress: [███░░░░░░░] 33% phases (2/6 complete) · 80% plans (24/30 complete)
 
 ## Performance Metrics
 
@@ -80,7 +80,7 @@ None yet.
 
 - ~~Phase 3: MTN MoMo / Orange Money USSD merchant-code strings need re-verification~~ — **Resolved 2026-08-23** by `03-RESEARCH.md`'s "Payment Rails: the D-15 Blocker, Resolved" section, sourced directly from MTN Cameroon's and Orange Cameroun's own official documentation (HIGH confidence). Neither operator publishes a one-shot parametrized P2P string; both require an operator-issued merchant code for a parametrized tap-to-dial link. Manual-copy ships unconditionally as the floor regardless of merchant-code availability.
 - Phase 4 (Theme/Section/Block System): design-distinctiveness has no objective completion signal — the side-by-side "would a stranger think these are the same product" check must be built into this phase's definition of done explicitly.
-- Phase 2 (Merchant Auth, Entitlements & Trial): automated decision-coverage gate reported 0/13 CONTEXT.md decisions (D-01–D-13) cited in plan `must_haves`/`truths` frontmatter — overridden and proceeded to execute-phase on 2026-08-17. The plan-checker's independent semantic review confirmed all 13 decisions have implementing tasks; manual grep confirmed D-04–D-09/10, D-12 are cited by ID in task `<action>` bodies (just not in the scanned frontmatter fields). D-01/D-02/D-03 are only cited as a range ("D-01 through D-05"); D-11 and D-13 have no ID citation found anywhere. Re-verify these five during Phase 2's verify-phase pass.
+- Phase 2 (Merchant Auth, Entitlements & Trial): automated decision-coverage gate reported 0/13 CONTEXT.md decisions (D-01–D-13) cited in plan `must_haves`/`truths` frontmatter — overridden and proceeded to execute-phase on 2026-08-17. The plan-checker's independent semantic review confirmed all 13 decisions have implementing tasks; manual grep confirmed D-04–D-09/10, D-12 are cited by ID in task `<action>` bodies (just not in the scanned frontmatter fields). D-01/D-02/D-03 are only cited as a range ("D-01 through D-05"); D-11 and D-13 have no ID citation found anywhere. Re-verify these five during Phase 2's verify-phase pass. **Still open as of 2026-08-30** — a cross-phase GSD skill audit confirmed no `02-VERIFICATION.md` was ever produced (Phases 1 and 2 were merged wave-by-wave without ever reaching `gsd-execute-phase`'s own verifier/code-review/`phase.complete` gate). Queued to close via `gsd-execute-phase 2` as part of the post-Phase-3 retroactive audit pass (alongside `gsd-secure-phase` and `gsd-code-review --depth=deep` on Phases 1-3).
 
 ## Deferred Items
 
@@ -92,6 +92,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T15:18:33.492Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-product-catalog-order-payment-claim-state-machine/03-UI-SPEC.md
+Last session: 2026-08-30T16:00:00.000Z
+Stopped at: Phase 3 Wave 3 merged (03-06 through 03-10), verified (626/626 tests, lint/typecheck/build clean) and pushed to master
+Resume file: .planning/phases/03-product-catalog-order-payment-claim-state-machine/03-11-PLAN.md (Wave 4, not yet started)
