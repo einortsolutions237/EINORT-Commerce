@@ -4,6 +4,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { strings } from "@/lib/strings";
 import { pendingClaimCount } from "@/server/claims/queries";
 import { isUrgentTrial } from "@/server/entitlements/resolve";
@@ -125,6 +126,20 @@ export default async function DashboardLayout({
 
           {children}
         </div>
+
+        {/*
+         * The toast host, mounted once for the whole dashboard shell.
+         *
+         * Here rather than in the root layout because `sonner.tsx`'s own header
+         * fixes toasts as Surface A only — non-blocking merchant success
+         * signals, never a blocking error and never the storefront. Mounting it
+         * at the root would put a merchant-palette overlay inside every
+         * tenant's storefront tree for no caller.
+         *
+         * It is in the layout rather than in each page so that two dashboard
+         * routes both calling `toast()` share one stack instead of racing two.
+         */}
+        <Toaster />
       </SidebarInset>
     </SidebarProvider>
   );
