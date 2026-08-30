@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { env } from "@/env";
 import { strings } from "@/lib/strings";
 import { activeProductCount, listCategories } from "@/server/catalog/queries";
 import { limitFor } from "@/server/entitlements/assert";
@@ -58,7 +59,17 @@ export default async function NewProductPage() {
         {strings.products.addCta}
       </h1>
 
-      <ProductForm categories={categories} product={null} />
+      {/*
+        R2's public origin, read here because `publicUrlFor` lives in a
+        `server-only` module and `R2_PUBLIC_BASE_URL` is not a `NEXT_PUBLIC_`
+        variable. Card 2 appends a derivative name to it; the stored upload
+        itself is never addressed.
+      */}
+      <ProductForm
+        categories={categories}
+        product={null}
+        imageBaseUrl={env.R2_PUBLIC_BASE_URL}
+      />
     </div>
   );
 }

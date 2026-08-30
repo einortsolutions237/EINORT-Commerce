@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { env } from "@/env";
 import { strings } from "@/lib/strings";
 import { getProductForEdit, listCategories } from "@/server/catalog/queries";
 import { requireMerchantContext } from "@/server/merchant/context";
@@ -66,7 +67,17 @@ export default async function EditProductPage({
         {product.name}
       </h1>
 
-      <ProductForm categories={categories} product={product} />
+      {/*
+        R2's public origin, read here because `publicUrlFor` lives in a
+        `server-only` module and `R2_PUBLIC_BASE_URL` is not a `NEXT_PUBLIC_`
+        variable. Card 2 appends a derivative name to it; the stored upload
+        itself is never addressed.
+      */}
+      <ProductForm
+        categories={categories}
+        product={product}
+        imageBaseUrl={env.R2_PUBLIC_BASE_URL}
+      />
     </div>
   );
 }
