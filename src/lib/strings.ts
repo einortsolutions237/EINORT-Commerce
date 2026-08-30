@@ -675,6 +675,9 @@ export const strings = {
     title: "Orders",
     heading: "Orders",
 
+    /** Accessible name for the filter-chip row's `<nav>`. */
+    filterNavLabel: "Filter orders",
+
     filterAll: "All",
     /** New orders and claimed payments — the default landing filter. */
     filterNeedsAttention: "Needs attention",
@@ -711,16 +714,35 @@ export const strings = {
     confirmedToast: "Order {n} confirmed",
 
     itemsCardTitle: "Items",
+    /** "{price} × {qty}" beneath each item's name in the A4 Items card. */
+    itemUnitTimesQuantity: "{price} × {qty}",
     subtotal: "Subtotal",
     total: "Total",
     customerCardTitle: "Customer",
+    /** Only rendered when `Order.deliveryAddress` is non-null (D-01). */
+    addressLabel: "Delivery address",
+    /** Only rendered when `Order.customerNote` is non-null. */
+    noteLabel: "Note",
     channelCardTitle: "Channel",
+
+    /**
+     * Screen-reader-only name for the row's chevron-right link, added on TASK
+     * 3 for the same reason `staleAction` was added on Task 2: the field
+     * carries a `{n}` token for the order number so a screen reader user
+     * navigating by link text hears which order each row's link opens,
+     * rather than six identical "View order" announcements in a row.
+     */
+    viewOrder: "View order {n}",
 
     historyCardTitle: "Order history",
     actorMerchant: "You",
     actorSystem: "Automatic",
     /** The first event of every order, which has no previous state. */
     genesisEvent: "Order placed",
+
+    /** The catch-all when a refusal is not `staleAction` and not the D-08
+     * read-only block (which already carries its own message). */
+    genericError: "Something went wrong. Try again in a moment.",
 
     /**
      * The refusal a merchant reads when the order moved underneath them.

@@ -4,6 +4,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { strings } from "@/lib/strings";
 import { pendingClaimCount } from "@/server/claims/queries";
 import { isUrgentTrial } from "@/server/entitlements/resolve";
@@ -126,6 +127,16 @@ export default async function DashboardLayout({
           {children}
         </div>
       </SidebarInset>
+
+      {/*
+       * Mounted here rather than in the root layout (plan 03-10): toasts are
+       * Surface A only (`src/components/ui/sonner.tsx`'s own header —
+       * "non-blocking success toasts only", the merchant palette), and the
+       * storefront under `src/app/s/[slug]/**` has no reason to load this
+       * component or its `--popover` styling. D-02's one-tap order confirm on
+       * `/dashboard/orders` is the first caller.
+       */}
+      <Toaster />
     </SidebarProvider>
   );
 }
