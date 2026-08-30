@@ -675,6 +675,9 @@ export const strings = {
     title: "Orders",
     heading: "Orders",
 
+    /** Accessible name for the filter-chip row's `<nav>`. */
+    filterNavLabel: "Filter orders",
+
     filterAll: "All",
     /** New orders and claimed payments — the default landing filter. */
     filterNeedsAttention: "Needs attention",
@@ -711,16 +714,53 @@ export const strings = {
     confirmedToast: "Order {n} confirmed",
 
     itemsCardTitle: "Items",
+    /** "{price} × {qty}" beneath each item's name in the A4 Items card. */
+    itemUnitTimesQuantity: "{price} × {qty}",
     subtotal: "Subtotal",
     total: "Total",
     customerCardTitle: "Customer",
+    /** Only rendered when `Order.deliveryAddress` is non-null (D-01). */
+    addressLabel: "Delivery address",
+    /** Only rendered when `Order.customerNote` is non-null. */
+    noteLabel: "Note",
     channelCardTitle: "Channel",
+
+    /**
+     * Screen-reader-only name for the row's chevron-right link, added on TASK
+     * 3 for the same reason `staleAction` was added on Task 2: the field
+     * carries a `{n}` token for the order number so a screen reader user
+     * navigating by link text hears which order each row's link opens,
+     * rather than six identical "View order" announcements in a row.
+     */
+    viewOrder: "View order {n}",
 
     historyCardTitle: "Order history",
     actorMerchant: "You",
     actorSystem: "Automatic",
     /** The first event of every order, which has no previous state. */
     genesisEvent: "Order placed",
+
+    /** The catch-all when a refusal is not `staleAction` and not the D-08
+     * read-only block (which already carries its own message). */
+    genericError: "Something went wrong. Try again in a moment.",
+
+    /**
+     * The refusal a merchant reads when the order moved underneath them.
+     *
+     * ADDED BY PLAN 03-10, and the one exception to the "03-04 lands this file
+     * whole" rule stated at the top of the Phase 3 block — noted here rather
+     * than left to be discovered.
+     *
+     * `confirmOrder` and `markFulfilled` catch `InvalidTransitionError` and
+     * return it as a form-level failure. The realistic cause is not an attack
+     * but a second dashboard tab, or two staff on one shop: the order already
+     * left the state the button was rendered for. "Something went wrong. Try
+     * again in a moment." — the generic used elsewhere in this file — would be
+     * actively wrong copy for that, because trying again cannot help and the
+     * merchant would keep tapping. This says what happened and what to do.
+     */
+    staleAction:
+      "This order has already moved on. Refresh the page to see where it is now.",
 
     emptyHeading: "No orders yet",
     emptyBody:
