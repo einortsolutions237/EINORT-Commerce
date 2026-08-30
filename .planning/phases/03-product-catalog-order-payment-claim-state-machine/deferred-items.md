@@ -128,3 +128,29 @@ under multi-agent contention. Reinforces the fix options already listed above,
 particularly raising `place.ts:371`'s `timeout` or mapping a timed-out
 transaction to `OutOfStockError` only when the stock predicate provably did not
 match.
+
+---
+
+## R2-hosted images render through a plain `<img>`, not `next/image` (found in plan 03-06)
+
+**What.** A1's 40px product thumbnail (`src/app/(dashboard)/dashboard/products/page.tsx`)
+is the first page in the codebase to actually render an R2-hosted derivative
+(`{storageKey}/thumb.webp` via `publicUrlFor`). `next/image` requires the
+source hostname to be declared in `next.config.ts`'s `images.remotePatterns`
+at build time, and `env.R2_PUBLIC_BASE_URL` is only known at runtime — wiring
+it in is a build-configuration change outside `files_modified` for a plan
+scoped to the products list page. The thumbnail is a plain `<img>` with an
+`eslint-disable-next-line @next/next/no-img-element` and a comment pointing
+here.
+
+**Why it is not fixed here.** `next.config.ts` is shared, unowned-by-any-single-plan
+infrastructure, and touching it to unblock one 40px thumbnail is a
+disproportionate scope increase for a list-page plan.
+
+**Who is affected.** 03-11 (A2's image grid — up to 5 photos, `card`/`detail`
+derivatives) and whichever plan builds A5 (claim screenshot thumb + full-size
+dialog) both render R2-hosted images and will hit the same question. Resolve
+once, for all three call sites: parse `env.R2_PUBLIC_BASE_URL` into a hostname
+in `next.config.ts` (`new URL(...).hostname`) and add it to
+`images.remotePatterns`, then swap all three `<img>` usages to `next/image`
+together, rather than three separate ad-hoc fixes.
