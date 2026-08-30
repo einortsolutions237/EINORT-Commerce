@@ -722,6 +722,24 @@ export const strings = {
     /** The first event of every order, which has no previous state. */
     genesisEvent: "Order placed",
 
+    /**
+     * The refusal a merchant reads when the order moved underneath them.
+     *
+     * ADDED BY PLAN 03-10, and the one exception to the "03-04 lands this file
+     * whole" rule stated at the top of the Phase 3 block — noted here rather
+     * than left to be discovered.
+     *
+     * `confirmOrder` and `markFulfilled` catch `InvalidTransitionError` and
+     * return it as a form-level failure. The realistic cause is not an attack
+     * but a second dashboard tab, or two staff on one shop: the order already
+     * left the state the button was rendered for. "Something went wrong. Try
+     * again in a moment." — the generic used elsewhere in this file — would be
+     * actively wrong copy for that, because trying again cannot help and the
+     * merchant would keep tapping. This says what happened and what to do.
+     */
+    staleAction:
+      "This order has already moved on. Refresh the page to see where it is now.",
+
     emptyHeading: "No orders yet",
     emptyBody:
       "Orders show up here the moment a customer checks out — through WhatsApp, Mobile Money, or cash on delivery.",
