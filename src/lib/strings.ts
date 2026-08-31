@@ -1011,6 +1011,51 @@ export const strings = {
       "Bookmark this link. It's how you check on your order — we've also sent it on WhatsApp.",
     trackingCopy: "Copy link",
     trackingCopied: "Copied",
+    /**
+     * The way on to the tracking page from the confirmation screen, on the
+     * paths that have no further step of their own. The manual-transfer path
+     * uses `submitTransfer` instead, because "Continue to payment" names what
+     * is actually waiting there.
+     */
+    trackingCta: "View your order",
+
+    /*
+     * ---------------------------------------------------------------------
+     * THE REFUSALS. WRITTEN FROM THE SHOPPER'S SIDE, NEVER THE SERVER'S.
+     * ---------------------------------------------------------------------
+     * `submitCheckout` (03-12) refuses for eight distinct reasons and every
+     * one of them reaches a person standing in a shop doorway on a phone.
+     * None of these says what the server checked: a shopper cannot act on
+     * "channel not configured", and a message that names an internal rule
+     * teaches a prober the shape of the rule for nothing in return.
+     *
+     * `errorEmptyCart` deliberately covers BOTH an empty basket and a basket
+     * belonging to another store — the second is a cookie that cannot be
+     * honest here, and telling the two apart would answer a question only
+     * someone probing would ask. The server logs the difference; the shopper
+     * reads one sentence.
+     *
+     * `errorOutOfStock` is 03-UI-SPEC.md § B4's approved wording verbatim,
+     * and it ends by pointing at the cart because the cart is where the
+     * shopper can actually do something — the basket is deliberately left
+     * intact when this fires.
+     */
+    errorRateLimited: "Too many attempts. Try again in a few minutes.",
+    errorStoreUnavailable: "This store isn't taking orders right now.",
+    errorEmptyCart: "Your cart is empty. Add something before you check out.",
+    errorNameRequired: "Enter your name.",
+    errorPhoneFormat: "Enter a 9-digit Cameroon mobile number starting with 6.",
+    errorAddressRequired:
+      "Add the delivery address so the courier can find you.",
+    errorPathUnavailable:
+      "This seller can't accept that payment method. Choose another way to pay.",
+    errorOperatorUnavailable:
+      "This seller doesn't accept that network. Choose the other one.",
+    errorOutOfStock:
+      "Someone just bought the last one. We've updated your cart — check it and try again.",
+    errorItemUnavailable:
+      "Something in your cart is no longer available. Check your cart and try again.",
+    genericError: "Something went wrong. Try again in a moment.",
   },
 
   /**

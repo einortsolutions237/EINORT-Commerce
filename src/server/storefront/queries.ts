@@ -293,15 +293,24 @@ export async function hydrateCart(
     const variant = byId.get(item.variantId);
 
     if (!variant || !variant.active || !variant.product.active) {
+      // THE IDENTITY FIELDS SURVIVE DEACTIVATION; THE MONEY FIELDS DO NOT.
+      // B3's removed-item note names the product — *{name} is no longer
+      // available and has been removed.* — so a deactivated row that came back
+      // with a name has to hand that name on, or the shopper reads a sentence
+      // with a hole where the product used to be. The amounts are still zeroed
+      // and the quantity is still dropped: a line the shopper cannot buy must
+      // not contribute to a total, and `src/server/orders/place.ts` will refuse
+      // it independently at placement (D-08 means the row is deactivated, never
+      // deleted, so the lookup normally succeeds and only `active` is false).
       lines.push({
         variantId: item.variantId,
-        productSlug: "",
-        productName: "",
-        variantLabel: "",
+        productSlug: variant?.product.slug ?? "",
+        productName: variant?.product.name ?? "",
+        variantLabel: variant ? variantLabelFor(variant) : "",
         quantity: 0,
         unitPriceXaf: 0,
         lineTotalXaf: 0,
-        imageKey: null,
+        imageKey: variant?.product.images[0]?.storageKey ?? null,
         availableStock: 0,
         adjustment: "unavailable",
       });
