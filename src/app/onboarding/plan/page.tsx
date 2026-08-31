@@ -29,13 +29,27 @@ export const metadata: Metadata = {
 };
 
 /**
- * Copy language is English; number formatting is `fr-CM` (CLAUDE.md). The two
- * are independent and both deliberate. `maximumFractionDigits: 0` is required
- * rather than cosmetic — the currency has no decimal subunit in common use.
+ * Copy language is English; the number formatting below is independent of that
+ * and deliberate on its own terms.
+ *
+ * ---------------------------------------------------------------------------
+ * THIS IS NOT THE CURRENCY FORMATTER CLAUDE.md DOCUMENTS. DO NOT "FIX" IT BACK.
+ * ---------------------------------------------------------------------------
+ * The rest of this codebase formats money with the locale-driven currency
+ * formatter CLAUDE.md prescribes, which renders `5 000 FCFA`. Quick task
+ * `260831-urm` asked for `5,000 XAF` — comma-grouped thousands, the literal
+ * currency code trailing — on the subscription-plan price display specifically.
+ * No standard locale produces that shape through a currency-style formatter:
+ * English locales put the code in front (`XAF 5,000`), and every locale that
+ * trails it groups with spaces or dots (`5 000 XAF`, `5.000 XAF`). So this is a
+ * plain decimal formatter and the code is appended as a literal at the call
+ * site. The deviation is scoped to the two plan surfaces and nothing else —
+ * product, cart, checkout, order and WhatsApp prices are untouched.
+ *
+ * `maximumFractionDigits: 0` is required rather than cosmetic — the currency
+ * has no decimal subunit in common use.
  */
-const priceFormatter = new Intl.NumberFormat("fr-CM", {
-  style: "currency",
-  currency: "XAF",
+const priceFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
@@ -107,7 +121,7 @@ export default async function PlanPage() {
     tagline: TIER_COPY[tier].tagline,
     featuresHeader: TIER_COPY[tier].featuresHeader,
     features: TIER_COPY[tier].features,
-    price: priceFormatter.format(PLANS[tier].monthlyPriceXaf),
+    price: `${priceFormatter.format(PLANS[tier].monthlyPriceXaf)} XAF`,
     recommended: PLANS[tier].recommended,
   }));
 
