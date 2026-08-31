@@ -266,9 +266,13 @@ describe("the three channels a Cameroonian shopper actually uses", () => {
      */
     expect(result.whatsappUrl).not.toBeNull();
     expect(result.whatsappUrl).toContain(`https://wa.me/${TENANT_A_MSISDN}?`);
-    expect(result.trackingPath).toMatch(
-      new RegExp(`^/s/${TENANT_A.slug}/order/[A-Za-z0-9_-]{32}$`),
-    );
+    // 260901-00j: the tracking path is origin-relative — the shape is
+    // `/order/{token}` with no `/s/{slug}` prefix, because the proxy hard-404s
+    // that prefix when a browser requests it directly (TEN-03/DOM-02). The
+    // anchoring and the 32-character token class are unchanged; only the
+    // slug-bearing prefix is gone. `trackingUrl` below still carries the full
+    // subdomain origin, and this assertion no longer needs `TENANT_A.slug`.
+    expect(result.trackingPath).toMatch(/^\/order\/[A-Za-z0-9_-]{32}$/);
     // The tracking URL the shopper is shown carries the plaintext token, and
     // the message carries that URL near the top (D-12).
     expect(decodeURIComponent(result.whatsappUrl ?? "")).toContain(

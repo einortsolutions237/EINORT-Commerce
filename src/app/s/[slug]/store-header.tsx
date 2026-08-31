@@ -30,15 +30,31 @@ export async function StoreHeader({
 
   return (
     <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between border-b border-border bg-background px-4 md:px-8">
+      {/*
+       * EVERY LINK IN THIS ROUTE TREE IS ORIGIN-RELATIVE. This is the canonical
+       * statement for all of `src/app/s/[slug]/**` (quick task 260901-00j).
+       *
+       * The shopper's origin is already `{slug}.{root}`. `src/proxy.ts` is what
+       * supplies the `/s/{slug}` prefix, on the way in, from the `Host` header —
+       * the one channel this codebase trusts for tenant identity. Writing that
+       * prefix into an href instead makes the browser request `/s/{slug}/...`
+       * literally, and the proxy hard-404s exactly that path (TEN-03/DOM-02),
+       * so the link renders a blank page. `src/app/s/[slug]/layout.tsx` already
+       * records the rule: `/s/{slug}` is "never a URL a visitor types."
+       *
+       * `tests/unit/storefront-link-prefix.test.ts` fails the build if the
+       * prefix comes back. The fix for that failure is to make the link
+       * origin-relative — NEVER to relax the `/s/` check in `src/proxy.ts`.
+       */}
       <Link
-        href={`/s/${slug}`}
+        href="/"
         className="text-sm leading-snug font-semibold tracking-[0.08em] text-foreground uppercase"
       >
         {storeName}
       </Link>
 
       <Link
-        href={`/s/${slug}/cart`}
+        href="/cart"
         aria-label="Cart"
         className="relative flex size-11 items-center justify-center rounded-full text-foreground hover:bg-muted"
       >
