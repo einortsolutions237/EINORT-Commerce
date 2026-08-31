@@ -828,6 +828,42 @@ export const strings = {
     confirmedToast: "Payment confirmed for order {n}",
     rejectedToast: "Claim rejected — the customer can send a corrected one.",
 
+    /**
+     * The two refusals a claim review can produce, ADDED BY PLAN 03-13 — the
+     * second exception to the "03-04 lands this file whole" rule stated at the
+     * top of the Phase 3 block, after `orders.staleAction`. Noted here rather
+     * than left to be discovered.
+     *
+     * There is deliberately no third key for the state machine's refusal.
+     * `confirmClaim` and `rejectClaim` catch `InvalidTransitionError` and reuse
+     * `strings.orders.staleAction`, because it is the SAME event described from
+     * the same merchant's point of view — the order moved underneath them in
+     * another tab — and this file's own header forbids writing one sentence
+     * twice, slightly differently.
+     */
+
+    /**
+     * ORD-02's optimistic lock, surfaced. The realistic cause is two dashboard
+     * tabs or two staff on one shop, not an attack, so the copy says what
+     * happened rather than apologising. "Refresh" is the only useful next step:
+     * unlike a stale order the decision is already made and re-tapping cannot
+     * change it.
+     */
+    alreadyReviewed:
+      "This claim has already been reviewed. Refresh the page to see the decision.",
+
+    /**
+     * D-04 / RESEARCH.md A6. Reopening a rejected claim re-holds the stock that
+     * the rejection put back on sale, and between those two moments the units
+     * can genuinely have sold to somebody else. `{name}` is the order line's
+     * snapshotted product name, so the merchant reads the item they are looking
+     * at rather than a variant id. The order stays DISPUTED — saying so is the
+     * point, because the alternative the merchant must not imagine is that the
+     * claim reopened and the stock quietly went negative.
+     */
+    reopenOutOfStock:
+      "{name} has sold out since this claim was rejected, so it can't be reopened. The order stays disputed.",
+
     emptyHeading: "No claims to review",
     emptyBody:
       "When a customer says they've paid by Mobile Money, their claim shows up here for you to check.",

@@ -1,0 +1,151 @@
+import { describe, expect, it } from "vitest";
+
+import { normalizeReference } from "@/server/claims/reference";
+
+/**
+ * ORD-04's uniqueness key, proved on its own (03-RESEARCH.md Pattern 10).
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS THE TEST THAT MAKES ORD-04 MEAN ANYTHING.
+ * ---------------------------------------------------------------------------
+ * The database constraint is `@@unique([tenantId, referenceNormalized])`, so
+ * whether two claims are "the same reference" is decided ENTIRELY by this
+ * function. A normaliser that let `MP240823.1234.A56789` and
+ * `mp240823 1234 a56789` produce two different keys would leave the index
+ * perfectly intact and perfectly useless: the same MTN transaction, retyped
+ * from the SMS receipt instead of copied from the MoMo app, would sail past a
+ * constraint that reports itself as enforced. The three-spellings case below is
+ * therefore not a nicety - it is the requirement, expressed as an assertion.
+ *
+ * A pure-function unit test in the database-free `unit` project, in the voice of
+ * `tests/unit/slug.test.ts`: no database client, no session, no socket. That is
+ * only possible because `src/server/claims/reference.ts` deliberately imports
+ * nothing - see its header for why the module was split out of
+ * `src/server/claims/queries.ts` rather than living beside the query that uses
+ * it.
+ *
+ * ---------------------------------------------------------------------------
+ * EVERY NON-ASCII CHARACTER BELOW IS A `\u` ESCAPE, NEVER THE CHARACTER ITSELF.
+ * ---------------------------------------------------------------------------
+ * The interesting inputs here are exactly the ones a reader cannot see: a
+ * non-breaking space, a zero-width space, a Cyrillic homoglyph of `M`. Pasted
+ * literally, this file would be a test nobody can review - the assertion would
+ * look identical to the plain-ASCII one above it - and an editor that trims
+ * whitespace on save would silently turn a real case into a duplicate.
+ */
+
+/** The three spellings a Cameroonian customer plausibly types for ONE payment. */
+const SAME_REFERENCE_SPELLINGS = [
+  // Copied from the MTN MoMo app.
+  "MP240823.1234.A56789",
+  // Retyped by hand from the SMS receipt, lowercase, spaces for the dots.
+  "mp240823 1234 a56789",
+  // Read off the USSD confirmation, hyphenated the way people group digits.
+  "MP-240823-1234-A56789",
+] as const;
+
+const CANONICAL = "MP2408231234A56789";
+
+describe("normalizeReference", () => {
+  it("collapses three spellings of one reference to the same key (ORD-04)", () => {
+    for (const spelling of SAME_REFERENCE_SPELLINGS) {
+      expect(
+        normalizeReference(spelling),
+        `"${spelling}" must normalise to the same uniqueness key as every ` +
+          "other spelling of the same transaction, or ORD-04's unique index " +
+          "is enforcing a constraint over strings rather than over payments.",
+      ).toBe(CANONICAL);
+    }
+
+    // Stated as a set as well as pairwise, so a future fourth spelling added to
+    // the list above cannot be quietly satisfied by an accidental match.
+    expect(new Set(SAME_REFERENCE_SPELLINGS.map(normalizeReference)).size).toBe(
+      1,
+    );
+  });
+
+  it("uppercases what is left", () => {
+    expect(normalizeReference("mp0001x")).toBe("MP0001X");
+    expect(normalizeReference("MixedCase123")).toBe("MIXEDCASE123");
+  });
+
+  it("strips ASCII punctuation and whitespace", () => {
+    expect(normalizeReference("MP.240823_1234/A5")).toBe("MP2408231234A5");
+    expect(normalizeReference("  MP 0001  ")).toBe("MP0001");
+    expect(normalizeReference("MP\t0001\n")).toBe("MP0001");
+    expect(normalizeReference("MP*0001#")).toBe("MP0001");
+  });
+
+  it("strips control characters", () => {
+    // A pasted reference can carry a NUL, a bell or a unit separator picked up
+    // from an SMS export. None of them are alphanumeric, so all of them must
+    // vanish rather than survive into a key nothing else ever matches.
+    expect(normalizeReference("MP\u0000\u0007\u001F0001")).toBe("MP0001");
+    expect(normalizeReference("\u007FMP0001")).toBe("MP0001");
+  });
+
+  it("strips Unicode punctuation, whitespace and non-Latin scripts", () => {
+    // A phone keyboard emits these far more often than anyone expects, and a
+    // key that kept even one of them would be a key nothing else ever matches.
+    expect(normalizeReference("MP\u00A00001")).toBe("MP0001"); // NBSP
+    expect(normalizeReference("MP\u20090001")).toBe("MP0001"); // thin space
+    expect(normalizeReference("MP\u200B0001")).toBe("MP0001"); // zero-width
+    expect(normalizeReference("MP\u20140001")).toBe("MP0001"); // em dash
+    expect(normalizeReference("MP\u20110001")).toBe("MP0001"); // non-break hyphen
+    expect(normalizeReference("\u201CMP0001\u201D")).toBe("MP0001"); // curly quotes
+
+    // Cyrillic homoglyphs of M and P. They are NOT the reference the merchant
+    // is holding, and a normaliser that let them survive would produce a key
+    // that looks right in a log line and matches nothing.
+    expect(normalizeReference("\u041C\u0420240823")).toBe("240823");
+  });
+
+  it("returns an empty string when nothing alphanumeric survives", () => {
+    // The caller's cue to refuse the claim rather than store a blank key: a
+    // blank normalised reference would occupy the tenant's ONE empty-string
+    // slot under the unique index and block every later claim that also
+    // normalised to nothing.
+    expect(normalizeReference("")).toBe("");
+    expect(normalizeReference("---")).toBe("");
+    expect(normalizeReference("   ")).toBe("");
+    expect(normalizeReference("...///")).toBe("");
+    expect(normalizeReference("\u00A0\u200B\u2014")).toBe("");
+  });
+
+  it("is idempotent", () => {
+    for (const spelling of SAME_REFERENCE_SPELLINGS) {
+      const once = normalizeReference(spelling);
+      expect(
+        normalizeReference(once),
+        "Normalising a normalised value must return it unchanged, or the " +
+          "stored referenceNormalized column and a freshly computed lookup " +
+          "key could disagree about the same claim.",
+      ).toBe(once);
+    }
+
+    expect(normalizeReference(CANONICAL)).toBe(CANONICAL);
+    expect(normalizeReference("")).toBe("");
+  });
+
+  it("never throws on arbitrary input", () => {
+    const hostile = [
+      "\u{1f642}\u{1f643}", // emoji, including one outside the BMP
+      "MP\u0000\u001F0001", // control characters
+      "\u041C\u0420240823", // Cyrillic homoglyphs
+      "x".repeat(500),
+      "\u{1f642}".repeat(200),
+    ];
+
+    for (const value of hostile) {
+      expect(() => normalizeReference(value)).not.toThrow();
+    }
+
+    // The 500-character run is alphanumeric, so it survives whole - the guard
+    // is against throwing or truncating, not against long input.
+    expect(normalizeReference("x".repeat(500))).toBe("X".repeat(500));
+    // Emoji carry no alphanumerics at all, so nothing survives.
+    expect(normalizeReference("\u{1f642}".repeat(200))).toBe("");
+    // A surrogate pair must not be half-eaten into a lone surrogate either.
+    expect(normalizeReference("MP\u{1f642}0001")).toBe("MP0001");
+  });
+});
