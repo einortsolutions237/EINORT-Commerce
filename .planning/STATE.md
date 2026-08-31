@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 Wave 5 merged (03-15, the last content plan), verified (700/700 tests, lint/typecheck/build clean) and pushed to master
-last_updated: "2026-08-31T18:05:00.000Z"
+stopped_at: Phase 3 phase-gate Tasks 1-2 merged (03-16 requirement-coverage test + 03-VALIDATION.md sign-off), verified (720/720 tests, lint/typecheck/build clean) and pushed to master. Task 3 (blocking real-device human-verify checkpoint) is the only thing left in the entire phase.
+last_updated: "2026-08-31T18:58:00.000Z"
 last_activity: 2026-08-31
 progress:
   total_phases: 6
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 ## Current Position
 
 Phase: 03 (product-catalog-order-payment-claim-state-machine) — EXECUTING
-Status: Waves 1-5 complete and merged to master (03-01 through 03-15, 15/16 plans — all content plans done). Only Wave 6 (03-16, the phase gate: full suite + requirement-coverage test + blocking human walkthrough) remains. Phase 3's own completion gate (verifier + code-review + phase.complete) has not yet run — will fire once Wave 6 lands.
+Status: All Phase 3 content complete (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 (requirement-coverage test, 03-VALIDATION.md sign-off — nyquist_compliant: true, all Wave-0 markers cleared). 720/720 tests pass, lint/typecheck/build clean. ONLY REMAINING WORK IN PHASE 3: 03-16's Task 3, a blocking human-verify checkpoint requiring a real iPhone and a real Android device to confirm CHK-03's tap-to-dial USSD behavior (no test runner can check this). Once approved, mark 03-16 complete in ROADMAP.md and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
 Last activity: 2026-08-31
 
-Progress: [███░░░░░░░] 33% phases (2/6 complete) · 97% plans (29/30 complete)
+Progress: [███░░░░░░░] 33% phases (2/6 complete) · 97% plans (29/30 complete, 03-16 in progress)
 
 ## Performance Metrics
 
