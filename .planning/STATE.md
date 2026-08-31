@@ -5,7 +5,7 @@ milestone_name: milestone
 status: executing
 stopped_at: Phase 3 phase-gate Tasks 1-2 merged (03-16 requirement-coverage test + 03-VALIDATION.md sign-off), verified (720/720 tests, lint/typecheck/build clean) and pushed to master. Task 3 (blocking real-device human-verify checkpoint) is the only thing left in the entire phase.
 last_updated: "2026-08-31T18:58:00.000Z"
-last_activity: 2026-08-31 - Completed quick task 260831-tjj: onboarding plan-card visual refinement
+last_activity: 2026-08-31 - Completed quick task 260831-urm: XAF price-format change on both plan surfaces
 progress:
   total_phases: 6
   completed_phases: 2
@@ -56,6 +56,7 @@ Progress: [███░░░░░░░] 33% phases (2/6 complete) · 97% plan
 |----------|-------------|----------|--------|
 | 260823-gu4 | Retrofit merchant-platform UI tokens (blue/gold/slate) + register design reference | 24min | complete ✓ |
 | 260831-tjj | Elevate the recommended tier on the onboarding plan-selection cards (floating badge, icon tiles, raised card, primary checkmarks) | ~15min | complete ✓ |
+| 260831-urm | Display subscription-plan prices as "5,000 XAF" (comma-grouped, code suffix) on onboarding/plan and dashboard/plan | ~12min | complete ✓ |
 
 *Updated after each plan completion*
 | Phase 02 P06 | 13min | 3 tasks | 3 files |
