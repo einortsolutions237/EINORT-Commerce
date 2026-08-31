@@ -1,0 +1,725 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, LoaderCircle, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useId, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { strings } from "@/lib/strings";
+import {
+  createCategory,
+  createProduct,
+  setProductActive,
+  updateProduct,
+} from "@/server/catalog/actions";
+
+import { ImageGalleryField, type GalleryImage } from "./image-gallery-field";
+import {
+  EMPTY_MATRIX,
+  VariantMatrixField,
+  type VariantMatrixValue,
+} from "./variant-matrix-field";
+
+/**
+ * A2 — the one product form, shared by `/dashboard/products/new` and
+ * `/dashboard/products/[id]` (CAT-01, D-05, D-06, D-08, D-10).
+ *
+ * ---------------------------------------------------------------------------
+ * ONE FORM, TWO ROUTES, AND NO SECOND WRITE LAYER.
+ * ---------------------------------------------------------------------------
+ * 03-06 already built the whole catalog write path: `createProduct` re-expands
+ * the option axes, re-counts the plan cap, derives the slug and reconciles
+ * variants and images inside one transaction. Nothing in this file re-implements
+ * any of that. It collects a payload and hands it over, which is why the create
+ * and the edit route can share a single component — the only difference between
+ * them is which action the submit handler calls.
+ *
+ * ---------------------------------------------------------------------------
+ * THE CLIENT-SIDE CAP CHECK IS A COURTESY. THE ACTION IS THE AUTHORITY (SUB-01).
+ * ---------------------------------------------------------------------------
+ * `new/page.tsx` redirects a merchant who is already at their plan's product
+ * limit rather than letting them fill in a form the server will refuse. That is
+ * politeness and nothing else: `createProduct` re-counts and refuses on its own,
+ * and its refusal is rendered here verbatim in the destructive alert above the
+ * action bar. A merchant who reached the cap in another tab between page load
+ * and submit sees a readable sentence, not a crash.
+ *
+ * ---------------------------------------------------------------------------
+ * A BLOCKING ERROR IS AN ALERT PLUS `aria-invalid`, NEVER A TOAST.
+ * ---------------------------------------------------------------------------
+ * A toast is transient and unfocusable; a merchant who missed it has no way back
+ * to the field that refused. So every server refusal lands in the destructive
+ * alert immediately above the action bar AND marks its field `aria-invalid`. The
+ * toast is reserved for the success case, where the redirect is the real signal
+ * and the toast merely confirms it.
+ *
+ * ---------------------------------------------------------------------------
+ * REQUIRED FIELDS ARE PREVENTED, NOT SCOLDED.
+ * ---------------------------------------------------------------------------
+ * `strings.products` carries no "this field is required" copy, and this plan
+ * runs in a wave alongside three others — appending to the shared copy module
+ * mid-wave is a merge conflict, and inventing the sentence inline would violate
+ * C-14. So the form makes the invalid submit unreachable instead: the price
+ * field cannot hold a non-digit, and `Save product` is inert until a name and a
+ * price exist. There is no state in which a merchant needs a message this
+ * component cannot spell.
+ *
+ * ---------------------------------------------------------------------------
+ * XAF IS A WHOLE NUMBER. THERE IS NO MINOR UNIT ANYWHERE IN THIS SYSTEM.
+ * ---------------------------------------------------------------------------
+ * The price field holds digits and is parsed with `Number`. No division by 100,
+ * no fixed-point string, no decimal library. A francs-CFA price is an integer
+ * count of francs, and introducing a minor unit here would put this form out of
+ * step with `Product.basePriceXaf`, with `OrderItem.unitPriceXaf` and with every
+ * `Intl.NumberFormat("fr-CM", …)` call in the codebase at once.
+ */
+
+// ---------------------------------------------------------------------------
+// What the routes hand in
+// ---------------------------------------------------------------------------
+
+/** One of the merchant's own categories (D-06 — there is no shared taxonomy). */
+export interface ProductFormCategory {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+}
+
+/** One existing `ProductVariant`, as `getProductForEdit` returns it. */
+export interface ProductFormVariant {
+  readonly option1Value: string;
+  readonly option2Value: string;
+  readonly priceXaf: number | null;
+  readonly stock: number;
+  readonly sku: string | null;
+  readonly active: boolean;
+}
+
+/** One existing `ProductImage`, in its stored position order (D-10). */
+export interface ProductFormImage {
+  readonly storageKey: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The product being edited, or `null` on the create route. */
+export interface ProductFormProduct {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly basePriceXaf: number;
+  readonly active: boolean;
+  readonly option1Name: string | null;
+  readonly option2Name: string | null;
+  readonly categoryId: string | null;
+  readonly variants: readonly ProductFormVariant[];
+  readonly images: readonly ProductFormImage[];
+}
+
+
+// ---------------------------------------------------------------------------
+// Form shape
+// ---------------------------------------------------------------------------
+
+/**
+ * The client schema, which mirrors the action's and is trusted by nobody.
+ *
+ * `createProduct` re-parses everything below with its own Zod schema before it
+ * touches the database, and it is reachable by a POST that never loaded this
+ * page. This exists so a typo costs no round trip, not because the server takes
+ * the client's word for anything.
+ */
+const formSchema = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  categoryId: z.string(),
+  price: z.string().regex(/^\d+$/),
+  stock: z.string().regex(/^\d*$/),
+});
+
+type ProductFormValues = z.infer<typeof formSchema>;
+
+/** The sentinel the category select uses for its inline-create row (D-06). */
+const NEW_CATEGORY_VALUE = "\u0000new-category";
+
+/** Digits only. Everything a merchant can type that is not one is dropped. */
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+// ---------------------------------------------------------------------------
+// Card 1 — Product details
+// ---------------------------------------------------------------------------
+
+/**
+ * The price input and its fixed `FCFA` adornment.
+ *
+ * Declared at module scope, not inside the form body: a component created during
+ * render is a new function identity every time, which the React Compiler
+ * (`react-hooks/static-components`) flags because it resets the field's internal
+ * state on each parent render. `payment-settings-form.tsx` hoists its fields for
+ * the same reason.
+ */
+function PriceField({
+  id,
+  value,
+  invalid,
+  onValueChange,
+}: {
+  readonly id: string;
+  readonly value: string;
+  readonly invalid: boolean;
+  readonly onValueChange: (next: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{strings.products.priceLabel}</Label>
+      <div className="flex items-stretch gap-0">
+        <Input
+          id={id}
+          inputMode="numeric"
+          autoComplete="off"
+          aria-invalid={invalid}
+          className="min-h-11 rounded-r-none tabular-nums"
+          value={value}
+          onChange={(event) => onValueChange(digitsOnly(event.target.value))}
+        />
+        <span
+          aria-hidden="true"
+          className="inline-flex min-h-11 items-center rounded-r-lg border border-l-0 border-input bg-muted px-2.5 text-sm text-muted-foreground"
+        >
+          {strings.products.priceSuffix}
+        </span>
+      </div>
+      <p className="text-base leading-normal text-muted-foreground">
+        {strings.products.priceHelper}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The category select plus its inline create row.
+ *
+ * D-06 makes categories free-form and merchant-owned, so creating one must not
+ * require leaving a half-filled product form. Choosing the last row reveals an
+ * input; the new category is created through `createCategory` and selected in
+ * place, with no navigation and no refetch.
+ */
+function CategoryField({
+  id,
+  categories,
+  value,
+  creating,
+  draftName,
+  invalid,
+  onSelect,
+  onDraftNameChange,
+  onCreate,
+}: {
+  readonly id: string;
+  readonly categories: readonly ProductFormCategory[];
+  readonly value: string;
+  readonly creating: boolean;
+  readonly draftName: string;
+  readonly invalid: boolean;
+  readonly onSelect: (next: string) => void;
+  readonly onDraftNameChange: (next: string) => void;
+  readonly onCreate: () => void;
+}) {
+  const items = [
+    ...categories.map((category) => ({
+      label: category.name,
+      value: category.id,
+    })),
+    { label: strings.products.newCategoryOption, value: NEW_CATEGORY_VALUE },
+  ];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{strings.products.categoryLabel}</Label>
+      <Select
+        items={items}
+        value={value === "" ? null : value}
+        onValueChange={(next) => onSelect(next ?? "")}
+      >
+        <SelectTrigger id={id} className="min-h-11 w-full">
+          <SelectValue placeholder={strings.products.categoryLabel} />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {creating ? (
+        <div className="flex items-stretch gap-2">
+          <Input
+            aria-label={strings.products.newCategoryLabel}
+            aria-invalid={invalid}
+            autoComplete="off"
+            className="min-h-11"
+            value={draftName}
+            onChange={(event) => onDraftNameChange(event.target.value)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-11 shrink-0"
+            disabled={draftName.trim() === ""}
+            onClick={onCreate}
+          >
+            <Plus aria-hidden="true" />
+            <span className="sr-only">
+              {strings.products.newCategoryLabel}
+            </span>
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Card 4 — Visibility (edit route only)
+// ---------------------------------------------------------------------------
+
+/**
+ * The D-08 visibility switch.
+ *
+ * It calls `setProductActive`, which is the very same action the A1 row's
+ * `Deactivate` item calls. That is deliberate and load-bearing: "hidden" has to
+ * mean one thing, so there is one write behind both affordances rather than two
+ * that could drift. It also writes immediately rather than on save, because it
+ * is not part of the product's draft — it is a state the merchant is toggling.
+ */
+function VisibilityCard({
+  id,
+  productId,
+  active,
+  onActiveChange,
+}: {
+  readonly id: string;
+  readonly productId: string;
+  readonly active: boolean;
+  readonly onActiveChange: (next: boolean) => void;
+}) {
+  const [pending, setPending] = useState(false);
+
+  async function handleChange(next: boolean) {
+    setPending(true);
+    onActiveChange(next);
+
+    const result = await setProductActive({ productId, active: next });
+    if (!result.ok) {
+      // A refusal (an expired trial, a session that lapsed mid-click) leaves
+      // the switch exactly where it was rather than lying about the state.
+      onActiveChange(!next);
+    }
+
+    setPending(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{strings.products.visibilityCardTitle}</CardTitle>
+        <CardDescription>{strings.products.visibleHelper}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-3">
+          <Switch
+            id={id}
+            checked={active}
+            disabled={pending}
+            onCheckedChange={(checked: boolean) => {
+              void handleChange(checked);
+            }}
+          />
+          <Label htmlFor={id}>{strings.products.visibleLabel}</Label>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The form
+// ---------------------------------------------------------------------------
+
+export function ProductForm({
+  categories: initialCategories,
+  product,
+  imageBaseUrl,
+}: {
+  readonly categories: readonly ProductFormCategory[];
+  readonly product: ProductFormProduct | null;
+  /**
+   * R2's public origin, read on the server and handed down.
+   *
+   * `src/server/images/r2.ts` carries `server-only`, so `publicUrlFor` cannot
+   * be imported into a client island, and `R2_PUBLIC_BASE_URL` is not a
+   * `NEXT_PUBLIC_` variable. The route reads it once; Card 2 appends a
+   * derivative name to it and never addresses the stored upload itself.
+   */
+  readonly imageBaseUrl: string;
+}) {
+  const router = useRouter();
+  const fieldId = useId();
+
+  const [categories, setCategories] = useState(initialCategories);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [invalidField, setInvalidField] = useState<string | null>(null);
+  const [active, setActive] = useState(product?.active ?? true);
+
+  /**
+   * Card 2's stored, derived photos in their submission order.
+   *
+   * Index 0 is the hero — `createProduct` writes `position` from array order,
+   * so "make this the main photo" and "move this to the front of the array"
+   * are the same operation and there is no second notion of primacy to keep in
+   * step. Only `ready` entries ever arrive here; an upload still in flight has
+   * no key to submit.
+   */
+  const [images, setImages] = useState<GalleryImage[]>(() =>
+    (product?.images ?? []).map((image) => ({
+      storageKey: image.storageKey,
+      width: image.width,
+      height: image.height,
+    })),
+  );
+
+  /**
+   * Card 3's axes and per-combination rows, as `variant-matrix-field.tsx`
+   * derives them.
+   *
+   * The rows are built there by the SAME `expandVariantMatrix` the actions run,
+   * so this component never assembles a combination itself. It starts empty and
+   * is replaced on the field's first report, which happens before a merchant
+   * can submit anything.
+   */
+  const [matrix, setMatrix] = useState<VariantMatrixValue>(EMPTY_MATRIX);
+
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: product?.name ?? "",
+      description: product?.description ?? "",
+      categoryId: product?.categoryId ?? "",
+      price: product === null ? "" : String(product.basePriceXaf),
+      stock:
+        product === null
+          ? ""
+          : String(
+              product.variants.find((variant) => variant.active)?.stock ?? 0,
+            ),
+    },
+  });
+
+  const { control } = form;
+  const { isSubmitting } = form.formState;
+
+  /*
+   * `useWatch` rather than `form.watch(...)`: the latter returns a function the
+   * React Compiler cannot memoize, which opts the whole component out of
+   * compilation. The subscription re-renders on exactly the same changes.
+   */
+  const watchedName = useWatch({ control, name: "name" });
+  const watchedCategoryId = useWatch({ control, name: "categoryId" });
+  const watchedPrice = useWatch({ control, name: "price" });
+  const watchedStock = useWatch({ control, name: "stock" });
+
+  /*
+   * Save is inert rather than scolding. `strings.products` carries no
+   * "this field is required" copy and no plan in this wave may append to it, so
+   * the form makes the invalid submit unreachable instead of spelling a
+   * sentence it does not have. The over-cap matrix is blocked the same way, and
+   * it DOES have copy — Card 3 renders it beside the axes.
+   */
+  const canSubmit =
+    watchedName.trim() !== "" && watchedPrice !== "" && !matrix.blocked;
+
+  function handleCategorySelect(next: string) {
+    if (next === NEW_CATEGORY_VALUE) {
+      setCreatingCategory(true);
+      return;
+    }
+    setCreatingCategory(false);
+    setCategoryError(null);
+    form.setValue("categoryId", next, { shouldDirty: true });
+  }
+
+  async function handleCreateCategory() {
+    setCategoryError(null);
+    setInvalidField(null);
+
+    const result = await createCategory({ name: categoryDraft });
+
+    if (!result.ok) {
+      setCategoryError(result.error.name?.[0] ?? result.error.form?.[0] ?? null);
+      setInvalidField("category");
+      return;
+    }
+
+    setCategories([...categories, result.category]);
+    form.setValue("categoryId", result.category.id, { shouldDirty: true });
+    setCategoryDraft("");
+    setCreatingCategory(false);
+  }
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    setFormError(null);
+    setInvalidField(null);
+
+    /*
+     * With no axis declared the matrix reports the single implicit variant —
+     * `("", "")` — and Card 3's stock input owns its count. That keeps stock at
+     * exactly one level in the schema, so no reader ever has to ask whether to
+     * look at the product or at its variants.
+     */
+    const implicitStock = Number(values.stock === "" ? "0" : values.stock);
+    const variants = matrix.hasAxes
+      ? matrix.variants
+      : matrix.variants.map((variant) => ({ ...variant, stock: implicitStock }));
+
+    const payload = {
+      name: values.name.trim(),
+      description:
+        values.description.trim() === "" ? null : values.description.trim(),
+      categoryId: values.categoryId === "" ? null : values.categoryId,
+      basePriceXaf: Number(values.price),
+      option1Name: matrix.option1Name,
+      values1: matrix.values1,
+      option2Name: matrix.option2Name,
+      values2: matrix.values2,
+      variants,
+      /*
+       * Card 2's array, in tile order. `updateProduct` reconciles against it:
+       * a key that is no longer present is parked, never deleted (D-08), and
+       * positions are vacated before they are reassigned.
+       */
+      images,
+    };
+
+    const result =
+      product === null
+        ? await createProduct(payload)
+        : await updateProduct({ ...payload, productId: product.id });
+
+    if (!result.ok) {
+      const entries = Object.entries(result.error);
+      const first = entries[0];
+      setFormError(first?.[1]?.[0] ?? null);
+      setInvalidField(first?.[0] ?? null);
+      return;
+    }
+
+    router.push("/dashboard/products");
+    toast.success(strings.products.savedToast);
+  });
+
+  const blockingMessage = formError ?? categoryError;
+
+  return (
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{strings.products.detailsCardTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${fieldId}-name`}>
+              {strings.products.nameLabel}
+            </Label>
+            <Input
+              id={`${fieldId}-name`}
+              autoComplete="off"
+              aria-invalid={invalidField === "name"}
+              className="min-h-11"
+              {...form.register("name")}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${fieldId}-description`}>
+              {strings.products.descriptionLabel}
+            </Label>
+            <Textarea
+              id={`${fieldId}-description`}
+              rows={4}
+              className="min-h-24"
+              {...form.register("description")}
+            />
+          </div>
+
+          <CategoryField
+            id={`${fieldId}-category`}
+            categories={categories}
+            value={watchedCategoryId}
+            creating={creatingCategory}
+            draftName={categoryDraft}
+            invalid={invalidField === "category" || invalidField === "name"}
+            onSelect={handleCategorySelect}
+            onDraftNameChange={setCategoryDraft}
+            onCreate={() => {
+              void handleCreateCategory();
+            }}
+          />
+
+          <PriceField
+            id={`${fieldId}-price`}
+            value={watchedPrice}
+            invalid={invalidField === "basePriceXaf"}
+            onValueChange={(next) => {
+              form.setValue("price", next, { shouldDirty: true });
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{strings.products.imagesCardTitle}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ImageGalleryField
+            imageBaseUrl={imageBaseUrl}
+            productName={watchedName}
+            initialImages={images}
+            onImagesChange={setImages}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{strings.products.optionsCardTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {/*
+            The default mode: one stock count for the whole product. It gives
+            way to the matrix the moment a usable axis exists, because at that
+            point the count lives per combination and two places to type it
+            would be two answers to one question.
+          */}
+          {matrix.hasAxes ? null : (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`${fieldId}-stock`}>
+                {strings.products.stockLabel}
+              </Label>
+              <Input
+                id={`${fieldId}-stock`}
+                inputMode="numeric"
+                autoComplete="off"
+                aria-invalid={invalidField === "variants"}
+                className="min-h-11 tabular-nums"
+                value={watchedStock}
+                onChange={(event) => {
+                  form.setValue("stock", digitsOnly(event.target.value), {
+                    shouldDirty: true,
+                  });
+                }}
+              />
+              <p className="text-base leading-normal text-muted-foreground">
+                {strings.products.stockHelper}
+              </p>
+            </div>
+          )}
+
+          <VariantMatrixField
+            basePrice={watchedPrice}
+            initialOption1Name={product?.option1Name ?? null}
+            initialOption2Name={product?.option2Name ?? null}
+            initialVariants={product?.variants ?? []}
+            onChange={setMatrix}
+          />
+        </CardContent>
+      </Card>
+
+      {product === null ? null : (
+        <VisibilityCard
+          id={`${fieldId}-visible`}
+          productId={product.id}
+          active={active}
+          onActiveChange={setActive}
+        />
+      )}
+
+      {blockingMessage === null ? null : (
+        <Alert variant="destructive">
+          <AlertCircle aria-hidden="true" />
+          <AlertDescription className="text-destructive">
+            {blockingMessage}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/*
+       * Sticky to the viewport bottom below `md`, inline at the end of the
+       * column above it — a merchant filling this in one-handed on a 360px
+       * screen should never have to scroll to find Save.
+       */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t border-border bg-background px-4 py-3 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0">
+        <Button
+          type="submit"
+          disabled={isSubmitting || !canSubmit}
+          /* `min-w-44` retains the width across the label swap, so the row does
+             not shift under the merchant's thumb mid-save. */
+          className="min-h-11 min-w-44 px-6 text-sm font-semibold"
+        >
+          {isSubmitting ? (
+            <>
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              {strings.products.saveSubmitting}
+            </>
+          ) : (
+            strings.products.saveCta
+          )}
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-11"
+          disabled={isSubmitting}
+          onClick={() => {
+            form.reset();
+            router.push("/dashboard/products");
+          }}
+        >
+          {strings.products.discardCta}
+        </Button>
+      </div>
+    </form>
+  );
+}
