@@ -100,7 +100,7 @@ export async function signUpMerchant(
       returnHeaders: true,
     });
   } catch (error) {
-    if (apiErrorCode(error) === "USER_ALREADY_EXISTS") {
+    if (apiErrorCode(error) === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
       return { ok: false, error: { email: [strings.signup.emailTaken] } };
     }
     return { ok: false, error: { form: [strings.signup.genericError] } };
