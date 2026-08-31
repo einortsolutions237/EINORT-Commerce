@@ -103,7 +103,7 @@ export default async function CartPage({ params }: PageProps<"/s/[slug]/cart">) 
            * page spends nothing.
            */}
           <Link
-            href={`/s/${slug}`}
+            href="/"
             className="mt-6 inline-flex min-h-11 items-center justify-center rounded border border-border px-4 text-sm leading-snug font-semibold text-foreground hover:bg-muted"
           >
             {strings.cart.emptyCta}
@@ -162,7 +162,7 @@ export default async function CartPage({ params }: PageProps<"/s/[slug]/cart">) 
            */}
           <div className="sticky bottom-0 mt-4 -mx-4 border-t border-border bg-background px-4 py-3 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
             <Link
-              href={`/s/${slug}/checkout`}
+              href="/checkout"
               className="flex min-h-12 w-full items-center justify-center rounded bg-primary px-4 text-base leading-normal font-semibold text-primary-foreground hover:bg-primary/80"
             >
               {strings.cart.checkoutCta}

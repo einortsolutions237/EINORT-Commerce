@@ -194,7 +194,19 @@ async function buildOutcome(args: {
   orderNumber: string;
   trackingToken: string;
 }): Promise<SubmitCheckoutResult> {
-  const trackingPath = `/s/${args.slug}/order/${args.trackingToken}`;
+  // `trackingPath` is browser-visible: `checkout-form.tsx` renders it as the
+  // post-order confirmation CTA's href, and on the Mobile-Money and
+  // Cash-on-Delivery paths there is no `whatsappUrl`, so it is the shopper's
+  // ONLY route to the page holding the payment instructions. It therefore takes
+  // the same origin-relative form as every other storefront link — the proxy
+  // supplies the `/s/{slug}` prefix from the `Host` header and hard-404s it when
+  // a browser asks for it directly (TEN-03/DOM-02). This is the same rule the
+  // doc comment on `storeOriginFor` above already states. Quick task 260901-00j.
+  //
+  // Contrast the `revalidatePath("/s/{slug}", "layout")` call further down:
+  // that one addresses the Next.js route tree rather than the browser, so it
+  // keeps the internal prefix and must not be "fixed" to match this line.
+  const trackingPath = `/order/${args.trackingToken}`;
   const trackingUrl = `${storeOriginFor(args.slug)}/order/${args.trackingToken}`;
 
   let whatsappUrl: string | null = null;

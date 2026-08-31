@@ -88,7 +88,7 @@ export default async function CheckoutPage({
    * than an empty-checkout state: the cart already owns the empty case, and it
    * is the screen that can do something about it.
    */
-  if (payable.length === 0) redirect(`/s/${slug}/cart`);
+  if (payable.length === 0) redirect("/cart");
 
   const settings = await payments.getPaymentSettings(tenant.id);
   const paths = payments.resolvePaymentPaths(settings);

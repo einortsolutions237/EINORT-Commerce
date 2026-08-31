@@ -114,7 +114,7 @@ export default async function StorefrontPage({
             className="mb-4 flex gap-2 overflow-x-auto pb-2"
           >
             <Link
-              href={`/s/${slug}`}
+              href="/"
               className={cn(
                 "shrink-0 rounded-full border border-border px-3 py-1.5 text-sm leading-snug font-semibold tracking-[0.08em] uppercase",
                 !categorySlug
@@ -127,7 +127,7 @@ export default async function StorefrontPage({
             {categories.map((category) => (
               <Link
                 key={category.id}
-                href={`/s/${slug}?category=${category.slug}`}
+                href={`/?category=${category.slug}`}
                 className={cn(
                   "shrink-0 rounded-full border border-border px-3 py-1.5 text-sm leading-snug font-semibold tracking-[0.08em] uppercase",
                   categorySlug === category.slug
@@ -145,7 +145,7 @@ export default async function StorefrontPage({
           {products.map((product) => (
             <Link
               key={product.id}
-              href={`/s/${slug}/p/${product.slug}`}
+              href={`/p/${product.slug}`}
               className="group flex flex-col"
             >
               <div className="relative aspect-square overflow-hidden rounded bg-muted">

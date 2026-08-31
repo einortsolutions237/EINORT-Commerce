@@ -259,7 +259,7 @@ export function AddToCart({
           action: {
             label: strings.catalog.addedToastAction,
             onClick: () => {
-              router.push(`/s/${slug}/cart`);
+              router.push("/cart");
             },
           },
         });

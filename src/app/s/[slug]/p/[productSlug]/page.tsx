@@ -58,7 +58,7 @@ export default async function ProductDetailPage({
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-8">
         <Link
-          href={`/s/${slug}`}
+          href="/"
           className="flex h-11 w-fit items-center gap-1.5 text-sm leading-snug font-semibold tracking-[0.08em] text-foreground uppercase"
         >
           <ChevronLeftIcon className="size-4" aria-hidden="true" />
