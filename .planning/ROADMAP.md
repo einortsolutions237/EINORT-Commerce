@@ -142,10 +142,10 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03-11-PLAN.md — The A2 product form: details, the D-10 image gallery and the D-05 live variant matrix
-- [ ] 03-12-PLAN.md — The cart review page and the three-path checkout with idempotent submission
-- [ ] 03-13-PLAN.md — The payment-claims queue: one-tap confirm, required-reason reject, stock release and reopen
-- [ ] 03-14-PLAN.md — The order-tracking page: exhaustive CHK-05 status map and the D-15 three-tier payment instructions
+- [x] 03-11-PLAN.md — The A2 product form: details, the D-10 image gallery and the D-05 live variant matrix
+- [x] 03-12-PLAN.md — The cart review page and the three-path checkout with idempotent submission
+- [x] 03-13-PLAN.md — The payment-claims queue: one-tap confirm, required-reason reject, stock release and reopen
+- [x] 03-14-PLAN.md — The order-tracking page: exhaustive CHK-05 status map and the D-15 three-tier payment instructions
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
