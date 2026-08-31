@@ -24,6 +24,7 @@ import {
 import { callerIp, orderTrackingLimiter as trackingLimiter } from "@/server/rate-limit";
 import { resolveTenantBySlug } from "@/server/tenant/resolve";
 
+import { ClaimForm } from "./claim-form";
 import { CopyField } from "./copy-field";
 import { PaymentInstructions } from "./payment-instructions";
 import { StatusBlock } from "./status-block";
@@ -57,12 +58,15 @@ import { StatusBlock } from "./status-block";
  * is a path segment — is stated and accepted in `src/server/orders/tracking.ts`.
  *
  * ---------------------------------------------------------------------------
- * WHAT THIS PAGE DELIBERATELY DOES NOT DO.
+ * THE CLAIM FORM APPEARS IN TWO STATES, AND IN NEITHER IS IT OPTIONAL.
  * ---------------------------------------------------------------------------
- * It renders the payment instructions but NOT the `I've paid` CTA or the claim
- * form. Plan 03-15 owns the whole claim submission flow, and a button here that
- * went nowhere would be worse than the gap — the customer would tap it, nothing
- * would happen, and they would conclude the store cannot take their money.
+ * `PAYMENT_PENDING` mounts it beneath the B5 instructions, because a customer
+ * told to send money and then "tell us the transaction reference" needs the
+ * place to tell us on the same screen. `DISPUTED` mounts it beneath the
+ * merchant's quoted reason, pre-filled and relabelled, because D-11 makes a
+ * dispute recoverable and a page that shows a refusal with no way to answer it
+ * is a dead end the customer has no other route out of — there is no account to
+ * log into and no support form. Every other state's action region is unchanged.
  */
 
 export const metadata: Metadata = {
@@ -130,6 +134,24 @@ export default async function OrderTrackingPage({
   const claim = order.claims[0] ?? null;
   const totalLabel = formatXaf(order.totalXaf);
   const trackingUrl = trackingUrlFor(slug, token);
+
+  /*
+   * B6's chips list ONLY what the merchant can actually receive on today —
+   * D-16's rule, applied to the claim form for the same reason it applies at
+   * checkout. `claimOperator` is the previous claim's network when there is one
+   * (the D-11 correction is about a reference, not usually about the wallet)
+   * and otherwise the merchant's first configured one.
+   *
+   * `undefined` means the merchant has no receiving number at all, and the form
+   * is then not mounted: a chip group with nothing in it and a reference field
+   * for a payment that could not have been made is worse than the gap. The
+   * status block still says where the order stands, so the page stays explicit.
+   */
+  const claimOperators = paths.operators;
+  const claimOperator =
+    claim !== null && claimOperators.includes(claim.operator)
+      ? claim.operator
+      : claimOperators[0];
 
   /*
    * D-01's link, rebuilt from the merchant's stored number rather than kept
@@ -215,6 +237,22 @@ export default async function OrderTrackingPage({
       ) : null}
 
       {/*
+       * B5's closing CTA and B6 behind it. Gated on the operator rather than on
+       * `paths.manualTransfer` so the two conditions cannot drift: the chips are
+       * built from the same list, and a form whose only choice is `undefined`
+       * would render a group with nothing to pick.
+       */}
+      {order.state === "PAYMENT_PENDING" && claimOperator !== undefined ? (
+        <ClaimForm
+          slug={slug}
+          token={token}
+          operators={claimOperators}
+          defaultOperator={claimOperator}
+          previousReference={null}
+        />
+      ) : null}
+
+      {/*
        * A read-only recap, with NO resubmit affordance. A claim that is still
        * being checked is not a problem yet, and a second submit button beside
        * it invites a duplicate reference — which ORD-04 rejects at a unique
@@ -267,16 +305,34 @@ export default async function OrderTrackingPage({
        * not 10" is useless to the person holding the SMS.
        */}
       {order.state === "DISPUTED" ? (
-        <section className="flex flex-col gap-3 rounded border border-destructive p-6">
-          {claim?.rejectionReason ? (
-            <blockquote className="text-base leading-[1.6] font-normal text-foreground">
-              {claim.rejectionReason}
-            </blockquote>
+        <div className="flex flex-col gap-6">
+          <section className="flex flex-col gap-3 rounded border border-destructive p-6">
+            {claim?.rejectionReason ? (
+              <blockquote className="text-base leading-[1.6] font-normal text-foreground">
+                {claim.rejectionReason}
+              </blockquote>
+            ) : null}
+            <p className="text-base leading-[1.6] font-normal text-muted-foreground">
+              {strings.orderStatus.disputedInstruction}
+            </p>
+          </section>
+
+          {/*
+           * Pre-filled with what was refused, so the customer edits the digit
+           * they got wrong instead of retyping a reference they are being told
+           * is already close. Passing a reference — even an empty one — is what
+           * relabels the submit to `Send corrected details`.
+           */}
+          {claimOperator !== undefined ? (
+            <ClaimForm
+              slug={slug}
+              token={token}
+              operators={claimOperators}
+              defaultOperator={claimOperator}
+              previousReference={claim?.reference ?? ""}
+            />
           ) : null}
-          <p className="text-base leading-[1.6] font-normal text-muted-foreground">
-            {strings.orderStatus.disputedInstruction}
-          </p>
-        </section>
+        </div>
       ) : null}
 
       {/* --- Line items and total ----------------------------------------- */}
