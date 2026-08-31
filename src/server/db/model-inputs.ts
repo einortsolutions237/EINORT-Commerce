@@ -68,6 +68,19 @@ export type OrderCreateInput = Prisma.OrderUncheckedCreateInput;
 export type OrderItemCreateManyInput = Prisma.OrderItemCreateManyInput;
 
 /**
+ * `PaymentClaim` (CHK-04 / ORD-04), written by `submitClaim` in
+ * `src/server/claims/submit.ts` and by nothing else. `src/server/claims/actions.ts`
+ * only ever UPDATES a claim the customer already created.
+ *
+ * The `Unchecked` variant for the same Pitfall 1/4 reason as the rows above: the
+ * claim names its order by the `orderId` scalar rather than through a nested
+ * relation connect, because the tenant-scope extension hooks client operations
+ * and a nested write would land with no `tenantId` stamp — on the one table
+ * whose `@@unique([tenantId, referenceNormalized])` index IS requirement ORD-04.
+ */
+export type PaymentClaimCreateInput = Prisma.PaymentClaimUncheckedCreateInput;
+
+/**
  * `MerchantPaymentSettings` (D-14), written by `savePaymentSettings` in
  * `src/server/payments/actions.ts` and by nothing else.
  *
