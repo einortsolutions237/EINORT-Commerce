@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 Wave 4 merged (03-11 through 03-14), verified (688/688 tests, lint/typecheck/build clean) and pushed to master
-last_updated: "2026-08-31T15:50:00.000Z"
+stopped_at: Phase 3 Wave 5 merged (03-15, the last content plan), verified (700/700 tests, lint/typecheck/build clean) and pushed to master
+last_updated: "2026-08-31T18:05:00.000Z"
 last_activity: 2026-08-31
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 30
-  completed_plans: 28
+  completed_plans: 29
   percent: 33
 ---
 
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 ## Current Position
 
 Phase: 03 (product-catalog-order-payment-claim-state-machine) — EXECUTING
-Status: Waves 1-4 complete and merged to master (03-01 through 03-14, 14/16 plans). Wave 5 (03-15, claim submission/resubmission) and Wave 6 (03-16, the phase gate) not yet started. Phase 3's own completion gate (verifier + code-review + phase.complete) has not yet run — will fire once Wave 6 lands.
+Status: Waves 1-5 complete and merged to master (03-01 through 03-15, 15/16 plans — all content plans done). Only Wave 6 (03-16, the phase gate: full suite + requirement-coverage test + blocking human walkthrough) remains. Phase 3's own completion gate (verifier + code-review + phase.complete) has not yet run — will fire once Wave 6 lands.
 Last activity: 2026-08-31
 
-Progress: [███░░░░░░░] 33% phases (2/6 complete) · 93% plans (28/30 complete)
+Progress: [███░░░░░░░] 33% phases (2/6 complete) · 97% plans (29/30 complete)
 
 ## Performance Metrics
 

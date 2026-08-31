@@ -149,7 +149,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03-15-PLAN.md — Claim submission and D-11 resubmission: token-gated screenshot upload, ORD-04 enforcement, D-13 email
+- [x] 03-15-PLAN.md — Claim submission and D-11 resubmission: token-gated screenshot upload, ORD-04 enforcement, D-13 email
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
