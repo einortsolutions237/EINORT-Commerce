@@ -284,21 +284,43 @@ export function CheckoutForm({
    * ------------------------------------------------------------------- */
 
   if (outcome) {
-    const isWhatsapp = outcome.whatsappUrl !== null;
+    /*
+     * The channel is read from the SELECTION, not guessed from the presence of
+     * a `wa.me` link: the three paths end in three genuinely different places
+     * and the copy has to say which one this is. B4's table gives the
+     * behaviour per path, and D-02 gives the state the order is now in — a
+     * manual transfer is in `PAYMENT_PENDING` and the shopper still owes an
+     * action, which is the one case where "Order received" would be a lie.
+     */
+    const isWhatsapp = channel === "WHATSAPP";
+    const isTransfer = channel === "MANUAL_TRANSFER";
+
+    const heading = isWhatsapp
+      ? strings.orderStatus.placedWhatsappHeading
+      : isTransfer
+        ? strings.orderStatus.paymentPendingHeading
+        : strings.orderStatus.placedCodHeading;
+
+    const body = (
+      isWhatsapp
+        ? strings.orderStatus.placedWhatsappBody
+        : isTransfer
+          ? strings.orderStatus.paymentPendingBody
+          : strings.orderStatus.placedCodBody
+    )
+      // The amount is the server-formatted string this page was handed. The
+      // component still computes nothing.
+      .replace("{amount}", total)
+      .replace("{store}", storeName);
 
     return (
       <section>
         <h1 className="text-2xl leading-tight font-semibold tracking-tight text-foreground">
-          {isWhatsapp
-            ? strings.orderStatus.placedWhatsappHeading
-            : strings.orderStatus.placedCodHeading}
+          {heading}
         </h1>
 
         <p className="mt-3 text-base leading-relaxed font-normal text-foreground">
-          {(isWhatsapp
-            ? strings.orderStatus.placedWhatsappBody
-            : strings.orderStatus.placedCodBody
-          ).replace("{store}", storeName)}
+          {body}
         </p>
 
         <p className="mt-2 text-sm leading-snug font-semibold tracking-[0.08em] text-muted-foreground uppercase">
@@ -367,7 +389,9 @@ export function CheckoutForm({
         >
           {outcome.whatsappUrl
             ? strings.orderStatus.openWhatsappAgain
-            : strings.checkout.trackingHeading}
+            : isTransfer
+              ? strings.checkout.submitTransfer
+              : strings.checkout.trackingCta}
         </a>
       </section>
     );

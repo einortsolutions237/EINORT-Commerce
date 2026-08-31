@@ -1011,6 +1011,13 @@ export const strings = {
       "Bookmark this link. It's how you check on your order — we've also sent it on WhatsApp.",
     trackingCopy: "Copy link",
     trackingCopied: "Copied",
+    /**
+     * The way on to the tracking page from the confirmation screen, on the
+     * paths that have no further step of their own. The manual-transfer path
+     * uses `submitTransfer` instead, because "Continue to payment" names what
+     * is actually waiting there.
+     */
+    trackingCta: "View your order",
 
     /*
      * ---------------------------------------------------------------------
