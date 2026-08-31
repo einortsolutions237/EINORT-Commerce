@@ -58,6 +58,7 @@ Progress: [███░░░░░░░] 33% phases (2/6 complete) · 97% plan
 | 260831-tjj | Elevate the recommended tier on the onboarding plan-selection cards (floating badge, icon tiles, raised card, primary checkmarks) | ~15min | complete ✓ |
 | 260831-urm | Display subscription-plan prices as "5,000 XAF" (comma-grouped, code suffix) on onboarding/plan and dashboard/plan | ~12min | complete ✓ |
 | 260831-vd2 | Show the three plan tiers read-only on dashboard/plan's expired-trial branch (no trial-day framing, no switch buttons, no payment redirect -- deferred to Phase 6) | ~14min | complete ✓ |
+| 260901-00j | Fix storefront navigation: every internal link used the internal /s/{slug} rewrite-target prefix that src/proxy.ts hard-404s on direct request, making the storefront unreachable past the entry page (real root cause of "no product/checkout page" report) -- 11 links corrected across 7 files plus a source-scanning regression guard; live-browser-verified through the full shopper journey (grid -> product -> cart -> checkout with WhatsApp/Mobile Money/COD visible) | ~35min | complete ✓ |
 
 *Updated after each plan completion*
 | Phase 02 P06 | 13min | 3 tasks | 3 files |
