@@ -130,7 +130,22 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+/**
+ * RETAINED AS AN ASSERTION TARGET, not as a no-op stub.
+ *
+ * Quick task 260901-6wq deleted `submitCheckout`'s `revalidatePath` call, so
+ * nothing in this import graph imports `next/cache` any more and this mock
+ * could have gone with it. It is a spy instead, because it is the only place
+ * that proves at RUNTIME, against a real database, that no future refactor
+ * puts an invalidation back on the placement path. A call here re-renders the
+ * `/checkout` route the shopper is standing on, the page's empty-cart guard
+ * fires against a basket emptied by the very order that just succeeded, and
+ * the shopper is redirected away from their confirmation. Same idiom as
+ * `tests/unit/cart.test.ts`. The always-on guard is
+ * `tests/unit/checkout-revalidation-race.test.ts`, which needs no database.
+ */
+const revalidatePath = vi.hoisted(() => vi.fn());
+vi.mock("next/cache", () => ({ revalidatePath }));
 
 /**
  * The limiter, with a verdict this file can set.
@@ -237,6 +252,7 @@ beforeEach(async () => {
   redisStore.clear();
   requestContext.cookies.clear();
   limitVerdict.orderPlacement = true;
+  revalidatePath.mockClear();
 });
 
 // ---------------------------------------------------------------------------
@@ -457,6 +473,45 @@ describe("a cart that does not belong to this store", () => {
     expect(await ordersFor(TENANT_A.id)).toBe(beforeA);
     expect(await ordersFor(TENANT_B.id)).toBe(beforeB);
     expect(await stockOf(TENANT_B.id, VARIANT_B)).toBe(beforeStockB);
+  });
+});
+
+describe("a successful placement invalidates nothing", () => {
+  it("places a real order without calling any cache-invalidation API", async () => {
+    await giveShopperACart(TENANT_A.id, [{ variantId: VARIANT_A, quantity: 1 }]);
+
+    // Cash on Delivery is the cheapest complete path — no WhatsApp or Mobile
+    // Money settings are needed for it to reach the end of the action.
+    const result = await submitCheckout(
+      baseSubmission({
+        channel: "CASH_ON_DELIVERY",
+        deliveryAddress: "Rue Njo-Njo, Bonapriso, Douala",
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    /*
+     * 260901-6wq. Any call here makes Next re-render the `/checkout` route the
+     * shopper is currently on, as part of this same Server Action response.
+     * `checkout/page.tsx`'s `payable.length === 0 -> redirect("/cart")` guard
+     * then fires — because the basket is empty precisely BECAUSE this order
+     * succeeded — and the server redirect beats the client's `setOutcome`. The
+     * shopper is bounced to an empty cart and loses their order number, their
+     * D-12 tracking link and their payment instructions.
+     *
+     * Scoping the path narrower is NOT the fix: revalidatePath performs no path
+     * matching in Next 16.3.1. See tests/unit/checkout-revalidation-race.test.ts
+     * for the citations, and src/server/cart/actions.ts for the one module where
+     * the call is correct.
+     */
+    expect(
+      revalidatePath,
+      "submitCheckout invalidated a path on a successful placement. The order " +
+        "reached the database, but the shopper would never have seen the " +
+        "confirmation proving it.",
+    ).not.toHaveBeenCalled();
   });
 });
 
