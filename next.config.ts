@@ -31,6 +31,20 @@ const nextConfig: NextConfig = {
       ? [{ protocol: "https", hostname }]
       : [],
   },
+
+  /**
+   * Dev-only: lets a Cloudflare quick tunnel (`cloudflared tunnel --url
+   * http://localhost:3001 --http-host-header "megasolution.localhost:3001"`)
+   * stand in for a real phone-reachable domain during device testing (Phase 3's
+   * tap-to-dial checkpoint). The tunnel forces the `Host` header so the proxy
+   * still resolves the right store, but the browser's real `Origin` is the
+   * *.trycloudflare.com URL, which Next's dev-only cross-origin guard blocks by
+   * default — silently, including Server Action POSTs (`Add to cart` doing
+   * nothing is this, not an app bug). Wildcarded because cloudflared assigns a
+   * new random subdomain every time the tunnel restarts. Has no effect outside
+   * `next dev` and is never read in production.
+   */
+  allowedDevOrigins: ["*.trycloudflare.com"],
 };
 
 export default nextConfig;
