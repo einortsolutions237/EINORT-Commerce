@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { z } from "zod";
 
@@ -203,9 +202,12 @@ async function buildOutcome(args: {
   // a browser asks for it directly (TEN-03/DOM-02). This is the same rule the
   // doc comment on `storeOriginFor` above already states. Quick task 260901-00j.
   //
-  // Contrast the `revalidatePath("/s/{slug}", "layout")` call further down:
-  // that one addresses the Next.js route tree rather than the browser, so it
-  // keeps the internal prefix and must not be "fixed" to match this line.
+  // Contrast the `revalidatePath("/s/{slug}", "layout")` call in
+  // `src/server/cart/actions.ts`: that one addresses the Next.js route tree
+  // rather than the browser, so it keeps the internal prefix and must not be
+  // "fixed" to match this line. This module had such a call too until quick
+  // task 260901-6wq deleted it — see the block after `clearStoredCart` below
+  // for why it can never come back here.
   const trackingPath = `/order/${args.trackingToken}`;
   const trackingUrl = `${storeOriginFor(args.slug)}/order/${args.trackingToken}`;
 
@@ -437,9 +439,70 @@ export async function submitCheckout(
   );
   await cartCache.clearStoredCart(cartId);
 
-  // The header bubble reads the cart during render on every storefront route,
-  // so it has to be told the basket is gone.
-  revalidatePath(`/s/${slug}`, "layout");
+  // =========================================================================
+  // NOTHING IS REVALIDATED HERE, AND THAT ABSENCE IS THE FIX (260901-6wq).
+  // =========================================================================
+  // This is where `revalidatePath("/s/{slug}", "layout")` used to sit, one
+  // line below the call that empties the basket. It was not a stale-cache
+  // nicety — it was a bug that lost the confirmation screen on 100% of
+  // orders, on all three channels.
+  //
+  // WHAT IT DID. A cache-invalidation call inside a Server Action makes Next
+  // re-render the route the shopper is CURRENTLY ON as part of this same
+  // action response. That route is `/checkout`, and
+  // `src/app/s/[slug]/checkout/page.tsx` opens with
+  // `if (payable.length === 0) redirect("/cart")`. The basket is empty at
+  // that instant precisely BECAUSE this order just succeeded, so the guard
+  // fired, and a server-issued redirect beats the client's
+  // `setOutcome(result)` in `checkout-form.tsx`. The shopper was bounced to
+  // "Your cart is empty" and never saw their order number, their D-12
+  // tracking link (the ONLY route back to their order — there is no account,
+  // and the plaintext token is stored nowhere) or, on MANUAL_TRANSFER, their
+  // payment instructions. The order row, the stock hold and the audit trail
+  // all existed; only the screen proving it did not.
+  //
+  // SCOPING THE PATH NARROWER DOES NOT HELP. DO NOT TRY IT. The obvious fix
+  // — "revalidate the storefront root, the PDP and the cart page instead, so
+  // the open route is not a target" — cannot work, and this is read from the
+  // installed package rather than inferred:
+  //   · node_modules/next/dist/server/web/spec-extension/revalidate.js carries
+  //     Next's own `// TODO: only revalidate if the path matches` directly
+  //     above the line that sets `store.pathWasRevalidated`. Path matching is
+  //     not implemented. ANY path, ANY type, sets the flag.
+  //   · node_modules/next/dist/server/app-render/action-handler.js derives
+  //     `skipPageRendering` from that flag alone; the requested path is never
+  //     consulted. So every revalidating action re-renders the current page.
+  // The same flag is set by `refresh()` (Next 16) and by writing a cookie
+  // from the action, so a "just placed an order" signal read by the page
+  // would itself force the re-render it was meant to survive. Reordering is
+  // no escape either: revalidations run after the action body returns.
+  //
+  // THE HEADER BUBBLE DOES NOT NEED IT. `StoreHeader` is rendered by each
+  // storefront `page.tsx`, not by `src/app/s/[slug]/layout.tsx`, so the
+  // "layout" scope was never buying it anything. Every one of those pages is
+  // dynamic (`getCurrentCart` awaits `cookies()`), so each navigation re-reads
+  // the cart from Redis; and the client Router Cache's `staleTimes.dynamic`
+  // default has been 0s since Next 15, so no <Link> navigation serves a stale
+  // count. Accepted cost: browser back/forward restores from that cache
+  // regardless, so the pre-order basket may flash on Back and the bubble on
+  // the confirmation screen itself keeps its pre-order count. Both self-heal
+  // on the next click, and both are strictly better than losing the
+  // confirmation.
+  //
+  // `src/server/cart/actions.ts` KEEPS ITS OWN `revalidatePath` ON PURPOSE.
+  // Do not "make them consistent". After add-to-cart the shopper stays on the
+  // product page and the bubble must change in place — there the re-render is
+  // the feature, and no page on that path has a redirect guard. Same API,
+  // opposite consequence.
+  //
+  // Verified against Next 16.3.1. If a future Next implements that TODO, the
+  // premise changes and this may be revisitable — deliberately, by reading
+  // `tests/unit/checkout-revalidation-race.test.ts`, which fails the build if
+  // `revalidatePath`, `revalidateTag`, `updateTag` or `refresh` returns to
+  // this module. Never delete that guard just to make a build pass, and never
+  // weaken the empty-cart guard in `checkout/page.tsx` instead: it is correct
+  // for the case it was written for (arriving at checkout with nothing to
+  // buy).
 
   // 9. The outcome, built from a committed order. D-01 holds by construction:
   //    the row and its tracking token already exist by the time a wa.me link

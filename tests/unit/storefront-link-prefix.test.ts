@@ -65,17 +65,38 @@ const FORBIDDEN_PREFIX = "/s/${";
 const STOREFRONT_DIR = "src/app/s";
 
 /**
- * The two modules where the prefix is still correct — on one line each.
+ * The one module where the prefix is still correct — on one line.
  *
  * `revalidatePath` addresses the Next.js ROUTE TREE, not the browser. The
  * internal path is the only thing it can be given; rewriting it to "/" would
- * silently stop invalidating the storefront layout after cart and checkout
- * writes, and the stale cart bubble would be blamed on Redis for a week.
+ * silently stop invalidating the storefront layout after an add-to-cart write,
+ * and the stale cart bubble would be blamed on Redis for a week.
  */
-const ACTION_MODULES = [
-  "src/server/cart/actions.ts",
-  "src/server/checkout/actions.ts",
-];
+const REVALIDATING_MODULES = ["src/server/cart/actions.ts"];
+
+/**
+ * Modules that must contain the prefix ZERO times, on any kind of line.
+ *
+ * `src/server/checkout/actions.ts` used to sit in the list above, holding one
+ * legitimate `revalidatePath` occurrence. Quick task 260901-6wq deleted that
+ * call: revalidating from the checkout action made Next re-render the open
+ * `/checkout` route inside the same Server Action response, whereupon the
+ * page's `payable.length === 0 -> redirect("/cart")` guard fired against a
+ * basket that was empty precisely because the order had just succeeded, and
+ * the shopper lost their confirmation screen. See
+ * `tests/unit/checkout-revalidation-race.test.ts`, which is what forbids the
+ * call from returning.
+ *
+ * IT MOVED TO A STRICTER SCOPE RATHER THAN OUT OF SCOPE, DELIBERATELY. Simply
+ * dropping it from the list would leave the module UNSCANNED, and this file
+ * exists because `trackingPath` in exactly this module had been built with the
+ * internal prefix (260901-00j). With no `revalidatePath` left to excuse an
+ * occurrence, every occurrence here is now an offender unconditionally.
+ */
+const NO_PREFIX_MODULES = ["src/server/checkout/actions.ts"];
+
+/** Both scopes, scanned together — neither may be silently skipped. */
+const ACTION_MODULES = [...REVALIDATING_MODULES, ...NO_PREFIX_MODULES];
 
 /** The one token that makes an occurrence in an action module legitimate. */
 const ALLOWED_ON = "revalidatePath";
@@ -201,18 +222,18 @@ describe("storefront links never carry the internal /s/ prefix", () => {
   });
 
   it("still detects the prefix where it is supposed to survive", () => {
-    // The positive control against real source. Both action modules keep
-    // exactly one occurrence — the revalidatePath call — so the detector MUST
-    // find it. If this fails, either a module moved (update ACTION_MODULES) or
-    // the detector no longer recognises the prefix, in which case the real
-    // assertions below are passing over nothing.
+    // The positive control against real source. `cart/actions.ts` keeps
+    // exactly one occurrence — its revalidatePath call — so the detector MUST
+    // find it. If this fails, either a module moved (update REVALIDATING_MODULES
+    // / NO_PREFIX_MODULES) or the detector no longer recognises the prefix, in
+    // which case the real assertions below are passing over nothing.
     expect(
       presentActionModules,
-      "An action module in ACTION_MODULES was not found on disk, so its half " +
-        "of this guard is silently skipped.",
+      "An action module in REVALIDATING_MODULES or NO_PREFIX_MODULES was not " +
+        "found on disk, so its share of this guard is silently skipped.",
     ).toEqual(ACTION_MODULES);
 
-    for (const file of ACTION_MODULES) {
+    for (const file of REVALIDATING_MODULES) {
       const allowed = actionOccurrences.filter(
         (hit) => hit.file === file && hit.text.includes(ALLOWED_ON),
       );
@@ -225,6 +246,24 @@ describe("storefront links never carry the internal /s/ prefix", () => {
           "the cache-invalidation surface grew and this control needs " +
           "revisiting.",
       ).toBe(1);
+    }
+  });
+
+  it("holds the checkout action at zero occurrences, revalidatePath or not", () => {
+    for (const file of NO_PREFIX_MODULES) {
+      const hits = actionOccurrences.filter((hit) => hit.file === file);
+
+      expect(
+        hits.map((hit) => `${hit.file}:${hit.line} — ${hit.text}`),
+        `${file} must not contain the internal /s/ prefix at all. It holds no ` +
+          `${ALLOWED_ON} call any more (quick task 260901-6wq deleted it — ` +
+          "see tests/unit/checkout-revalidation-race.test.ts), so there is no " +
+          "longer any legitimate reason for the prefix to appear here, and an " +
+          "occurrence is either a browser-visible path that will 404 or a " +
+          "reintroduced cache invalidation that costs the shopper their order " +
+          "confirmation." +
+          REMEDY,
+      ).toEqual([]);
     }
   });
 
