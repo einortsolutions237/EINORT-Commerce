@@ -55,7 +55,7 @@ completed: 2026-09-01
 
 ## Performance
 
-- **Duration:** ~22 min (excluding the isolation-suite run, which did not return — see below)
+- **Duration:** ~22 min of execution, plus a 1046s isolation-suite run that returned green afterwards
 - **Started:** 2026-09-01T04:10:00Z
 - **Completed:** 2026-09-01T04:32:20Z
 - **Tasks:** 2 of 3 complete (Task 3 is a blocking human checkpoint, NOT satisfied — see "Blocking Checkpoint")
@@ -137,9 +137,19 @@ The worktree shipped without any of its gitignored build artifacts, exactly as `
 - `.next/types` (Next 16 route-type globals) — copied.
 - `.env.test` — copied, to attempt the isolation suite.
 
-**`npm run test:full` did not complete.** With `.env.test` in place it ran for over 15 minutes without emitting a single line of output and was still running when this summary was written — consistent with the dedicated Neon test branch being unreachable or cold-starting from scale-to-zero in this worktree. Per the plan, this was not chased. **The isolation-suite assertion added in Task 2B is therefore committed but unexecuted**; it should go green on the next environment where `test:full` runs. The durable gate is `tests/unit/checkout-revalidation-race.test.ts`, which needs no database and is green.
+**`npm run test:full` ran and is green: 50 files, 732 tests, exit 0, in 1046s.** It emitted no output for its first ~17 minutes (vitest buffers until the run resolves, and the Neon test branch is slow from this worktree), which is why an earlier draft of this summary recorded it as not completing. That was wrong and is corrected here.
 
-Everything else passed:
+The isolation assertion added in Task 2B **did execute and did pass.** Confirmed by re-running the single file with named results:
+
+```
+✓ tests/isolation/checkout-paths.test.ts > a successful placement invalidates nothing
+  > places a real order without calling any cache-invalidation API   3500ms
+Test Files  1 passed (1)   Tests  11 passed (11)
+```
+
+All ten pre-existing tests in that file pass alongside it, so promoting the `next/cache` stub to a spy and adding `revalidatePath.mockClear()` to `beforeEach` broke nothing. The durable gate remains `tests/unit/checkout-revalidation-race.test.ts`, which needs no database.
+
+Full gate results:
 
 - Task 1 gate script — PASS.
 - Task 2 gate script — PASS.
@@ -148,6 +158,7 @@ Everything else passed:
 - `npm run lint` (`--max-warnings=0`) — clean.
 - `npm run typecheck` — clean.
 - `npm run test:unit` — 28 files, 453 tests, all passing (was 27/448 before this task).
+- `npm run test:full` — 50 files, 732 tests, all passing, including the new isolation assertion.
 - Mutation check — the guard goes **red** when `revalidatePath` is reintroduced into `src/server/checkout/actions.ts` and stays **green** when the API is merely named in a comment, and the file was restored cleanly.
 
 ## Decisions Made
@@ -193,9 +204,8 @@ None — no external service configuration required by this task. (The isolation
 
 ## Next Phase Readiness
 
-- The fix and both regression guards are committed and green under `npm run lint`, `npm run typecheck` and `npm run test:unit`.
-- **Blocked on Task 3.** Do not consider this task done until the three browser placements are confirmed.
-- `npm run test:full` should be re-run wherever the Neon test branch is reachable, to execute the isolation assertion added here.
+- The fix and both regression guards are committed and green under `npm run lint`, `npm run typecheck`, `npm run test:unit` and `npm run test:full`.
+- **Blocked on Task 3.** Do not consider this task done until the three browser placements are confirmed. Every automated layer available in this repository is green, and none of them can see a redirect.
 - The Playwright smoke-suite recommendation (section 6) remains open and is now backed by two live-blocking bugs.
 
 ## Self-Check: PASSED
@@ -204,6 +214,7 @@ None — no external service configuration required by this task. (The isolation
 - Both task commits exist in the log: `24050f3`, `683e9af`.
 - `git diff 0356455..HEAD` is **empty** for every file on the plan's `<do_not_touch>` list plus the two the gates pin: `src/app/s/[slug]/checkout/page.tsx`, `src/app/s/[slug]/checkout/checkout-form.tsx`, `src/server/cart/actions.ts`, `tests/unit/cart.test.ts`, `next.config.ts`, `src/proxy.ts`, `tests/unit/proxy.test.ts`, `package.json`, `vitest.config.ts`.
 - Working tree clean apart from this SUMMARY.
+- `npm run test:full` was initially recorded as not completing; it later returned green (exit 0, 50/50 files, 732/732 tests) and section 7 was corrected. The new isolation assertion was confirmed executed by name in a targeted re-run.
 
 ---
 *Phase: quick/260901-6wq*
