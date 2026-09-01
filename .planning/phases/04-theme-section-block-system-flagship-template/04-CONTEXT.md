@@ -134,6 +134,10 @@ None beyond the above — discussion stayed within phase scope.
 
 </deferred>
 
+## Addendum (resolved after research)
+
+- **OQ-4 (PDP editability):** The product detail page is **fixed** this phase — theme chrome only, no reorderable sections. Editor scope this phase is the home page only. The schema's `pageType` column exists so Phase 5 can add PDP-editing without a migration. Resolved 2026-09-01, per `04-RESEARCH.md` Pattern 12 / Open Question 4.
+
 ---
 
 *Phase: 04-theme-section-block-system-flagship-template*
