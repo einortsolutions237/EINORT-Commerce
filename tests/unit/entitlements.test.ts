@@ -331,3 +331,122 @@ describe("urgency", () => {
     expect(isUrgentTrial(ctx)).toBe(false);
   });
 });
+
+/**
+ * EDIT-03 / D-13 / D-14 / D-15 — the editor capability gate.
+ *
+ * These cases exist to pin the ONE mistake this field invites. The obvious
+ * implementation, `can(ctx, "storefrontEditor")`, reads the registry and
+ * nothing else — and the registry knows only about tiers, never about trials.
+ * It would hand a Starter merchant on day 2 of their 10-day trial a view-only
+ * editor, which is a direct violation of D-15 ("every merchant gets full
+ * features during the trial, whatever they eventually pay for").
+ *
+ * So the first case below is the whole point: a Starter row, mid-trial,
+ * expecting `true`. It fails against the naive lookup and passes only against
+ * the trial-aware composition in `resolveEntitlements`. A later
+ * "simplification" back to the registry read is a red test here, not a silent
+ * regression discovered by a merchant.
+ *
+ * The second axis is D-14: business and professional are indistinguishable for
+ * every editor purpose, so the table is asserted for both and their answers are
+ * compared directly rather than trusted to two separate expectations.
+ */
+describe("editor capability", () => {
+  /** Inside the derived 10-day window. */
+  const DURING_TRIAL = at(2 * DAY_MS);
+  /** Past it — the derived trial has lapsed. */
+  const AFTER_TRIAL = at(11 * DAY_MS);
+
+  it("grants a Starter merchant the editor during an ACTIVE trial (D-15)", () => {
+    const ctx = resolveEntitlements(orgRow({ planTier: "starter" }), DURING_TRIAL);
+    expect(ctx.trial.state).toBe("active");
+    expect(ctx.plan.limits.storefrontEditor).toBe(false);
+    // The tier says no, the trial says yes, and the trial wins.
+    expect(ctx.canEditStorefront).toBe(true);
+  });
+
+  it("takes it away from the same Starter merchant once the trial expires", () => {
+    const ctx = resolveEntitlements(orgRow({ planTier: "starter" }), AFTER_TRIAL);
+    expect(ctx.trial.state).toBe("expired");
+    expect(ctx.canWrite).toBe(false);
+    expect(ctx.canEditStorefront).toBe(false);
+  });
+
+  it("refuses a genuinely SUBSCRIBED Starter merchant (D-13)", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "starter", subscriptionStatus: "active" }),
+      AFTER_TRIAL,
+    );
+    // Writable — they are paying — but Starter does not include the editor.
+    expect(ctx.canWrite).toBe(true);
+    expect(ctx.canEditStorefront).toBe(false);
+  });
+
+  it("grants a Business merchant the editor during an active trial", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "business" }),
+      DURING_TRIAL,
+    );
+    expect(ctx.canEditStorefront).toBe(true);
+  });
+
+  it("refuses a Business merchant whose trial expired unsubscribed", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "business" }),
+      AFTER_TRIAL,
+    );
+    expect(ctx.canWrite).toBe(false);
+    expect(ctx.canEditStorefront).toBe(false);
+  });
+
+  it("grants a subscribed Business merchant the editor", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "business", subscriptionStatus: "active" }),
+      AFTER_TRIAL,
+    );
+    expect(ctx.canEditStorefront).toBe(true);
+  });
+
+  it("treats professional identically to business on every row (D-14)", () => {
+    const cases: ReadonlyArray<[Partial<OrgRow>, Date]> = [
+      [{ subscriptionStatus: "none" }, DURING_TRIAL],
+      [{ subscriptionStatus: "none" }, AFTER_TRIAL],
+      [{ subscriptionStatus: "active" }, DURING_TRIAL],
+      [{ subscriptionStatus: "active" }, AFTER_TRIAL],
+    ];
+    for (const [overrides, now] of cases) {
+      const business = resolveEntitlements(
+        orgRow({ ...overrides, planTier: "business" }),
+        now,
+      );
+      const professional = resolveEntitlements(
+        orgRow({ ...overrides, planTier: "professional" }),
+        now,
+      );
+      expect(professional.canEditStorefront).toBe(business.canEditStorefront);
+    }
+  });
+
+  it("is never true when canWrite is false, on any tier", () => {
+    for (const tier of PLAN_TIERS) {
+      for (const now of [T0, DURING_TRIAL, AFTER_TRIAL, DERIVED_END]) {
+        for (const subscriptionStatus of ["none", "active"]) {
+          const ctx = resolveEntitlements(
+            orgRow({ planTier: tier, subscriptionStatus }),
+            now,
+          );
+          if (!ctx.canWrite) {
+            expect(ctx.canEditStorefront).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it("reads no clock — the same row yields both answers from `now` alone", () => {
+    const row = orgRow({ planTier: "starter" });
+    expect(resolveEntitlements(row, DURING_TRIAL).canEditStorefront).toBe(true);
+    expect(resolveEntitlements(row, AFTER_TRIAL).canEditStorefront).toBe(false);
+  });
+});
