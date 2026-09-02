@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-09-01T09:55:28.788Z"
+stopped_at: Phase 4 fully planned (16 plans, 7 waves), verification passed
+last_updated: "2026-09-02T09:43:12.650Z"
 last_activity: 2026-09-01
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 30
+  total_plans: 46
   completed_plans: 29
   percent: 33
 ---
@@ -21,15 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 03 — product-catalog-order-payment-claim-state-machine
+**Current focus:** Phase 04 — theme-section-block-system-flagship-template (planned, not yet executed)
 
 ## Current Position
 
-Phase: 03 (product-catalog-order-payment-claim-state-machine) — EXECUTING
-Status: All Phase 3 content complete (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 (requirement-coverage test, 03-VALIDATION.md sign-off — nyquist_compliant: true, all Wave-0 markers cleared). 720/720 tests pass, lint/typecheck/build clean. ONLY REMAINING WORK IN PHASE 3: 03-16's Task 3, a blocking human-verify checkpoint requiring a real iPhone and a real Android device to confirm CHK-03's tap-to-dial USSD behavior (no test runner can check this). Once approved, mark 03-16 complete in ROADMAP.md and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
-Last activity: 2026-08-31
+Phase: 04 (theme-section-block-system-flagship-template) — PLANNED, ready for execution
+Status: Discussion, research, UI-SPEC (approved 6/6 dimensions after one revision), pattern mapping, and 16 execution plans across 7 waves are all complete and gsd-plan-checker VERIFICATION PASSED with 0 blockers (2 non-blocking doc-hygiene warnings, both closed). Not yet executed — next step is `/gsd:execute-phase 4`.
+Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on to Phase 4 planning in the meantime (2026-09-01) rather than complete it first; it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
+Last activity: 2026-09-01
 
-Progress: [███░░░░░░░] 33% phases (2/6 complete) · 97% plans (29/30 complete, 03-16 in progress)
+Progress: [███░░░░░░░] 33% phases (2/6 complete) · 63% plans (29/46 complete — Phase 3's 03-16 and all 16 of Phase 4's plans still to execute)
 
 ## Performance Metrics
 
@@ -97,6 +98,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-01T09:55:28.779Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-theme-section-block-system-flagship-template/04-UI-SPEC.md
+Last session: 2026-09-02T09:43:12.635Z
+Stopped at: Phase 4 fully planned (16 plans, 7 waves), verification passed
+Resume file: .planning/phases/04-theme-section-block-system-flagship-template/04-01-PLAN.md
