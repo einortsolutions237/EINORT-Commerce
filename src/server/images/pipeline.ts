@@ -41,6 +41,15 @@ import sharp from "sharp";
  * a preset stays a single edit. Labels are the stable public names — they end up
  * in object keys like `{prefix}/card.webp`, so renaming one orphans stored
  * objects rather than moving them.
+ *
+ * `enhance` says whether the photographic finishing chain (`.normalise()`,
+ * `.modulate()`, `.sharpen()`) runs, and it also selects the WebP mode: lossy at
+ * `WEBP_QUALITY` when true, lossless when false. It is stated per row for the
+ * same reason everything else here is — the row is the whole specification, so
+ * `processImage` reads this flag and NEVER branches on the preset's name.
+ * Comparing the preset argument against a name literal would put the
+ * specification in two places, and the second place is where a future preset
+ * silently inherits the wrong treatment.
  */
 export const IMAGE_PRESETS = {
   product: {
@@ -49,6 +58,7 @@ export const IMAGE_PRESETS = {
     fit: "cover",
     ratio: 1,
     format: "webp",
+    enhance: true,
   },
   claim: {
     sizes: [1200],
@@ -56,11 +66,25 @@ export const IMAGE_PRESETS = {
     fit: "inside",
     ratio: null,
     format: "webp",
+    enhance: true,
   },
   /**
    * The D-07 Phase-4 slot (ONB-03). Unused in Phase 3 — do NOT delete it as
    * dead code; its existence is the contract that the logo upload adds data
    * rather than a second implementation of this file.
+   *
+   * THE FALSE ENHANCE FLAG BELOW IS THIS ROW'S WHOLE POINT — DO NOT "RESTORE
+   * CONSISTENCY" BY SETTING IT TRUE.
+   *
+   * The three enhancement steps are tuned for an under-lit phone photo of a
+   * product taken indoors. A brand logo is the opposite input: already flat,
+   * already correctly exposed, and authored in colours the merchant chose
+   * deliberately. On that input `.normalise()` stretches the luminance histogram
+   * and shifts the brand's own colours to something adjacent, `.sharpen()` halos
+   * the flat edges of a wordmark, and a lossy WebP encode fringes the
+   * semi-transparent pixels around it. Each is subtle on its own; together they
+   * hand the merchant a logo that looks wrong in a way nobody can name and
+   * nobody can file a bug about.
    */
   logo: {
     sizes: [128, 512],
@@ -69,6 +93,7 @@ export const IMAGE_PRESETS = {
     ratio: 1,
     format: "webp",
     background: { r: 0, g: 0, b: 0, alpha: 0 },
+    enhance: false,
   },
 } as const;
 
@@ -117,12 +142,21 @@ const WEBP_QUALITY = 82;
  *   `.resize(...)`  the crop/scale, per the preset.
  *   `.normalise()`  stretches luminance across the 1st–99th percentile. This is
  *      the single biggest visual win on a photo shot indoors on a mid-range
- *      phone, which is the realistic input for this product.
- *   `.modulate(...)`, `.sharpen()`  gentle, default-parameter finishing.
- *   `.webp(...)`    the re-encode. This is also the security control: the object
- *      this platform serves is Sharp's output, never the bytes that were
- *      uploaded, so a polyglot or a script-carrying payload in the original
- *      cannot survive into anything public (T-03-24).
+ *      phone, which is the realistic input for this product. ONLY when the row
+ *      says `enhance`.
+ *   `.modulate(...)`, `.sharpen()`  gentle, default-parameter finishing, under
+ *      the same flag.
+ *   `.webp(...)`    the re-encode, lossy for an enhanced row and lossless for an
+ *      unenhanced one. This is also the security control: the object this
+ *      platform serves is Sharp's output, never the bytes that were uploaded, so
+ *      a polyglot or a script-carrying payload in the original cannot survive
+ *      into anything public (T-03-24) — and that holds in both modes, because
+ *      lossless still means re-encoded.
+ *
+ * Only the finishing steps are conditional. `.rotate()` is FIRST AND
+ * UNCONDITIONAL for every preset, present and future: a logo is unlikely to
+ * carry an EXIF orientation tag, but "unlikely" is not a reason to build a
+ * second code path that would not apply it if it did.
  *
  * Dimensions are read back from the encoder's own `info`, never assumed from
  * the requested numbers. For `fit: "inside"` they genuinely differ, and
@@ -145,7 +179,14 @@ export async function processImage(
      * still square, but `fit: "inside"` means the image is scaled to fit within
      * it — so the box's edge becomes the long edge and the aspect is preserved.
      */
-    const { data, info } = await sharp(input, {
+    /*
+     * Held in a local rather than written as one fluent expression, because two
+     * of the steps below are per-preset and Sharp's builder cannot express a
+     * conditional inline. The alternative — a second `processLogoImage()` — is
+     * the exact duplication the registry header rejects, and it is where the
+     * EXIF rotation quietly stops being applied.
+     */
+    let pipeline = sharp(input, {
       limitInputPixels: LIMIT_INPUT_PIXELS,
     })
       .rotate()
@@ -156,12 +197,27 @@ export async function processImage(
         // valid position for `contain` or `inside`, where placement is centred.
         ...(spec.fit === "cover" ? { position: "attention" } : {}),
         ...(background ? { background } : {}),
-      })
-      .normalise()
-      .modulate({ saturation: SATURATION_BOOST })
-      .sharpen()
-      .webp({ quality: WEBP_QUALITY })
-      .toBuffer({ resolveWithObject: true });
+      });
+
+    if (spec.enhance) {
+      pipeline = pipeline
+        .normalise()
+        .modulate({ saturation: SATURATION_BOOST })
+        .sharpen();
+    }
+
+    /*
+     * Lossless is not a quality preference, it is the other half of an
+     * unenhanced row: a lossy encode fringes the semi-transparent pixels
+     * around a wordmark and dithers a flat fill, which would undo the fidelity
+     * the skipped finishing steps just preserved. A logo is two small
+     * derivatives of a mostly-flat image, so lossless WebP is also SMALLER here
+     * than the lossy encode would be — there is nothing being traded.
+     */
+    const { data, info } = await (spec.enhance
+      ? pipeline.webp({ quality: WEBP_QUALITY })
+      : pipeline.webp({ lossless: true })
+    ).toBuffer({ resolveWithObject: true });
 
     derived.push({
       label,
