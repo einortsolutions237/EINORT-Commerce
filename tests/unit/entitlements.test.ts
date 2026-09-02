@@ -7,12 +7,17 @@ import {
   memberLimitFor,
 } from "@/server/entitlements/plans";
 import {
+  EditorLockedError,
+  EntitlementError,
+  assertCanEditStorefront,
+} from "@/server/entitlements/assert";
+import {
   TRIAL_DAYS,
   TRIAL_URGENT_DAYS,
   isUrgentTrial,
   resolveEntitlements,
 } from "@/server/entitlements/resolve";
-import type { OrgRow } from "@/server/entitlements/resolve";
+import type { MerchantContext, OrgRow } from "@/server/entitlements/resolve";
 
 /**
  * ONB-05 (10-day trial, enforced server-side from signup) and SUB-01 (plan
@@ -78,7 +83,7 @@ describe("registry", () => {
     }
   });
 
-  it("carries all five limit keys on every tier", () => {
+  it("carries all six limit keys on every tier", () => {
     for (const tier of PLAN_TIERS) {
       expect(Object.keys(PLANS[tier].limits).sort()).toEqual([
         "bulkImport",
@@ -86,7 +91,20 @@ describe("registry", () => {
         "editorSections",
         "members",
         "products",
+        "storefrontEditor",
       ]);
+    }
+  });
+
+  it("includes the storefront editor on business and professional only (D-13/D-14)", () => {
+    expect(PLANS.starter.limits.storefrontEditor).toBe(false);
+    expect(PLANS.business.limits.storefrontEditor).toBe(true);
+    expect(PLANS.professional.limits.storefrontEditor).toBe(true);
+  });
+
+  it("leaves editorSections unlimited on every tier (D-05 fixes one section list)", () => {
+    for (const tier of PLAN_TIERS) {
+      expect(PLANS[tier].limits.editorSections).toBeNull();
     }
   });
 
@@ -316,5 +334,181 @@ describe("urgency", () => {
     );
     expect(ctx.trial.state).toBe("subscribed");
     expect(isUrgentTrial(ctx)).toBe(false);
+  });
+});
+
+/**
+ * EDIT-03 / D-13 / D-14 / D-15 — the editor capability gate.
+ *
+ * These cases exist to pin the ONE mistake this field invites. The obvious
+ * implementation, `can(ctx, "storefrontEditor")`, reads the registry and
+ * nothing else — and the registry knows only about tiers, never about trials.
+ * It would hand a Starter merchant on day 2 of their 10-day trial a view-only
+ * editor, which is a direct violation of D-15 ("every merchant gets full
+ * features during the trial, whatever they eventually pay for").
+ *
+ * So the first case below is the whole point: a Starter row, mid-trial,
+ * expecting `true`. It fails against the naive lookup and passes only against
+ * the trial-aware composition in `resolveEntitlements`. A later
+ * "simplification" back to the registry read is a red test here, not a silent
+ * regression discovered by a merchant.
+ *
+ * The second axis is D-14: business and professional are indistinguishable for
+ * every editor purpose, so the table is asserted for both and their answers are
+ * compared directly rather than trusted to two separate expectations.
+ */
+describe("editor capability", () => {
+  /** Inside the derived 10-day window. */
+  const DURING_TRIAL = at(2 * DAY_MS);
+  /** Past it — the derived trial has lapsed. */
+  const AFTER_TRIAL = at(11 * DAY_MS);
+
+  it("grants a Starter merchant the editor during an ACTIVE trial (D-15)", () => {
+    const ctx = resolveEntitlements(orgRow({ planTier: "starter" }), DURING_TRIAL);
+    expect(ctx.trial.state).toBe("active");
+    expect(ctx.plan.limits.storefrontEditor).toBe(false);
+    // The tier says no, the trial says yes, and the trial wins.
+    expect(ctx.canEditStorefront).toBe(true);
+  });
+
+  it("takes it away from the same Starter merchant once the trial expires", () => {
+    const ctx = resolveEntitlements(orgRow({ planTier: "starter" }), AFTER_TRIAL);
+    expect(ctx.trial.state).toBe("expired");
+    expect(ctx.canWrite).toBe(false);
+    expect(ctx.canEditStorefront).toBe(false);
+  });
+
+  it("refuses a genuinely SUBSCRIBED Starter merchant (D-13)", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "starter", subscriptionStatus: "active" }),
+      AFTER_TRIAL,
+    );
+    // Writable — they are paying — but Starter does not include the editor.
+    expect(ctx.canWrite).toBe(true);
+    expect(ctx.canEditStorefront).toBe(false);
+  });
+
+  it("grants a Business merchant the editor during an active trial", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "business" }),
+      DURING_TRIAL,
+    );
+    expect(ctx.canEditStorefront).toBe(true);
+  });
+
+  it("refuses a Business merchant whose trial expired unsubscribed", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "business" }),
+      AFTER_TRIAL,
+    );
+    expect(ctx.canWrite).toBe(false);
+    expect(ctx.canEditStorefront).toBe(false);
+  });
+
+  it("grants a subscribed Business merchant the editor", () => {
+    const ctx = resolveEntitlements(
+      orgRow({ planTier: "business", subscriptionStatus: "active" }),
+      AFTER_TRIAL,
+    );
+    expect(ctx.canEditStorefront).toBe(true);
+  });
+
+  it("treats professional identically to business on every row (D-14)", () => {
+    const cases: ReadonlyArray<[Partial<OrgRow>, Date]> = [
+      [{ subscriptionStatus: "none" }, DURING_TRIAL],
+      [{ subscriptionStatus: "none" }, AFTER_TRIAL],
+      [{ subscriptionStatus: "active" }, DURING_TRIAL],
+      [{ subscriptionStatus: "active" }, AFTER_TRIAL],
+    ];
+    for (const [overrides, now] of cases) {
+      const business = resolveEntitlements(
+        orgRow({ ...overrides, planTier: "business" }),
+        now,
+      );
+      const professional = resolveEntitlements(
+        orgRow({ ...overrides, planTier: "professional" }),
+        now,
+      );
+      expect(professional.canEditStorefront).toBe(business.canEditStorefront);
+    }
+  });
+
+  it("is never true when canWrite is false, on any tier", () => {
+    for (const tier of PLAN_TIERS) {
+      for (const now of [T0, DURING_TRIAL, AFTER_TRIAL, DERIVED_END]) {
+        for (const subscriptionStatus of ["none", "active"]) {
+          const ctx = resolveEntitlements(
+            orgRow({ planTier: tier, subscriptionStatus }),
+            now,
+          );
+          if (!ctx.canWrite) {
+            expect(ctx.canEditStorefront).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it("reads no clock — the same row yields both answers from `now` alone", () => {
+    const row = orgRow({ planTier: "starter" });
+    expect(resolveEntitlements(row, DURING_TRIAL).canEditStorefront).toBe(true);
+    expect(resolveEntitlements(row, AFTER_TRIAL).canEditStorefront).toBe(false);
+  });
+});
+
+/**
+ * T-04-16: the refusal must reach the merchant as a message, not as a 500.
+ *
+ * `merchantAction` converts exactly two error types — `ReadOnlyError` and
+ * `EntitlementError` — and rethrows everything else. `EditorLockedError`
+ * therefore only stays merchant-readable for as long as it remains a genuine
+ * `EntitlementError` subclass, which is a fact about the prototype chain that
+ * survives transpilation rather than an obvious property of the source. These
+ * cases assert the chain directly, so "extends Error" typed in by a later
+ * reader is a red test here instead of an unhandled 500 in a merchant's face.
+ */
+describe("editor refusal", () => {
+  const ctxAt = (row: Partial<OrgRow>, now: Date): MerchantContext => ({
+    ...resolveEntitlements(orgRow(row), now),
+    userId: "user_alpha",
+  });
+
+  it("is an EntitlementError, so merchantAction's existing arm converts it", () => {
+    const error = new EditorLockedError("Upgrade to edit your storefront.");
+    expect(error).toBeInstanceOf(EntitlementError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it("reports its own class name, not the parent's", () => {
+    expect(new EditorLockedError("nope").name).toBe("EditorLockedError");
+  });
+
+  it("carries the inherited feature field", () => {
+    expect(new EditorLockedError("nope").feature).toBe("storefrontEditor");
+  });
+
+  it("preserves the caller-supplied message verbatim", () => {
+    const copy = "Your plan does not include the storefront editor.";
+    expect(new EditorLockedError(copy).message).toBe(copy);
+  });
+
+  it("throws for a Starter merchant whose trial has ended", () => {
+    const ctx = ctxAt({ planTier: "starter" }, at(11 * DAY_MS));
+    expect(() => assertCanEditStorefront(ctx, "denied")).toThrow(
+      EditorLockedError,
+    );
+  });
+
+  it("does NOT throw for the same merchant mid-trial (D-15)", () => {
+    const ctx = ctxAt({ planTier: "starter" }, at(2 * DAY_MS));
+    expect(() => assertCanEditStorefront(ctx, "denied")).not.toThrow();
+  });
+
+  it("does NOT throw for a subscribed Business merchant", () => {
+    const ctx = ctxAt(
+      { planTier: "business", subscriptionStatus: "active" },
+      at(30 * DAY_MS),
+    );
+    expect(() => assertCanEditStorefront(ctx, "denied")).not.toThrow();
   });
 });

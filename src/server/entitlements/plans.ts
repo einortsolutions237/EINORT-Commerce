@@ -68,8 +68,50 @@ export interface PlanLimits {
    * path — which reads to a merchant as a bug rather than as a limit.
    */
   readonly products: number | null;
-  /** ENFORCED FROM PHASE 4 (EDIT-03, editor sections). Registered now. */
+  /**
+   * Maximum sections a merchant may place on a storefront page. `null` is
+   * unlimited.
+   *
+   * NOT ENFORCED, AND NOW PERMANENTLY `null` ON ALL THREE TIERS. Phase 4's D-05
+   * fixes the flagship template's section list for every tier — the same
+   * sections, in the same order, whatever the merchant pays — so there is no
+   * per-tier section cap left to enforce. `null` is not a placeholder waiting
+   * for Phase 4 to fill it in; it is the answer.
+   *
+   * The key is deliberately NOT removed. D-07 registered it on purpose (see the
+   * interface comment above), and the `PLANS` table below documents the same
+   * reasoning for the other reserved keys: a registered-but-unenforced limit has
+   * a compile-time home if the product ever grows one, whereas an unregistered
+   * one is a design decision somebody makes ad hoc under time pressure. Tier
+   * differentiation for the editor lives in the capability boolean below
+   * instead, which is a yes/no, not a count.
+   */
   readonly editorSections: number | null;
+  /**
+   * Whether the tier includes the storefront editor at all (EDIT-03).
+   *
+   * ENFORCED FROM PHASE 4, but NEVER FROM THIS KEY DIRECTLY — see the warning
+   * below.
+   *
+   * D-13: Starter is `false`; Business and Professional are both `true`.
+   * D-14: this is a SINGLE boolean and must never become a three-way branch.
+   * Professional's differentiation over Business is the product cap and the
+   * member seats, not editor capability — the two tiers are indistinguishable
+   * for every editor purpose, and a `plan === "professional"` conditional
+   * anywhere in the editor is a bug, not a feature.
+   *
+   * DO NOT READ THIS VALUE AT A CALL SITE, AND DO NOT GATE THE EDITOR WITH
+   * `can(ctx, …)`. D-15 grants every merchant full editor capability during the
+   * 10-day trial regardless of tier, and this registry is pure tier data that
+   * knows nothing about trials. `resolveEntitlements` composes this key with
+   * trial state into `MerchantContext.canEditStorefront`, which is the ONLY
+   * boolean an editor gate may consult. Reading this one directly hands a
+   * Starter merchant on day 2 of their trial a view-only editor — the exact
+   * violation of D-15 that `tests/unit/entitlements.test.ts` pins. That is also
+   * why this key is deliberately absent from `PlanFeature` in
+   * `src/server/entitlements/assert.ts`: `can()` cannot be pointed at it.
+   */
+  readonly storefrontEditor: boolean;
   /** ENFORCED IN v2 (COM-V2-01, discount codes). Registered now. */
   readonly discountCodes: boolean;
   /** ENFORCED IN v2 (COM-V2-03, bulk product import). Registered now. */
@@ -95,10 +137,11 @@ export interface PlanDefinition {
  * codebase, which is exactly the drift detection the tenant-model registry
  * provides. A default would turn the same change into a silent fallback.
  *
- * `editorSections` is `null` on all three tiers because Phase 4 has not yet
- * decided the per-tier section caps; the key exists so that decision has
- * somewhere to land, and `null` (unlimited) is the honest description of what
- * is enforced today.
+ * `editorSections` is `null` on all three tiers permanently: Phase 4's D-05
+ * fixes one section list for every tier, so no per-tier section cap exists to
+ * express. The key stays registered under the same D-07 reasoning as the other
+ * unenforced keys, and `null` (unlimited) is the honest description of what is
+ * enforced today and of what is planned.
  */
 export const PLANS: Readonly<Record<PlanTier, PlanDefinition>> = {
   starter: {
@@ -109,6 +152,7 @@ export const PLANS: Readonly<Record<PlanTier, PlanDefinition>> = {
       members: 1,
       products: 50,
       editorSections: null,
+      storefrontEditor: false,
       discountCodes: false,
       bulkImport: false,
     },
@@ -121,6 +165,7 @@ export const PLANS: Readonly<Record<PlanTier, PlanDefinition>> = {
       members: 4,
       products: 250,
       editorSections: null,
+      storefrontEditor: true,
       discountCodes: true,
       bulkImport: true,
     },
@@ -133,6 +178,7 @@ export const PLANS: Readonly<Record<PlanTier, PlanDefinition>> = {
       members: 11,
       products: null,
       editorSections: null,
+      storefrontEditor: true,
       discountCodes: true,
       bulkImport: true,
     },

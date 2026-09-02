@@ -87,6 +87,23 @@ export interface MerchantContext {
   };
   /** D-08. The single boolean every write path consults. */
   readonly canWrite: boolean;
+  /**
+   * EDIT-03. The single boolean every editor gate consults — the only
+   * sanctioned answer to "may this merchant open and save the storefront
+   * editor?".
+   *
+   * D-15 is why this exists at all instead of a registry read. An ACTIVE TRIAL
+   * GRANTS THE EDITOR REGARDLESS OF TIER: a Starter merchant on day 2 of their
+   * 10 days has the same editor a Business merchant has, because the trial is
+   * how they find out the editor is worth paying for. `plan.limits
+   * .storefrontEditor` is pure tier data and knows nothing about trials, so
+   * gating on it directly — or on `can(ctx, …)` — silently ships that merchant
+   * a view-only editor.
+   *
+   * Composed here, in the one function that knows both the plan and the trial,
+   * and stored nowhere. See the computation below.
+   */
+  readonly canEditStorefront: boolean;
 }
 
 /**
@@ -148,6 +165,24 @@ export function resolveEntitlements(
       ),
     },
     canWrite: subscribed || !expired,
+    /*
+     * EDIT-03 / D-15. THIS IS NOT `can(ctx, "storefrontEditor")` AND MUST NOT
+     * BE "SIMPLIFIED" INTO ONE.
+     *
+     * The other feature flags — `discountCodes`, `bulkImport` — are read
+     * straight off the registry by `can()`, and that is deliberate: they are
+     * not trial-elevated. The editor is the exception D-15 carves out, so it
+     * is the one capability whose answer depends on the trial as well as the
+     * tier, and the only place both are in scope is right here.
+     *
+     * Reading left to right: a subscribed merchant gets exactly what their
+     * tier includes (a paying Starter merchant is refused — D-13); an
+     * unsubscribed one gets the editor for as long as the trial is running and
+     * loses it the instant it lapses. `expired` is already `false` whenever
+     * `subscribed` is true, so trial state is derived from the two locals
+     * above rather than stored as a third field that could disagree with them.
+     */
+    canEditStorefront: subscribed ? plan.limits.storefrontEditor : !expired,
   };
 }
 
