@@ -109,6 +109,105 @@ const isWebp = (body: Buffer): boolean =>
   body.subarray(0, 4).toString("ascii") === "RIFF" &&
   body.subarray(8, 12).toString("ascii") === "WEBP";
 
+/**
+ * ---------------------------------------------------------------------------
+ * THE LOGO FIXTURE, AND WHY IT IS BUILT RATHER THAN PHOTOGRAPHED (ONB-03).
+ * ---------------------------------------------------------------------------
+ * A brand logo is the opposite of the product photo above: flat, already
+ * correctly exposed, and mostly transparent. Those are the three properties the
+ * `enhance: false` row exists to protect, so the fixture states each of them
+ * exactly rather than approximating them with a real wordmark:
+ *
+ *   - `LOGO_LEFT` / `LOGO_RIGHT` are the "brand's own colours". They are read
+ *     back verbatim from the derivative, which is only possible if
+ *     `.normalise()` and `.modulate()` did not run and the WebP encode was
+ *     lossless. Any one of those three changing turns the assertion red.
+ *   - The two blocks differ in luminance on purpose. A single flat colour would
+ *     give `.normalise()` a zero-range histogram to stretch, and it would leave
+ *     the image alone for reasons that have nothing to do with this preset.
+ *   - The canvas is transparent, so a corner pixel proves both the row's
+ *     `background: { alpha: 0 }` and an encode that carries alpha through.
+ *
+ * 480x240 keeps the arithmetic in the assertions below exact: contained in a
+ * 128 box the content is 128x64 letterboxed at y=32; in a 512 box it is 512x256
+ * letterboxed at y=128.
+ */
+const LOGO_CANVAS = { width: 480, height: 240 };
+const LOGO_LEFT = { r: 176, g: 32, b: 40 };
+const LOGO_RIGHT = { r: 32, g: 96, b: 176 };
+
+async function flatLogoPng(): Promise<Buffer> {
+  const block = (colour: { r: number; g: number; b: number }): Promise<Buffer> =>
+    sharp({
+      create: {
+        width: 200,
+        height: 120,
+        channels: 4,
+        background: { ...colour, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+  return sharp({
+    create: {
+      ...LOGO_CANVAS,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      { input: await block(LOGO_LEFT), left: 20, top: 60 },
+      { input: await block(LOGO_RIGHT), left: 260, top: 60 },
+    ])
+    .png()
+    .toBuffer();
+}
+
+interface Pixel {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+/** Decode a derivative back to raw RGBA and read one pixel out of it. */
+async function pixelAt(body: Buffer, x: number, y: number): Promise<Pixel> {
+  const { data, info } = await sharp(body)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const offset = (y * info.width + x) * info.channels;
+  return {
+    r: data[offset]!,
+    g: data[offset + 1]!,
+    b: data[offset + 2]!,
+    a: data[offset + 3]!,
+  };
+}
+
+/** How many pixels of a derivative are exactly this colour, alpha ignored. */
+async function countExactColour(
+  body: Buffer,
+  colour: { r: number; g: number; b: number },
+): Promise<number> {
+  const { data, info } = await sharp(body)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let count = 0;
+  for (let offset = 0; offset < data.length; offset += info.channels) {
+    if (
+      data[offset] === colour.r &&
+      data[offset + 1] === colour.g &&
+      data[offset + 2] === colour.b
+    ) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 describe("the fixture itself", () => {
   it("is a small, non-square JPEG carrying EXIF orientation 6", async () => {
     expect(fixture.byteLength).toBeLessThan(100 * 1024);
@@ -154,6 +253,19 @@ describe("IMAGE_PRESETS", () => {
       format: "webp",
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     });
+  });
+
+  it("carries an explicit enhance flag on every row (ONB-03)", () => {
+    // The flag is a COLUMN, not a special case: `processImage` reads the row,
+    // never the preset's name. A row added without it is a compile error, which
+    // is the point — a new surface has to state whether a photographic
+    // enhancement chain is appropriate for it.
+    expect(IMAGE_PRESETS.product.enhance).toBe(true);
+    expect(IMAGE_PRESETS.claim.enhance).toBe(true);
+    expect(IMAGE_PRESETS.logo.enhance).toBe(false);
+    for (const name of Object.keys(IMAGE_PRESETS) as ImagePresetName[]) {
+      expect(typeof IMAGE_PRESETS[name].enhance).toBe("boolean");
+    }
   });
 
   it("gives every preset one label per size", () => {
@@ -229,6 +341,74 @@ describe("processImage — logo preset (D-07)", () => {
     for (const image of derived) {
       expect(isWebp(image.body)).toBe(true);
     }
+  });
+
+  it("produces exactly two derivatives labelled small and large", async () => {
+    const derived = await processImage(await flatLogoPng(), "logo");
+    expect(derived).toHaveLength(2);
+    expect(derived.map((d) => d.label)).toEqual(["small", "large"]);
+    expect(derived.map((d) => d.width)).toEqual([128, 512]);
+  });
+
+  it("keeps a fully transparent corner transparent in both derivatives", async () => {
+    // `fit: "contain"` + the row's `background: { alpha: 0 }` + an encode that
+    // carries alpha. A lossy WebP fringes semi-transparent edges; an encode that
+    // dropped alpha entirely would give the merchant a black box.
+    const derived = await processImage(await flatLogoPng(), "logo");
+    for (const image of derived) {
+      expect((await pixelAt(image.body, 0, 0)).a).toBe(0);
+      expect((await pixelAt(image.body, image.width - 1, image.height - 1)).a).toBe(0);
+      // The letterbox band above the contained content, well clear of any edge.
+      expect((await pixelAt(image.body, Math.floor(image.width / 2), 4)).a).toBe(0);
+    }
+  });
+
+  it("returns the brand's own colours byte-for-byte, so no enhancement ran", async () => {
+    // This is the whole reason `enhance` exists. `.normalise()` stretches the
+    // 1st-99th luminance percentile, which on a two-colour wordmark rewrites
+    // both colours; `.modulate({ saturation })` pushes them further; a lossy
+    // WebP finishes the job. A merchant cannot name what went wrong, only that
+    // their logo looks off — so the pipeline is pinned to exact equality here.
+    const [small, large] = await processImage(await flatLogoPng(), "logo");
+
+    // 480x240 into a 128 box: content is 128x64 at y=32. The left block spans
+    // x 20..219 of 480 (centre 32 out of 128) and y 60..179 (centre 64 with the
+    // letterbox offset). The right block's centre is x 96.
+    expect(await pixelAt(small!.body, 32, 64)).toMatchObject(LOGO_LEFT);
+    expect(await pixelAt(small!.body, 96, 64)).toMatchObject(LOGO_RIGHT);
+
+    // Into a 512 box: content is 512x256 at y=128, so the same centres scale by
+    // four.
+    expect(await pixelAt(large!.body, 128, 256)).toMatchObject(LOGO_LEFT);
+    expect(await pixelAt(large!.body, 384, 256)).toMatchObject(LOGO_RIGHT);
+  });
+
+  it("still enhances the product preset — the flag is per row, not global", async () => {
+    // The counterpart of the assertion above. Run the SAME flat image through
+    // `product` and neither brand colour survives anywhere in the output, which
+    // is what proves the previous test is measuring `enhance: false` rather
+    // than a pipeline that quietly stopped enhancing everything.
+    const flat = await flatLogoPng();
+    const derived = await processImage(flat, "product");
+    for (const image of derived) {
+      expect(await countExactColour(image.body, LOGO_LEFT)).toBe(0);
+      expect(await countExactColour(image.body, LOGO_RIGHT)).toBe(0);
+    }
+  });
+
+  it("still auto-orients from EXIF — .rotate() is unconditional for every preset", async () => {
+    // The square output hides orientation in the DIMENSIONS, so the letterbox
+    // is what reveals it. The fixture is stored 900x600 landscape but tagged
+    // orientation 6, so it DISPLAYS 600x900 portrait: contained in a square box
+    // that means transparent bars on the LEFT and RIGHT, and opaque pixels at
+    // the vertical extremes. Drop the rotation and the bars swap axis.
+    const [small] = await processImage(fixture, "logo");
+    expect(small).toBeDefined();
+
+    expect((await pixelAt(small!.body, 1, 64)).a).toBe(0);
+    expect((await pixelAt(small!.body, 126, 64)).a).toBe(0);
+    expect((await pixelAt(small!.body, 64, 1)).a).toBeGreaterThan(0);
+    expect((await pixelAt(small!.body, 64, 126)).a).toBeGreaterThan(0);
   });
 });
 
