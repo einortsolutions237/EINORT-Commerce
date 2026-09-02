@@ -1501,6 +1501,114 @@ export const strings = {
     /** Announced in a polite live region — the move is silent otherwise. */
     sectionMoved: "{section} moved to position {n} of {total}.",
 
+    /* --- settings panel: field descriptors -------------------------------- */
+    /*
+     * Read by `src/server/theming/registry.ts` (plan 04-06). Every
+     * `FieldDescriptor.label` / `.helper` / `.options[].label` in that registry
+     * is a reference into the four groups below and NEVER an inline literal —
+     * 04-PATTERNS.md § Shared Pattern 1 makes that binding, and it is the same
+     * copy/enforcement split `src/server/entitlements/plans.ts` documents in its
+     * header.
+     *
+     * These keys were missed by plan 04-04's transcription: 04-UI-SPEC.md
+     * § Settings-panel view requires a visible label on every field and § The
+     * six field kinds requires select option copy to "come from the registry
+     * descriptor and `strings`", but neither list was written down. They are
+     * added here rather than inlined in the registry for exactly the reason the
+     * namespace header above gives.
+     *
+     * KEYED BY THE SETTINGS KEY, NOT BY SECTION. `heading` means the same thing
+     * in the hero, the product grid and the contact band, so it is one entry.
+     * A per-section map would be five chances to write the same word five
+     * slightly different ways, which is the drift this file exists to prevent.
+     *
+     * Three brand-field labels are deliberately ABSENT and are read from
+     * `strings.branding` instead — see the note on `THEME_FIELDS` in the
+     * registry. 04-UI-SPEC.md § The six field kinds makes the editor's colour
+     * field "identical to the onboarding colour field", so a second copy of
+     * "Primary accent" here would be a sentence that can drift from the one the
+     * merchant already read at onboarding.
+     */
+
+    /**
+     * `eyebrow` is named for what it is, not for what the registry calls it —
+     * the same rule `sectionLabels` follows. Nobody outside this codebase calls
+     * a short line above a headline an eyebrow.
+     */
+    fieldLabels: {
+      eyebrow: "Line above the heading",
+      heading: "Heading",
+      body: "Body text",
+      ctaLabel: "Button label",
+      ctaHref: "Button link",
+      backgroundImageKey: "Background image",
+      overlayOpacity: "Darken the image",
+      icon: "Icon",
+      viewAllLabel: "Link label",
+      viewAllHref: "Link",
+      itemCount: "Products to show",
+      imageKey: "Image",
+      announcementText: "Announcement bar text",
+      footerTagline: "Footer tagline",
+    },
+
+    /**
+     * Declared only where a field needs guidance the label cannot carry. A
+     * helper on every field is a helper the merchant stops reading.
+     *
+     * The `link` kind's helper is NOT here — it is `linkHelper` below, supplied
+     * by the field renderer for the kind rather than per descriptor, because
+     * 04-UI-SPEC.md pins one sentence for every link field on the surface.
+     */
+    fieldHelpers: {
+      backgroundImageKey:
+        "Optional. Without one, this section uses a clean light background.",
+      overlayOpacity:
+        "Only applies when you've added a background image. Darkening helps your text stay readable.",
+      itemCount:
+        "How many products show on your home page. Customers can still browse the rest.",
+      announcementText:
+        "Shows in the thin bar across the top of your storefront.",
+      footerTagline: "A short line in your storefront footer.",
+    },
+
+    /**
+     * The hero scrim, as three named steps rather than a slider.
+     *
+     * The stored values are `0`, `0.3` and `0.6`. They are not spelled out to
+     * the merchant because a percentage is not the question they are answering —
+     * "can my customers read the headline over this photo" is.
+     */
+    overlayOpacityOptions: {
+      none: "None",
+      medium: "Medium",
+      strong: "Strong",
+    },
+
+    /** The grid's three legal counts (schema literals 4 / 8 / 12). */
+    itemCountOptions: {
+      four: "4 products",
+      eight: "8 products",
+      twelve: "12 products",
+    },
+
+    /**
+     * The four trust-bar icons, keyed by the schema's enum value and labelled
+     * by WHAT THE PICTURE SHOWS, not by what it is meant to imply. A merchant
+     * choosing between "Delivery" and "Trust" is guessing at a glyph; a merchant
+     * choosing between "Delivery van" and "Shield" is reading a list.
+     *
+     * The enum values themselves are lucide identifiers, not copy, and stay in
+     * the schema and the registry — an icon name in a copy catalogue is a string
+     * a later i18n pass would try to translate.
+     */
+    iconOptions: {
+      truck: "Delivery van",
+      "shield-check": "Shield",
+      clock: "Clock",
+      "message-circle": "Chat bubble",
+    },
+
     /* --- field kinds ---------------------------------------------------- */
     linkHelper:
       "Where this button goes — a path like /cart, or a full https:// address.",
