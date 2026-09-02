@@ -78,7 +78,7 @@ describe("registry", () => {
     }
   });
 
-  it("carries all five limit keys on every tier", () => {
+  it("carries all six limit keys on every tier", () => {
     for (const tier of PLAN_TIERS) {
       expect(Object.keys(PLANS[tier].limits).sort()).toEqual([
         "bulkImport",
@@ -86,7 +86,20 @@ describe("registry", () => {
         "editorSections",
         "members",
         "products",
+        "storefrontEditor",
       ]);
+    }
+  });
+
+  it("includes the storefront editor on business and professional only (D-13/D-14)", () => {
+    expect(PLANS.starter.limits.storefrontEditor).toBe(false);
+    expect(PLANS.business.limits.storefrontEditor).toBe(true);
+    expect(PLANS.professional.limits.storefrontEditor).toBe(true);
+  });
+
+  it("leaves editorSections unlimited on every tier (D-05 fixes one section list)", () => {
+    for (const tier of PLAN_TIERS) {
+      expect(PLANS[tier].limits.editorSections).toBeNull();
     }
   });
 
