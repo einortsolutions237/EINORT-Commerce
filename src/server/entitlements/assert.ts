@@ -58,6 +58,31 @@ export class ReadOnlyError extends Error {
   }
 }
 
+/**
+ * EDIT-03: the merchant may not use the storefront editor — a Starter tier
+ * whose trial has ended (D-13/D-15).
+ *
+ * EXTENDS `EntitlementError` ON PURPOSE, AND THE SUBCLASS RELATIONSHIP IS THE
+ * FEATURE. An editor refusal *is* an entitlement refusal, so this inherits the
+ * `feature` field and, more importantly, `merchantAction`'s existing
+ * `instanceof EntitlementError` arm converts it into
+ * `{ ok: false, error: { form: [message] } }` with NO change to that file's
+ * control flow. Declaring it as a bare `Error` instead would mean the merchant
+ * sees an unhandled 500 where they should see "you're on the Starter plan".
+ *
+ * The `this.name` re-assignment is not redundant: `EntitlementError`'s own
+ * constructor has already set it to `"EntitlementError"` by the time `super()`
+ * returns, so without the line below every log line for an editor refusal
+ * would name the parent class. Assigned in the constructor rather than as an
+ * `override readonly name` field to match the two classes above it.
+ */
+export class EditorLockedError extends EntitlementError {
+  constructor(message: string) {
+    super("storefrontEditor", message);
+    this.name = "EditorLockedError";
+  }
+}
+
 /** Rendering-time question: does this tenant's plan include the feature? */
 export function can(ctx: MerchantContext, feature: PlanFeature): boolean {
   return ctx.plan.limits[feature];
@@ -96,5 +121,32 @@ export function assertEntitlement(
 export function assertCanWrite(ctx: MerchantContext, message: string): void {
   if (!ctx.canWrite) {
     throw new ReadOnlyError(message);
+  }
+}
+
+/**
+ * Write-time gate for the storefront editor (EDIT-03). The THROWING half of
+ * the pair — `ctx.canEditStorefront` is the boolean half, and it is the only
+ * thing a disabled `Save` button should be rendered from.
+ *
+ * Use this one on every editor mutation. A save path whose only gate is
+ * `if (ctx.canEditStorefront)` has no gate at all the day someone drops the
+ * `if`, which is the failure mode the header of this file describes: a Server
+ * Action is reachable by a direct POST that never rendered the editor.
+ *
+ * Reads `ctx.canEditStorefront` and never `ctx.plan.limits.storefrontEditor`.
+ * The registry value is tier-only; `resolveEntitlements` is what folds D-15's
+ * trial grant into it.
+ *
+ * `message` is caller-supplied (`strings.editor.starterViewOnly`) and is never
+ * composed here — this module must not become a second home for user-facing
+ * copy.
+ */
+export function assertCanEditStorefront(
+  ctx: MerchantContext,
+  message: string,
+): void {
+  if (!ctx.canEditStorefront) {
+    throw new EditorLockedError(message);
   }
 }

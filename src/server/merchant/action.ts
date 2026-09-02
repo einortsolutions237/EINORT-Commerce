@@ -115,6 +115,9 @@ export function merchantAction<S extends z.ZodType, R>(config: {
     try {
       return await config.handler(ctx, parsed.data as z.infer<S>);
     } catch (error) {
+      // `EditorLockedError` (EDIT-03) extends `EntitlementError`, so the arm
+      // below already converts it. That subclassing is deliberate — do NOT add
+      // a third `instanceof` here for it, or for any future entitlement error.
       if (error instanceof ReadOnlyError || error instanceof EntitlementError) {
         return { ok: false, error: { form: [error.message] } };
       }

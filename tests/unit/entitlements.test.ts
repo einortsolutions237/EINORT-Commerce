@@ -7,12 +7,17 @@ import {
   memberLimitFor,
 } from "@/server/entitlements/plans";
 import {
+  EditorLockedError,
+  EntitlementError,
+  assertCanEditStorefront,
+} from "@/server/entitlements/assert";
+import {
   TRIAL_DAYS,
   TRIAL_URGENT_DAYS,
   isUrgentTrial,
   resolveEntitlements,
 } from "@/server/entitlements/resolve";
-import type { OrgRow } from "@/server/entitlements/resolve";
+import type { MerchantContext, OrgRow } from "@/server/entitlements/resolve";
 
 /**
  * ONB-05 (10-day trial, enforced server-side from signup) and SUB-01 (plan
@@ -448,5 +453,62 @@ describe("editor capability", () => {
     const row = orgRow({ planTier: "starter" });
     expect(resolveEntitlements(row, DURING_TRIAL).canEditStorefront).toBe(true);
     expect(resolveEntitlements(row, AFTER_TRIAL).canEditStorefront).toBe(false);
+  });
+});
+
+/**
+ * T-04-16: the refusal must reach the merchant as a message, not as a 500.
+ *
+ * `merchantAction` converts exactly two error types — `ReadOnlyError` and
+ * `EntitlementError` — and rethrows everything else. `EditorLockedError`
+ * therefore only stays merchant-readable for as long as it remains a genuine
+ * `EntitlementError` subclass, which is a fact about the prototype chain that
+ * survives transpilation rather than an obvious property of the source. These
+ * cases assert the chain directly, so "extends Error" typed in by a later
+ * reader is a red test here instead of an unhandled 500 in a merchant's face.
+ */
+describe("editor refusal", () => {
+  const ctxAt = (row: Partial<OrgRow>, now: Date): MerchantContext => ({
+    ...resolveEntitlements(orgRow(row), now),
+    userId: "user_alpha",
+  });
+
+  it("is an EntitlementError, so merchantAction's existing arm converts it", () => {
+    const error = new EditorLockedError("Upgrade to edit your storefront.");
+    expect(error).toBeInstanceOf(EntitlementError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it("reports its own class name, not the parent's", () => {
+    expect(new EditorLockedError("nope").name).toBe("EditorLockedError");
+  });
+
+  it("carries the inherited feature field", () => {
+    expect(new EditorLockedError("nope").feature).toBe("storefrontEditor");
+  });
+
+  it("preserves the caller-supplied message verbatim", () => {
+    const copy = "Your plan does not include the storefront editor.";
+    expect(new EditorLockedError(copy).message).toBe(copy);
+  });
+
+  it("throws for a Starter merchant whose trial has ended", () => {
+    const ctx = ctxAt({ planTier: "starter" }, at(11 * DAY_MS));
+    expect(() => assertCanEditStorefront(ctx, "denied")).toThrow(
+      EditorLockedError,
+    );
+  });
+
+  it("does NOT throw for the same merchant mid-trial (D-15)", () => {
+    const ctx = ctxAt({ planTier: "starter" }, at(2 * DAY_MS));
+    expect(() => assertCanEditStorefront(ctx, "denied")).not.toThrow();
+  });
+
+  it("does NOT throw for a subscribed Business merchant", () => {
+    const ctx = ctxAt(
+      { planTier: "business", subscriptionStatus: "active" },
+      at(30 * DAY_MS),
+    );
+    expect(() => assertCanEditStorefront(ctx, "denied")).not.toThrow();
   });
 });
