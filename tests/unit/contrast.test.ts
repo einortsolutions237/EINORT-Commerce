@@ -40,6 +40,8 @@ const PALE_YELLOW = "#FDE047";
 const DARK_ORANGE = "#C2410C";
 /** Grey whose ratio against white is 4.478: rounds to 4.5, but is not 4.5. */
 const NEAR_MISS_GREY = "#777777";
+/** Mid grey — the accent that misses 4.5:1 against white AND against ink. */
+const MID_GREY = "#808080";
 
 describe("relativeLuminance", () => {
   it("returns the W3C bounds for black and white", () => {
@@ -131,24 +133,48 @@ describe("accentForeground", () => {
     ).toBe(ACCENT_FOREGROUND_LIGHT);
   });
 
-  it("always returns a foreground clearing 4.5:1 against the accent", () => {
-    // The guardrail stated as a property rather than as three examples.
+  it("always returns the better of the two candidates", () => {
+    // The guardrail stated as a property rather than as three examples. Note
+    // what it does NOT claim: a mid-grey accent misses 4.5:1 against BOTH white
+    // and ink, so the contract is "never the worse option", not "always
+    // compliant". D-11's inline picker warning covers that narrow band; adding
+    // a third candidate colour to close it would break D-09's palette.
     for (const accent of [
       PALE_YELLOW,
       DARK_ORANGE,
       DEFAULT_PRIMARY_ACCENT,
       DEFAULT_SECONDARY_ACCENT,
-      "#808080",
+      MID_GREY,
     ]) {
       const chosen = accentForeground(
         accent,
         ACCENT_FOREGROUND_LIGHT,
         ACCENT_FOREGROUND_INK,
       );
+      expect(contrastRatio(accent, chosen)).toBe(
+        Math.max(
+          contrastRatio(accent, ACCENT_FOREGROUND_LIGHT),
+          contrastRatio(accent, ACCENT_FOREGROUND_INK),
+        ),
+      );
+      // And whatever it picks always clears the non-text floor, so an icon or
+      // a mark drawn in the foreground colour is never invisible.
       expect(contrastRatio(accent, chosen)).toBeGreaterThanOrEqual(
-        CONTRAST_TEXT,
+        CONTRAST_NON_TEXT,
       );
     }
+  });
+
+  it("picks ink for the accent that misses 4.5:1 either way", () => {
+    // Pinned so the mid-grey case is a documented, deliberate outcome rather
+    // than something discovered later at a picker.
+    const chosen = accentForeground(
+      MID_GREY,
+      ACCENT_FOREGROUND_LIGHT,
+      ACCENT_FOREGROUND_INK,
+    );
+    expect(chosen).toBe(ACCENT_FOREGROUND_INK);
+    expect(contrastRatio(MID_GREY, chosen)).toBeLessThan(CONTRAST_TEXT);
   });
 });
 
