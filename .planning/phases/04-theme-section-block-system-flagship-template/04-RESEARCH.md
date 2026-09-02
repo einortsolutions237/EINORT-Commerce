@@ -1227,7 +1227,9 @@ Not a rename/refactor/migration phase in the string-replacement sense, but this 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five threaded through to the plans and were implemented: OQ-1 (document model) → 04-01/04-02; OQ-2 (`/` stays home) → 04-08/04-10; OQ-3 (gate both save and publish) → 04-09 Task 2; OQ-4 (PDP fixed this phase) → 04-CONTEXT.md addendum + 04-08/04-10; OQ-5 (Plus Jakarta Sans weight 600, not 700) → 04-07 Task 2.
 
 1. **Document-per-page (recommended) vs. relational Section/Block rows?**
    - *What we know:* the `$executeRaw` ban plus Prisma's lack of column-to-column assignment makes the relational publish an N-row loop; D-07 removes the only benefit relational rows would buy; ARCHITECTURE.md sanctions the document model in writing.
