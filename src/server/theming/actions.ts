@@ -1,21 +1,27 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 
 import { strings } from "@/lib/strings";
+import { auth } from "@/server/auth/auth";
 import type {
   StorefrontPageCreateInput,
   StorefrontThemeCreateInput,
 } from "@/server/db/model-inputs";
+import { platformDb } from "@/server/db/platform";
 import { scopedCreateData, scopedDb } from "@/server/db/tenant-scoped";
 import { assertCanEditStorefront } from "@/server/entitlements/assert";
 import { merchantAction } from "@/server/merchant/action";
 
 import { flagshipDefaultDocument, flagshipDefaultTokens } from "./defaults";
 import { StorefrontNotSeededError } from "./errors";
+import { isIndustrySegment } from "./registry";
 import {
+  hexColorSchema,
   pageDocumentSchema,
+  storageKeySchema,
   themeTokensSchema,
   type PageDocument,
   type ThemeTokens,
@@ -443,3 +449,215 @@ export const ensureStorefrontSeeded = merchantAction({
     return { ok: true as const };
   },
 });
+
+// ---------------------------------------------------------------------------
+// saveBranding — ONB-02 + ONB-03 + ONB-04, in one submit
+// ---------------------------------------------------------------------------
+
+/**
+ * ===========================================================================
+ * THIS ACTION IS DELIBERATELY NOT BUILT WITH `merchantAction`. DO NOT "TIDY"
+ * IT INTO ONE. THE WRAPPER WOULD REDIRECT THIS EXACT REQUEST INTO A LOOP.
+ * ===========================================================================
+ * T-04-27. `merchantAction` resolves identity through the merchant DAL in
+ * `src/server/merchant/context.ts`, and that DAL is a ladder of redirects for
+ * incomplete onboarding states. Plan 04-11 adds one more rung to it:
+ *
+ *     industry === null  ->  redirect("/onboarding/branding")
+ *
+ * A merchant submitting the branding form has `industry === null` BY
+ * DEFINITION — that is the state this form exists to fix. Routing the write
+ * through the wrapper would therefore redirect the submission back to the
+ * screen it was submitted from, and the step could never be completed. The
+ * failure is not hypothetical: `context.ts`'s own comment already documents it
+ * for `selectPlan` and the plan screen, in as many words ("routing them through
+ * it would loop the merchant on the surface that fixes exactly this state").
+ *
+ * So this copies `selectPlan`'s shape instead, point for point: resolve the
+ * session directly, take the tenant from `session.session.activeOrganizationId`,
+ * return a failed `ActionResult` rather than redirecting from inside an action,
+ * and speak the same `{ ok, error }` union so the form's error handling is
+ * identical to every other form in the product.
+ *
+ * This is the SECOND and last merchant write that legitimately runs before the
+ * DAL will admit the merchant. Everything after onboarding goes through the
+ * wrapper.
+ * ===========================================================================
+ */
+
+/**
+ * Exactly five fields, and NO TENANT IDENTIFIER (T-04-04).
+ *
+ * A tenant field here is precisely the retargeting vector the whole
+ * architecture exists to prevent: this action is reachable by a direct POST that
+ * never rendered the form, so the schema IS the trust boundary. The target is
+ * the session's active organization and nothing else, and extra keys a caller
+ * forges are dropped by the parse.
+ *
+ * `businessName`'s bounds are `signUpMerchant`'s `storeName` bounds, character
+ * for character, because both write the same `Organization.name` column — a cap
+ * declared twice with two different numbers is a cap that disagrees with itself.
+ * ONB-02 asks the merchant to CONFIRM the name captured at signup rather than to
+ * invent a new one, which is why it is required rather than optional here.
+ *
+ * `industry` narrows through `isIndustrySegment` rather than a `z.enum`, so the
+ * closed set lives in the registry (D-02) and this schema cannot drift from it.
+ * `logoKey` is nullable because ONB-03's logo is optional — a merchant with no
+ * logo file must still be able to finish onboarding.
+ */
+const saveBrandingSchema = z.object({
+  businessName: z.string().trim().min(2).max(80),
+  industry: z.string().refine(isIndustrySegment, "Not an industry segment."),
+  logoKey: storageKeySchema.nullable(),
+  primaryAccent: hexColorSchema,
+  secondaryAccent: hexColorSchema,
+});
+
+/**
+ * The same discriminated union `ActionResult<T>` describes, restated locally
+ * because a `"use server"` module may only export async functions. A caller that
+ * needs the shape writes `Awaited<ReturnType<typeof saveBranding>>`.
+ *
+ * `slug` rides back on success so the form can build its absolute redirect to
+ * `{protocol}://{slug}.{rootDomain}` without a second round trip — the same
+ * payload `selectPlan` returns, for the same reason.
+ */
+type SaveBrandingResult =
+  | { ok: true; slug: string }
+  | { ok: false; error: Record<string, string[]> };
+
+export async function saveBranding(
+  input: unknown,
+): Promise<SaveBrandingResult> {
+  const parsed = saveBrandingSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: z.flattenError(parsed.error).fieldErrors as Record<
+        string,
+        string[]
+      >,
+    };
+  }
+
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    // The page redirects unauthenticated visitors to /login; reaching this
+    // branch means the session expired between render and submit, or that the
+    // action was posted directly with no session at all. Either way: no write.
+    return { ok: false, error: { form: [strings.signup.sessionExpired] } };
+  }
+
+  /*
+   * The single source of the target. A session with no active organization gets
+   * the same honest session-expired result — NEVER a lookup of "an organization
+   * this user belongs to". Searching would re-derive a tenant the session does
+   * not actually assert, which is the exact substitution the parameter-less DAL
+   * signature and this schema both exist to make impossible.
+   */
+  const tenantId = session.session.activeOrganizationId;
+  if (!tenantId) {
+    return { ok: false, error: { form: [strings.signup.sessionExpired] } };
+  }
+
+  const { businessName, industry, logoKey, primaryAccent, secondaryAccent } =
+    parsed.data;
+
+  /*
+   * ONB-02's two answers land on the tenant row itself. `Organization` is not
+   * tenant-scoped — it IS the tenant, it carries no `tenantId` column, and
+   * `scopedDb` would correctly throw for it — so `platformDb` is the only door.
+   *
+   * `industry` is declared `input: false` in the Better Auth organization
+   * `additionalFields` (plan 04-01) with no default value, so no request body to
+   * `/organization/update` can set it and NULL stays the meaningful third state
+   * the redirect ladder gates on. This server-side write is the only way the
+   * column is ever populated (T-04-13).
+   */
+  const organization = await platformDb.organization.update({
+    where: { id: tenantId },
+    data: { name: businessName, industry },
+    select: { slug: true },
+  });
+
+  const now = new Date();
+  const document = flagshipDefaultDocument();
+  /*
+   * The registry defaults with the merchant's two accents laid over them. The
+   * announcement text and footer tagline stay at their defaults because this
+   * step does not ask for them — `flagshipDefaultTokens()`'s header explains why
+   * the announcement is deliberately non-empty: it is where the secondary accent
+   * is actually visible, and a colour with no visible role is a pointless
+   * question to have asked.
+   */
+  const tokens = { ...flagshipDefaultTokens(), primaryAccent, secondaryAccent };
+
+  /*
+   * ONB-03's LOGO KEY GOES HERE, ON `StorefrontTheme`, AND NOT ON THE
+   * ORGANIZATION'S OWN IMAGE COLUMN (T-04-10).
+   *
+   * That column is a Better Auth CORE organization field, not an
+   * `additionalFields` entry, so the `input: false` protection that covers
+   * `industry` and `planTier` cannot apply to it: `baseUpdateOrganizationSchema`
+   * declares it as a nullish string (verified in
+   * `node_modules/better-auth/dist/plugins/organization/routes/crud-org.mjs`),
+   * which means any signed-in merchant could overwrite it by POSTing directly to
+   * `/organization/update`. Behind `scopedDb` on a tenant-scoped model, the write
+   * path is server-controlled. The core column is left unused and unwritten by
+   * this phase — writing it "as well, for convenience" would re-open exactly the
+   * hole this split closes.
+   *
+   * WRITING `published` AND `publishedTokens` DIRECTLY AT SEED TIME IS ONB-04.
+   * The store is live the instant onboarding returns, with no second publish
+   * step and no window in which a merchant who finished onboarding has a
+   * storefront that renders nothing.
+   *
+   * The two `update` halves are asymmetric ON PURPOSE. The theme's re-applies
+   * the merchant's answers, so a merchant who comes back and redoes branding
+   * gets their new colours live rather than silently ignored. The page's is
+   * empty, because the page document is what the EDITOR owns — re-running this
+   * step must never clobber a storefront the merchant has since edited.
+   *
+   * `scopedCreateData<T>()` on both `create` halves, and `scopedDb` stamps the
+   * tenant into both halves of each upsert, last.
+   */
+  await scopedDb(tenantId).$transaction(async (tx) => {
+    await tx.storefrontTheme.upsert({
+      where: { tenantId },
+      create: scopedCreateData<StorefrontThemeCreateInput>({
+        templateKey: DEFAULT_TEMPLATE_KEY,
+        logoKey,
+        draftTokens: tokens,
+        publishedTokens: tokens,
+        publishedAt: now,
+      }),
+      update: {
+        logoKey,
+        draftTokens: tokens,
+        publishedTokens: tokens,
+        publishedAt: now,
+      },
+    });
+    await tx.storefrontPage.upsert({
+      where: { tenantId_pageType: { tenantId, pageType: HOME_PAGE_TYPE } },
+      create: scopedCreateData<StorefrontPageCreateInput>({
+        pageType: HOME_PAGE_TYPE,
+        draft: document,
+        published: document,
+        publishedAt: now,
+        draftUpdatedAt: now,
+      }),
+      update: {},
+    });
+  });
+
+  /*
+   * NO EDITOR GATE HERE EITHER, AND ITS ABSENCE IS DELIBERATE — the EDIT-03
+   * assertion the three handlers above open with is intentionally not repeated
+   * in this one. Branding is onboarding, not editing. D-13's view-only
+   * restriction is about the storefront editor; a Starter merchant must be able
+   * to complete onboarding and get a live store, or the plan they just picked
+   * sells them nothing.
+   */
+  return { ok: true as const, slug: organization.slug };
+}
