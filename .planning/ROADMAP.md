@@ -169,7 +169,45 @@ Plans:
   4. Merchant can reorder sections, edit block content/settings, and swap images/colors through a live-preview editor.
   5. Editor access and capability is gated by subscription tier, enforced server-side.
 
-**Plans**: TBD
+**Plans**: 16 plans (7 waves)
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Prisma schema (StorefrontTheme, StorefrontPage, Organization.industry), TENANT_SCOPED_MODELS registration, seed fixtures, and the [BLOCKING] schema push
+- [ ] 04-02-PLAN.md — The four pure modules: the Zod page-document union, WCAG contrast, the default colour constants, and the editor reducer
+- [ ] 04-03-PLAN.md — The EDIT-03 tier gate: PlanLimits.storefrontEditor, trial-aware canEditStorefront, EditorLockedError (the D-15 trap)
+- [ ] 04-04-PLAN.md — All phase copy (strings.branding / editor / flagship) and all design tokens (--brand-accent*, motion, reduced-motion floor, ban #5)
+- [ ] 04-05-PLAN.md — ONB-03 logo pipeline: per-preset enhance flag, requestLogoUpload, finalize KIND_PRESET map
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-06-PLAN.md — The theming registry (SECTION_TYPES, TEMPLATES, INDUSTRY_SEGMENTS), the flagship default document, and the registry drift guard
+- [ ] 04-07-PLAN.md — Flagship sections A: the render-data contract, Reveal, hero, trust-bar, editorial-split
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-08-PLAN.md — Flagship sections B: product-grid, contact, and the one exhaustive section renderer
+- [ ] 04-09-PLAN.md — The theming server domain: queries (read-only, degrade-not-throw) and actions (saveDraft, publish, discard, seed, saveBranding)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04-10-PLAN.md — Brand-token injection, theme chrome (header, footer, announcement bar) and the flagship home render
+- [ ] 04-11-PLAN.md — The /onboarding/branding step and the industry redirect-ladder rung (ONB-02/03/04)
+- [ ] 04-12-PLAN.md — Editor rail and panel components: section list, six field kinds, settings panel, publish bar
+- [ ] 04-13-PLAN.md — Isolation suites: publish atomicity, cross-tenant refusal, tier refusal, branding idempotency
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 04-14-PLAN.md — The /preview route and the origin-checked, Zod-validated postMessage receiver
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 04-15-PLAN.md — Editor assembly: nav item + REQUIRED_HREFS, toggle-group, the RSC, and the reducer/iframe shell
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 04-16-PLAN.md — Phase gate: token hygiene, the live-preview device pass, and the Design-Distinctiveness Gate
+
 **UI hint**: yes
 
 ### Phase 5: Template Segment Expansion
@@ -216,6 +254,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
-| 4. Theme/Section/Block System & Flagship Template | 0/TBD | Not started | - |
+| 4. Theme/Section/Block System & Flagship Template | 0/16 | Not started | - |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
