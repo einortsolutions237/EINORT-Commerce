@@ -133,3 +133,29 @@ export type ProductVariantCreateManyInput = Prisma.ProductVariantCreateManyInput
  * `src/server/catalog/actions.ts`. Same reasoning as the variant batch above.
  */
 export type ProductImageCreateManyInput = Prisma.ProductImageCreateManyInput;
+
+/**
+ * `StorefrontTheme` (EDIT-01 / ONB-04), written by `ensureStorefrontSeeded` and
+ * `saveBranding` in `src/server/theming/actions.ts` and by nothing else.
+ *
+ * The `Unchecked` variant, and needed for the `create` half of an UPSERT rather
+ * than a plain create — the same shape as `MerchantPaymentSettings` above,
+ * because this model has the same single-column `@unique` on `tenantId`.
+ * `scopedDb` stamps `tenantId` into both halves of an upsert, so the caller must
+ * not name it, while the generated input still demands it because every
+ * tenant-scoped model declares `tenantId` required with no default.
+ */
+export type StorefrontThemeCreateInput =
+  Prisma.StorefrontThemeUncheckedCreateInput;
+
+/**
+ * `StorefrontPage` (EDIT-01 / ONB-04), written by the same two actions.
+ *
+ * Same `Unchecked` reasoning. The difference from the theme above is the
+ * selector: this model's uniqueness is the composite `@@unique([tenantId,
+ * pageType])`, so the upsert's `where` is `tenantId_pageType` — which is exactly
+ * why `pageType` is a scalar the create half must supply rather than something
+ * a relation write could imply.
+ */
+export type StorefrontPageCreateInput =
+  Prisma.StorefrontPageUncheckedCreateInput;
