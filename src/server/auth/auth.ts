@@ -291,6 +291,29 @@ export const auth = betterAuth({
               input: false,
               required: false,
             },
+
+            /**
+             * ONB-02 / D-02: the merchant's business segment, one of the six
+             * `INDUSTRY_SEGMENTS`, captured by the branding onboarding step.
+             *
+             * `input: false` for exactly the reasons spelled out above the
+             * plan/trial block — `toZodSchema({ isClientSide: true })` drops
+             * the field, and `z.object` then strips a forged
+             * `{"industry":"fashion"}` before `ctx.body` exists. Segment is a
+             * server-side write through `platformDb.organization.update`
+             * (the branding action), never a request body.
+             *
+             * NO `defaultValue`, deliberately, unlike `status` and
+             * `subscriptionStatus`: the column is nullable and NULL is the
+             * meaningful third state — "branding step not completed yet" is
+             * what the redirect ladder gates on. Defaulting it to any segment
+             * would silently mark onboarding done for every new store.
+             */
+            industry: {
+              type: "string",
+              input: false,
+              required: false,
+            },
           },
         },
       },

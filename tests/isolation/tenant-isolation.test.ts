@@ -259,6 +259,39 @@ const MODEL_PROBES: Record<string, ModelProbe> = {
     }),
     mutation: () => ({ payoutNotice: "probe-mutated" }),
   },
+
+  StorefrontTheme: {
+    // `tenantId String @unique` (EDIT-01) — one theme per tenant, so the
+    // create-family cases free the slot first, exactly as they do for
+    // `MerchantPaymentSettings`.
+    singleRowPerTenant: true,
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      // Both token columns are non-null `Json` with no default.
+      draftTokens: { primaryAccent: "#000000", secondaryAccent: "#111111" },
+      publishedTokens: { primaryAccent: "#000000", secondaryAccent: "#111111" },
+    }),
+    // `templateKey` carries no unique constraint — safe to scribble on.
+    mutation: () => ({ templateKey: "probe-mutated" }),
+  },
+
+  StorefrontPage: {
+    // NOT `singleRowPerTenant`: `@@unique([tenantId, pageType])` allows many
+    // pages per tenant, so the nonce rides on `pageType` to keep probe rows
+    // clear of the fixture's `"home"` row.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      pageType: `probe-${nonce}`,
+      draft: { version: 1, sections: [] },
+    }),
+    // `draft`, NOT `pageType`. The battery runs an unfiltered `updateMany`
+    // after inserting several probe rows as tenant B, so mutating a column
+    // inside `@@unique([tenantId, pageType])` would collapse every one of
+    // those rows onto the same key and fail on a constraint that has nothing
+    // to do with tenant isolation. Every other probe in this map picks a
+    // constraint-free column for the same reason.
+    mutation: () => ({ draft: { version: 1, sections: [], probe: "mutated" } }),
+  },
 };
 
 function probeFor(model: string): ModelProbe {

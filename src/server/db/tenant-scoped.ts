@@ -47,8 +47,9 @@ import { prismaBase } from "./base";
  * immediately rather than at commit, so a child row inserted before its parent
  * fails the whole fixture. The list below is therefore in dependency order:
  * Category -> Product -> ProductVariant/ProductImage, then
- * Order -> OrderItem/OrderEvent/PaymentClaim. `MerchantPaymentSettings` has no
- * parent and sits last. Re-sorting this array will break the seed.
+ * Order -> OrderItem/OrderEvent/PaymentClaim. `MerchantPaymentSettings`,
+ * `StorefrontTheme` and `StorefrontPage` have no parent and sit last, in that
+ * order. Re-sorting this array will break the seed.
  */
 const REGISTERED_MODELS: readonly Prisma.ModelName[] = [
   "StoreSlugHistory",
@@ -61,6 +62,11 @@ const REGISTERED_MODELS: readonly Prisma.ModelName[] = [
   "OrderEvent",
   "PaymentClaim",
   "MerchantPaymentSettings",
+  // EDIT-01 / D-03 (Phase 4). Neither has a foreign-key parent — `tenantId` is
+  // a bare string on both, exactly like `MerchantPaymentSettings` — so the end
+  // of the list is the correct position and nothing above needs to move.
+  "StorefrontTheme",
+  "StorefrontPage",
 ];
 
 export const TENANT_SCOPED_MODELS: Set<string> = new Set(REGISTERED_MODELS);
