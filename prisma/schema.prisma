@@ -99,24 +99,24 @@ model Verification {
 
 /// The tenant. One Organization == one storefront == one merchant's store.
 model Organization {
-  id          String       @id
-  name        String
+  id        String   @id
+  name      String
   // HAND-CORRECTED (assumption A2): the generator emitted a non-nullable
   // `slug String` plus a block-level `@@unique([slug])`. Normalized to the
   // inline form — identical DDL, but it puts the DOM-02 guarantee on the same
   // line as the column. NOT NULL + UNIQUE is what makes "one hostname can
   // never resolve to two stores" a database guarantee rather than an
   // application convention. Never relax either half.
-  slug        String       @unique
-  logo        String?
-  createdAt   DateTime
-  metadata    String?
+  slug      String   @unique
+  logo      String?
+  createdAt DateTime
+  metadata  String?
   // HAND-CORRECTED: emitted as `String?`. Made NOT NULL for D-05 — hostname
   // resolution branches on this value, and a NULL status is neither "active"
   // nor "suspended", so a row with one would resolve ambiguously. Declared
   // `input: false` in the Better Auth config, so it can never be set through
   // the public create/update API; suspension is a Phase 6 admin-only write.
-  status      String       @default("active")
+  status    String   @default("active")
 
   /// SUB-01 / D-05: the merchant's chosen tier, one of `PLAN_TIERS` in
   /// `src/server/entitlements/plans.ts`. NULL means "signed up, has not picked
@@ -126,14 +126,14 @@ model Organization {
   /// IS the D-01 flow, and exactly one gate handles it: the dashboard redirects
   /// a NULL-tier merchant to `/onboarding/plan`. Declared `input: false` in the
   /// Better Auth config, so no merchant can forge their own tier.
-  planTier           String?
+  planTier String?
 
   /// ONB-05: an optional override for a support-granted trial extension. NULL
   /// is the normal case and means "derive from `createdAt` + TRIAL_DAYS".
   /// Deriving rather than stamping means there is no window in which a
   /// just-created organization has no trial, and no second write that can fail
   /// and leave a merchant with no trial at all. `input: false`.
-  trialEndsAt        DateTime?
+  trialEndsAt DateTime?
 
   /// D-09/D-10: "none" until a later phase builds the merchant subscribe-via-
   /// claim flow. NOT NULL for the same reason `status` was hand-corrected — no
@@ -141,12 +141,30 @@ model Organization {
   /// `resolveEntitlements` compares this to the literal "active". `input: false`
   /// plus `defaultValue: "none"` in the Better Auth config satisfies the NOT
   /// NULL on insert without opening a public write path.
-  subscriptionStatus String       @default("none")
+  subscriptionStatus String @default("none")
 
   /// D-06 audit breadcrumb: when the current tier was chosen or switched.
   /// Cheap to keep, and reconstructing tier history after the fact is
   /// impossible. NULL until the first plan selection. `input: false`.
-  planSelectedAt     DateTime?
+  planSelectedAt DateTime?
+
+  /// ONB-02 / D-02: the merchant's business segment, one of the six
+  /// `INDUSTRY_SEGMENTS` in `src/server/theming/registry.ts`. NULL means the
+  /// branding onboarding step is NOT DONE YET, and that third state is the
+  /// gate itself — the redirect ladder sends a NULL-industry merchant to the
+  /// branding step, exactly as a NULL `planTier` sends them to
+  /// `/onboarding/plan`. Same "the third state IS the flow" reasoning that
+  /// makes `planTier` the other correct nullable enum-ish column here.
+  ///
+  /// DELIBERATELY NOT the same thing as `StorefrontTheme.templateKey` (D-03).
+  /// Industry is what the merchant said their business is; templateKey is what
+  /// their storefront actually renders. Keeping them independent is what lets
+  /// Phase 5 ship real segment templates without auto-migrating anyone.
+  ///
+  /// Declared `input: false` in the Better Auth organization
+  /// `additionalFields`, so no request body can set it — the only writer is
+  /// server-side branding code going through `platformDb`.
+  industry String?
 
   members     Member[]
   invitations Invitation[]
@@ -565,4 +583,94 @@ model MerchantPaymentSettings {
   updatedAt DateTime @updatedAt
 
   @@map("merchant_payment_settings")
+}
+
+/// EDIT-01 / D-03. The tenant's theme instance: which template it was
+/// instantiated from, its logo, and its brand tokens. ONE row per tenant,
+/// which is why `tenantId` is a single-field `@unique` (same shape and same
+/// reasoning as `MerchantPaymentSettings` above — `findUnique`/`upsert` on
+/// `{ tenantId }` then work directly under `scopedDb`).
+model StorefrontTheme {
+  id String @id @default(cuid())
+
+  /// `organization.id`. Required, no default — see the tenant-scoped block
+  /// comment above. `@unique` because a tenant has exactly one theme.
+  tenantId String @unique
+
+  /// A key into `TEMPLATES` in `src/server/theming/registry.ts`. Never a
+  /// foreign key to a Theme table: template *types* are code, exactly like
+  /// `PLANS`, `IMAGE_PRESETS` and `ORDER_TRANSITIONS`.
+  ///
+  /// DELIBERATELY SEPARATE FROM `Organization.industry` (D-03). Industry is
+  /// what the merchant said their business is; templateKey is what their
+  /// storefront actually renders. Phase 5 ships real segment templates and
+  /// MUST NOT auto-migrate anyone onto one — that is only expressible if the
+  /// two are independent columns, and it is why this is stored rather than
+  /// derived from `industry` at read time. Do not "simplify" this away.
+  templateKey String @default("flagship-fashion")
+
+  /// The R2 derivative PREFIX (e.g. `tenants/{id}/logos/{uuid}`), matching
+  /// `ProductImage.storageKey`'s convention. NEVER a full URL.
+  ///
+  /// This column exists INSTEAD OF `Organization.logo` on purpose. `logo` is a
+  /// Better Auth CORE organization field, not an `additionalFields` entry:
+  /// `baseUpdateOrganizationSchema` declares `logo: z.string().nullish()`
+  /// (verified in
+  /// `node_modules/better-auth/dist/plugins/organization/routes/crud-org.mjs`),
+  /// so the `input: false` protection that keeps `planTier` and `status`
+  /// server-only cannot apply to it — any signed-in merchant could POST an
+  /// arbitrary string to `/organization/update` and overwrite it. Behind
+  /// `scopedDb` here, the write path is server-controlled. `Organization.logo`
+  /// is left unused and unwritten by this phase.
+  logoKey String?
+
+  /// D-08's draft/published split for the brand tokens:
+  /// `{ primaryAccent, secondaryAccent }` as validated hex strings. Two
+  /// columns on one row, not two tables — publish is then a single row write
+  /// and a half-published state is not representable.
+  draftTokens     Json
+  publishedTokens Json
+
+  /// NULL until the merchant publishes for the first time.
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@map("storefront_theme")
+}
+
+/// EDIT-01. One row per (tenant, page), holding the FULL ordered section tree
+/// as a document validated against `pageDocumentSchema`. `Json` maps to
+/// `jsonb` on PostgreSQL.
+///
+/// `pageType` is `"home"` this phase; the column exists so that Phase 5 adds a
+/// ROW, not a migration.
+model StorefrontPage {
+  id String @id @default(cuid())
+
+  /// `organization.id`. Required, no default — see the tenant-scoped block
+  /// comment above. NOT `@unique` on its own: a tenant owns many pages, and
+  /// `@@unique([tenantId, pageType])` below is what makes exactly one row per
+  /// (tenant, page) a database guarantee.
+  tenantId String
+  pageType String
+
+  /// D-08. `draft` is always present; `published` is NULL until the first
+  /// publish, and publishing is `published = draft` — one row, one statement,
+  /// atomic by construction.
+  draft     Json
+  published Json?
+
+  publishedAt    DateTime?
+  /// Compared against `publishedAt` to answer "are there unpublished
+  /// changes?", so it is set EXPLICITLY on every draft write rather than
+  /// declared `@updatedAt` — an implicit clock read would make the comparison
+  /// depend on write timing nobody controls.
+  draftUpdatedAt DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  @@unique([tenantId, pageType])
+  @@index([tenantId, pageType])
+  @@map("storefront_page")
 }
