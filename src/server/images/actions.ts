@@ -116,3 +116,72 @@ export const requestProductImageUpload = merchantAction<
     return { ok: true as const, uploadUrl, key, uploadId };
   },
 });
+
+/* ---------------------------------------------------------------------------
+ * ONB-03 — the merchant logo.
+ * ------------------------------------------------------------------------ */
+
+/**
+ * A SIBLING ACTION, NOT A `kind` PARAMETER ON THE ONE ABOVE. DO NOT MERGE THEM.
+ *
+ * The obvious refactor — one action taking the namespace as an argument — is the
+ * refactor this file's header rules out in advance. The schema is the trust
+ * boundary precisely because it names nothing about placement: no tenant id, no
+ * key, no path, no filename. A client-supplied namespace is a client-influenced
+ * key, and the moment one exists, the guarantee stops being "the browser cannot
+ * name where its bytes land" and becomes "the browser can name where its bytes
+ * land, from a list we remembered to keep short". The list is the weaker
+ * promise, and the enum that holds it is one careless addition away from
+ * covering the claims namespace, whose upload gate is deliberately different.
+ *
+ * The cost of the stronger promise is this: one duplicated eight-line handler
+ * per surface, and a namespace that is a literal at exactly one call site each.
+ * That is the intended trade.
+ *
+ * `mode: "write"` again — the read-only trial gate (D-08 / SUB-02) applies to a
+ * logo exactly as it does to a product image, and it is the wrapper's job here
+ * too. There is no `ctx.canWrite` re-check in this handler for the same reason
+ * there is none in the one above.
+ */
+const requestLogoUploadSchema = z.object({
+  contentType: z.string(),
+  byteSize: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+});
+
+/**
+ * Identical in shape to `ProductImageUploadGrant` today, and named separately
+ * anyway.
+ *
+ * `merchantAction`'s `R` appears only in the handler's return position, so it
+ * cannot be inferred and has to be named regardless. Naming it after the
+ * surface rather than reusing the product name gives the branding client island
+ * its own import, and means a future divergence — a logo grant that also
+ * reported the derived prefix, say — is a change to this line instead of a
+ * rename rippling through the product upload field.
+ */
+export type LogoUploadGrant = ProductImageUploadGrant;
+
+export const requestLogoUpload = merchantAction<
+  typeof requestLogoUploadSchema,
+  LogoUploadGrant
+>({
+  mode: "write",
+  schema: requestLogoUploadSchema,
+  handler: async (ctx, { contentType, byteSize }) => {
+    if (!isAllowedContentType(contentType)) {
+      return { ok: false as const, error: { contentType: [UNSUPPORTED_TYPE_MESSAGE] } };
+    }
+
+    /*
+     * The namespace is a literal here and nowhere else. `ctx.tenantId` came from
+     * the session before this handler ran, and the id is minted in this process
+     * — so both segments of the key that matter are server-authored, and the
+     * browser contributed neither (T-04-01).
+     */
+    const uploadId = crypto.randomUUID();
+    const key = objectKeyFor(ctx.tenantId, "logos", uploadId);
+    const uploadUrl = await presignUpload(key, contentType, byteSize);
+
+    return { ok: true as const, uploadUrl, key, uploadId };
+  },
+});

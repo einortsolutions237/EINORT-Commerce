@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   ALLOWED_UPLOAD_CONTENT_TYPES,
+  derivativePrefixFor,
   isAllowedContentType,
   objectKeyFor,
   type UploadKind,
@@ -121,6 +125,123 @@ describe("objectKeyFor", () => {
     });
   });
 });
+
+/**
+ * ---------------------------------------------------------------------------
+ * ONB-03 — THE LOGO NAMESPACE, AND THE DRIFT IT COULD HIDE (T-04-15).
+ * ---------------------------------------------------------------------------
+ * `requestLogoUpload` mints a key in the logos namespace; the finalize route
+ * returns its DERIVATIVE PREFIX (the key with `/original` stripped); the
+ * branding action stores that prefix as `StorefrontTheme.logoKey`; and the
+ * storefront header renders it as an image `src`. The renderer will not accept
+ * an arbitrary string — `storageKeySchema` in `src/server/theming/schema.ts`
+ * validates it against a regex.
+ *
+ * So there are two independent statements of the same layout in this codebase,
+ * written in two files by two plans, and NOTHING makes them agree. If they ever
+ * disagree the failure is silent in the worst way: the upload succeeds, the key
+ * is stored, and the merchant's logo simply does not appear. The assertions
+ * below are the join.
+ *
+ * The pattern is restated here rather than imported because the theming module
+ * is created by a sibling plan in the same wave and does not exist while this
+ * plan runs. The restatement alone would be worth very little — a copy that
+ * drifts is exactly the problem — so the block after it loads the REAL schema
+ * whenever the file is present and asserts the two agree.
+ */
+const STORAGE_KEY_PATTERN =
+  /^tenants\/[A-Za-z0-9_-]+\/(products|logos)\/[a-z0-9-]{8,64}$/;
+
+const THEMING_SCHEMA_PATH = fileURLToPath(
+  new URL("../../src/server/theming/schema.ts", import.meta.url),
+);
+
+interface ParsesKeys {
+  safeParse: (value: unknown) => { success: boolean };
+}
+
+describe("the logos namespace (ONB-03)", () => {
+  it("builds the documented layout for a logo upload", () => {
+    expect(objectKeyFor("tenant-a", "logos", REAL_UUID)).toBe(
+      `tenants/tenant-a/logos/${REAL_UUID}/original`,
+    );
+  });
+
+  it("refuses a malformed upload id in the logos namespace too", () => {
+    // The namespace is not a second code path — the same guard covers it. Each
+    // of these either escapes the tenant prefix or invents a path segment the
+    // presigned grant was never meant to cover.
+    for (const uploadId of ["..", "../../other", "abc/def", "abc123", ""]) {
+      expect(() => objectKeyFor("tenant-a", "logos", uploadId)).toThrow();
+    }
+  });
+
+  it("yields a derivative prefix the theming storageKeySchema regex accepts", () => {
+    const prefix = derivativePrefixFor(objectKeyFor("tenant-a", "logos", REAL_UUID));
+    expect(prefix).toBe(`tenants/tenant-a/logos/${REAL_UUID}`);
+    expect(prefix).toMatch(STORAGE_KEY_PATTERN);
+  });
+
+  it("yields a products prefix the same regex accepts", () => {
+    // The product surface reaches the same renderer through `imageKey`, so the
+    // regex has to cover both namespaces — and the logo change must not have
+    // narrowed it.
+    const prefix = derivativePrefixFor(objectKeyFor("tenant-a", "products", REAL_UUID));
+    expect(prefix).toMatch(STORAGE_KEY_PATTERN);
+  });
+
+  it("does not accept the original key itself", () => {
+    // `publicUrlFor` refuses an `/original` key, and the schema must refuse it
+    // too: an original is attacker-uploaded bytes and is never served.
+    expect(objectKeyFor("tenant-a", "logos", REAL_UUID)).not.toMatch(STORAGE_KEY_PATTERN);
+  });
+});
+
+/**
+ * Inert until the theming module lands, then permanent. This is the assertion
+ * that makes the restated regex above trustworthy rather than decorative.
+ *
+ * The import is deliberately dynamic and path-computed: a static
+ * `import ... from "@/server/theming/schema"` would not compile in a worktree
+ * where the sibling plan has not run yet, which would block this plan on a file
+ * it does not own.
+ */
+describe.runIf(existsSync(THEMING_SCHEMA_PATH))(
+  "storageKeySchema agrees with the keys this module mints",
+  () => {
+    let storageKeySchema: ParsesKeys;
+
+    beforeAll(async () => {
+      const loaded = (await import(pathToFileURL(THEMING_SCHEMA_PATH).href)) as {
+        storageKeySchema: ParsesKeys;
+      };
+      storageKeySchema = loaded.storageKeySchema;
+    });
+
+    it("accepts a logos derivative prefix", () => {
+      const prefix = derivativePrefixFor(objectKeyFor("tenant-a", "logos", REAL_UUID));
+      expect(storageKeySchema.safeParse(prefix).success).toBe(true);
+    });
+
+    it("accepts a products derivative prefix", () => {
+      const prefix = derivativePrefixFor(
+        objectKeyFor("cm3xk9p2q0000abcd1234efgh", "products", VALID_ID),
+      );
+      expect(storageKeySchema.safeParse(prefix).success).toBe(true);
+    });
+
+    it("rejects the original key, a URL and a traversal", () => {
+      for (const rejected of [
+        objectKeyFor("tenant-a", "logos", REAL_UUID),
+        `https://example.invalid/tenants/tenant-a/logos/${REAL_UUID}`,
+        `tenants/tenant-a/logos/../../${REAL_UUID}`,
+        `logos/${REAL_UUID}`,
+      ]) {
+        expect(storageKeySchema.safeParse(rejected).success).toBe(false);
+      }
+    });
+  },
+);
 
 describe("ALLOWED_UPLOAD_CONTENT_TYPES", () => {
   it("is exactly the three raster types R2 will be asked to sign for", () => {
