@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { processImage } from "@/server/images/pipeline";
+import { processImage, type ImagePresetName } from "@/server/images/pipeline";
 /*
  * Imported as a namespace on purpose: every call below is visibly a call across
  * the storage boundary, and exactly one line in this file computes a key.
@@ -53,6 +53,23 @@ import { requireMerchantContext } from "@/server/merchant/context";
  * a later plan's action calling `processImage` itself.
  *
  * ---------------------------------------------------------------------------
+ * THE CLIENT NAMES A NAMESPACE, NEVER A PRESET (T-04-18).
+ * ---------------------------------------------------------------------------
+ * The body's `kind` is a STORAGE NAMESPACE — one of the values `objectKeyFor`
+ * understands, and the same value the mint action used. It is not a Sharp
+ * preset, and it is never converted into one by a cast. The map below is the
+ * only bridge between the two vocabularies, it lives on the server, and it is
+ * exhaustive over the schema's own enum.
+ *
+ * The two vocabularies use deliberately different words — `logos` names a
+ * prefix, `logo` names a row in the preset registry — so that they cannot be
+ * confused for the same string and quietly unified. Casting `kind` to an
+ * `ImagePresetName` would compile today and would keep compiling on the day
+ * someone renames a preset, at which point a merchant's wordmark gets
+ * cover-cropped to a square with `position: "attention"` and nothing anywhere
+ * fails. A wrong preset is not an error state; it is a plausible image.
+ *
+ * ---------------------------------------------------------------------------
  * THIS ROUTE WRITES NO DATABASE ROW, AND THAT IS THE REUSE CONTRACT (D-07).
  * ---------------------------------------------------------------------------
  * Product images are uploaded on `/dashboard/products/new` BEFORE a product
@@ -83,8 +100,24 @@ export const maxDuration = 30;
 
 const finalizeSchema = z.object({
   uploadId: z.string(),
-  kind: z.literal("products"),
+  kind: z.enum(["products", "logos"]),
 });
+
+/**
+ * Namespace to preset. The same drift-detection idiom as `PLANS` and
+ * `ORDER_TRANSITIONS`.
+ *
+ * The key type is read off the schema rather than restated, so widening the
+ * enum above without extending this table is a COMPILE ERROR HERE — at the
+ * table, where the decision belongs — instead of a silent fallback or a runtime
+ * `undefined` handed to Sharp.
+ */
+type FinalizeKind = z.infer<typeof finalizeSchema>["kind"];
+
+const KIND_PRESET: Readonly<Record<FinalizeKind, ImagePresetName>> = {
+  products: "product",
+  logos: "logo",
+};
 
 type ErrorCode =
   | "invalid_request"
@@ -167,7 +200,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   let derived;
   try {
-    derived = await processImage(original, "product");
+    derived = await processImage(original, KIND_PRESET[parsed.data.kind]);
   } catch {
     // Undecodable bytes, a format Sharp refuses, or an image over the pixel
     // limit. All of them are the caller's input, so all of them are 4xx.
