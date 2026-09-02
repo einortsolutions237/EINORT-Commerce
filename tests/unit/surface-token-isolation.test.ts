@@ -164,6 +164,53 @@ const MERCHANT_ONLY_SIGNAL =
 const STOREFRONT_SURFACE_ATTRIBUTE = /data-surface=["']storefront["']/;
 
 /**
+ * The merchant's own accent, in every spelling it can wear (D-12).
+ *
+ * Deliberately the bare token rather than an enumeration of prefixes. The
+ * family is open — `bg-`, `text-`, `border-`, `ring-`, `outline-`, `from-`,
+ * `to-`, `divide-`, `caret-`, an arbitrary value, the bare token inside a
+ * `cn(...)` argument, or a raw `--brand-accent` written into a style object —
+ * and a list of prefixes is a list that the next Tailwind release extends
+ * without telling anyone. Ban 3 makes the same argument about `border-success`
+ * and for the same reason: an enumeration that stops one utility short of the
+ * idea it is protecting is an invitation.
+ *
+ * Breadth costs nothing here. There is no legitimate reason for the string
+ * `brand-accent` to appear in a dashboard component at all, in a class, in a
+ * comment-free line of prose, or anywhere else.
+ */
+const BRAND_ACCENT_UTILITY = /\bbrand-accent\b/;
+
+/**
+ * The whole-line-comment test `codeLinesIn` applies, as a predicate.
+ *
+ * Ban 6 has to document the prohibition it enforces, in this file and in
+ * `src/app/globals.css`, and a guard whose own explanation trips it does not
+ * survive its first reader. `codeLinesIn` already drops these lines for every
+ * ban; this predicate exists so ban 6 can *assert* that it does, rather than
+ * trusting it. If the stripping ever regresses, the assertion that no scanned
+ * line satisfies this predicate is what says so.
+ */
+function isWholeLineComment(text: string): boolean {
+  return /^\s*\/\//.test(text) || /^\s*\*/.test(text);
+}
+
+/**
+ * Ban 6's rule, as one function, so the real scan and the fixtures below are
+ * provably the same check rather than two checks that resemble each other.
+ */
+function isBrandAccentOffender({ file, text }: SourceLine): boolean {
+  return (
+    !file.startsWith(`${STOREFRONT_DIR}/`) && BRAND_ACCENT_UTILITY.test(text)
+  );
+}
+
+/** A synthetic line, for the positive and negative controls on ban 6. */
+function fixture(file: string, text: string): SourceLine {
+  return { file, line: 1, text };
+}
+
+/**
  * lucide's trash icons, in import and JSX spellings.
  *
  * `trash-2` is the registry name, `Trash2Icon`/`Trash2`/`TrashIcon`/`Trash` are
@@ -322,6 +369,104 @@ describe("surface token isolation", () => {
         "storefront and stays in the order history. Use an archive or " +
         "eye-off icon, never trash — the icon is the promise, and a trash can " +
         "promises the row is gone.",
+    ).toEqual([]);
+  });
+
+  it("ban 6 — D-12: no brand-accent utility outside the storefront tree", () => {
+    expect(
+      existsSync(join(repoRoot, "src")),
+      "src/ does not exist, so every ban in this file is scanning nothing.",
+    ).toBe(true);
+
+    expect(
+      sharedFiles.length,
+      "No .tsx files were scanned for ban 6 — see the message on ban 1.",
+    ).toBeGreaterThan(0);
+
+    /*
+     * The comment exemption, pinned rather than assumed. If `codeLinesIn` ever
+     * stops blanking whole-line comments, this fails here — with a clear
+     * reason — instead of failing later as a mystery violation inside the
+     * paragraph that documents the rule.
+     */
+    expect(
+      sharedLines.filter(({ text }) => isWholeLineComment(text)).length,
+      "codeLinesIn no longer strips whole-line comments, so ban 6 is about " +
+        "to fail on its own documentation. Restore the stripping rather than " +
+        "rewording the comments.",
+    ).toBe(0);
+
+    /*
+     * Positive controls. Plan 04-07 will land a real storefront file carrying
+     * these utilities, at which point the third fixture stops being the only
+     * proof that the matcher discriminates by path — but a guard is never
+     * allowed to sit in a state where its only evidence of working is that it
+     * found nothing.
+     */
+    expect(
+      [
+        isBrandAccentOffender(
+          fixture(
+            "src/app/(dashboard)/dashboard/page.tsx",
+            '<button className="bg-brand-accent">',
+          ),
+        ),
+        isBrandAccentOffender(
+          fixture(
+            "src/components/ui/badge.tsx",
+            'cn("text-brand-accent-foreground", className)',
+          ),
+        ),
+        isBrandAccentOffender(
+          fixture(
+            "src/app/(dashboard)/dashboard/plan/page.tsx",
+            'style={{ "--brand-accent": token }}',
+          ),
+        ),
+      ],
+      "The ban 6 matcher does not fire on a known violation, so the scan " +
+        "below is passing over nothing. BRAND_ACCENT_UTILITY or " +
+        "isBrandAccentOffender has drifted.",
+    ).toEqual([true, true, true]);
+
+    expect(
+      isBrandAccentOffender(
+        fixture(
+          `${STOREFRONT_DIR}/[slug]/sections/hero.tsx`,
+          '<a className="bg-brand-accent text-brand-accent-foreground">',
+        ),
+      ),
+      "The ban 6 matcher fires inside the storefront tree, where the accent " +
+        "is the whole point. It must discriminate by path, not ban the token " +
+        "outright.",
+    ).toBe(false);
+
+    const offenders = sharedLines.filter(isBrandAccentOffender);
+
+    expect(
+      report(offenders),
+      `D-12 violation — a brand-accent utility appears outside ${STOREFRONT_DIR}.\n` +
+        "  --brand-accent and its four siblings are declared in exactly one " +
+        'place: the [data-surface="storefront"] block in src/app/globals.css. ' +
+        "Nothing on a dashboard page has that attribute on an ancestor, so " +
+        "this utility resolves to nothing at all — the element renders " +
+        "unstyled and the bug survives review because it looks like a missing " +
+        "class rather than a crossed boundary.\n" +
+        "  It is also not the dashboard's colour to spend. That value belongs " +
+        "to one merchant; the dashboard is the platform's surface and keeps " +
+        "its fixed blue/gold/slate palette no matter who is logged in.\n" +
+        "  Use the dashboard token that means what you meant: bg-primary for " +
+        "an accent fill, --gold-accent for 'a human needs to look at this " +
+        "now', bg-accent for a neutral hover. The one place a merchant sees " +
+        "their own accent applied while on a dashboard screen is inside the " +
+        "editor's preview iframe, which is a different document rendering the " +
+        "storefront route tree.\n" +
+        "  WRONG FIXES, both of which trade a visible bug for an invisible " +
+        "one: do not declare --brand-accent at :root or on a dashboard scope " +
+        "(that hands every merchant's colour to every dashboard screen), and " +
+        'do not weaken ban 4 by putting data-surface="storefront" on the ' +
+        "editor chrome so the utility resolves (that repaints the editor in " +
+        "the zinc palette — incident 260823-gu4, one subtree at a time).",
     ).toEqual([]);
   });
 });

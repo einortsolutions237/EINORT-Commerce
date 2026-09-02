@@ -32,6 +32,27 @@
   --color-accent: var(--accent);
   --color-gold-accent-foreground: var(--gold-accent-foreground);
   --color-gold-accent: var(--gold-accent);
+  /*
+   * The merchant's own accent (D-09, D-12, TMPL-01). These five mappings are
+   * what make bg-brand-accent, text-brand-accent-foreground,
+   * bg-brand-accent-secondary and ring-brand-accent-ring exist as utilities at
+   * all.
+   *
+   * THE VOCABULARY IS THE GUARDRAIL. The set is fill, text-on-fill, ring, and
+   * a secondary fill with its own text-on-fill — and nothing else. There is
+   * deliberately no page-background and no body-text member of this family, so
+   * a merchant can tint this storefront and can never restructure it. Adding
+   * one is a design-system decision, not a convenience.
+   *
+   * Declaring the utility here does not put the colour anywhere. The custom
+   * properties these point at are declared ONLY inside
+   * [data-surface="storefront"] below — see the note in that block.
+   */
+  --color-brand-accent-ring: var(--brand-accent-ring);
+  --color-brand-accent-secondary-foreground: var(--brand-accent-secondary-foreground);
+  --color-brand-accent-secondary: var(--brand-accent-secondary);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --color-brand-accent: var(--brand-accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -152,6 +173,39 @@
  *
  * There is no dark variant of this selector, deliberately. Dark mode is authored
  * for the merchant surface but not shipped, and there is no theme switcher.
+ *
+ * ---------------------------------------------------------------------------
+ * PHASE 4 — WHY THE BRAND-ACCENT TOKENS ARE DECLARED HERE AND NOWHERE ELSE.
+ * ---------------------------------------------------------------------------
+ * D-12: the merchant's chosen accent is storefront-only. It must never appear
+ * on the merchant dashboard, including the storefront editor's own chrome.
+ *
+ * The five brand-accent declarations at the end of this block are the ONLY
+ * place those custom properties are ever in scope. That is not a naming
+ * convention, it is the mechanism: a dashboard component that writes
+ * `bg-brand-accent` compiles, ships, and resolves to nothing, because the
+ * property it reads was never declared on any ancestor it has. Moving any one
+ * of the five to :root would silently hand every merchant's colour to every
+ * dashboard screen, which is incident 260823-gu4 wearing a different hat.
+ * Ban #6 in tests/unit/surface-token-isolation.test.ts fails the build on the
+ * utility; this scope is what makes the utility inert even if it slips past.
+ *
+ * The only place a merchant ever sees their accent applied while looking at a
+ * dashboard page is inside the editor's preview iframe — and that is a
+ * different document, on a different origin, rendering the storefront route
+ * tree with this attribute on it. The separation is enforced by a document
+ * boundary, not by discipline.
+ *
+ * The values below are FALLBACKS, not the live theme. They point at tokens
+ * already declared above, so a tenant with no StorefrontTheme row renders
+ * correctly with zero JavaScript and zero database reads — ink CTAs, a
+ * zinc-500 announcement strip, a visible focus ring. src/app/s/[slug]/layout.tsx
+ * (and preview-canvas.tsx inside the iframe) overrides them per request with a
+ * style object whose values are variables, never literals.
+ *
+ * The ring fallback resolving to var(--ring) is an accessibility floor, not a
+ * nicety: this route tree contains checkout, and WCAG 1.4.11 / 2.4.11 are not
+ * satisfied by "the merchant has not picked a colour yet".
  */
 [data-surface="storefront"] {
   --background: oklch(1 0 0); /* white */
@@ -178,6 +232,63 @@
   --ring: oklch(0.705 0.015 286.067); /* zinc-400 */
   /* Sharper than the merchant platform's 0.75rem. A deliberate, visible split. */
   --radius: 0.25rem;
+
+  /*
+   * The merchant accent, defaulted (D-09/D-12). See the note above this block
+   * for why these five live here and only here. Every value is a var()
+   * reference — nothing below is a literal, and nothing below is the live
+   * theme, which arrives per request from the layout.
+   */
+  --brand-accent: var(--primary);
+  --brand-accent-foreground: var(--primary-foreground);
+  --brand-accent-secondary: var(--muted-foreground);
+  --brand-accent-secondary-foreground: var(--primary-foreground);
+  --brand-accent-ring: var(--ring);
+
+  /*
+   * The whole motion vocabulary (TMPL-02). One curve, four durations and a
+   * stagger — opacity and translateY, all of it CSS, no motion library.
+   *
+   * Named rather than inlined so "how fast does this product feel" is one
+   * decision in one place instead of forty duration-[350ms] utilities that
+   * drifted apart. Components read them through Tailwind arbitrary values, so
+   * every reveal on the storefront shares one curve — that consistency is what
+   * makes it read as a language rather than as assorted effects.
+   */
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1); /* expo-out, used EVERYWHERE */
+  --motion-quick: 200ms; /* colour and opacity transitions */
+  --motion-reveal: 400ms; /* section and grid reveals */
+  --motion-hero: 700ms; /* the hero cascade, on mount */
+  --motion-hover: 700ms; /* image scale on hover */
+  --motion-stagger: 50ms; /* per child in a grid or a column set */
+}
+
+/*
+ * The reduced-motion floor for the storefront.
+ *
+ * THIS IS AN ACCESSIBILITY FLOOR, NOT AN OPTIMISATION. A shopper with
+ * vestibular sensitivity has told the operating system that movement makes
+ * them ill; a parallax hero and a staggered grid are not a nicer experience
+ * for that person, they are a reason to close the tab. `1ms` rather than `0s`
+ * so animation and transition end events still fire and nothing that waits on
+ * one hangs forever.
+ *
+ * It ships in the SAME COMMIT as the motion tokens above, deliberately. Split
+ * across two commits there is a window — however short — in which the
+ * storefront animates and this floor does not exist, and "we will add the
+ * media query in the next task" is exactly how that window becomes permanent.
+ * Do not move it, and do not narrow it to the sections that happen to animate
+ * today: the next section to animate is the one nobody remembers to add here.
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="storefront"] *,
+  [data-surface="storefront"] *::before,
+  [data-surface="storefront"] *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .dark {

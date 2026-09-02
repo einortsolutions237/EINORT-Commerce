@@ -66,6 +66,21 @@ export const strings = {
   storefront: {
     heading: "Store coming soon",
     body: "This store hasn't opened yet. Check back soon.",
+
+    /**
+     * Phase 4, 04-UI-SPEC.md § Copywriting Contract → Core contract. The
+     * flagship product-grid section with zero active products.
+     *
+     * It lives HERE and not in `flagship` on purpose: `/preview` *is* the
+     * storefront, so the merchant editing their store sees exactly the copy a
+     * shopper would, and there must be exactly one sentence to keep in step.
+     * Shopper-voiced — "this shop", never "your store".
+     *
+     * The merchant-facing nudge ("Add your first product…") belongs in the
+     * editor's settings panel for that section, never in the rendered page.
+     */
+    emptyHeading: "Nothing here yet",
+    emptyBody: "This shop hasn't added any products yet. Check back soon.",
   },
 
   /**
@@ -453,7 +468,7 @@ export const strings = {
     signOut: "Sign out",
 
     /**
-     * 03-UI-SPEC.md § A. Navigation Shell — the six rail destinations, in the
+     * 03-UI-SPEC.md § A. Navigation Shell — the rail destinations, in the
      * order the rail renders them.
      *
      * Every label in `src/components/app-sidebar.tsx` is read from here and
@@ -470,6 +485,21 @@ export const strings = {
     nav: {
       overview: "Overview",
       products: "Products",
+      /**
+       * Phase 4, 04-UI-SPEC.md § Storefront Editor → Navigation. The label
+       * exists here BEFORE the rail item does, because this file is authored in
+       * one pass at the start of the phase and every later plan only reads it.
+       *
+       * The rail entry itself — the `NAV_ITEMS` row in
+       * `src/components/app-sidebar.tsx` and the matching href in
+       * `REQUIRED_HREFS` — is a single paired edit owned by plan 04-15 and must
+       * land in one commit: adding either half alone fails
+       * `tests/unit/dashboard-nav.test.ts`. Adding a label is neither half.
+       *
+       * No badge. The gold budget is fully spent (claims), and this destination
+       * is not a queue.
+       */
+      storefrontEditor: "Storefront",
       orders: "Orders",
       claims: "Payment claims",
       plan: "Plan",
@@ -1216,5 +1246,343 @@ export const strings = {
     body: "Your store has been suspended and customers can't reach it right now. Contact us to sort this out.",
     cta: "Contact us",
     signOut: "Sign out",
+  },
+
+  /* =======================================================================
+   * PHASE 4 — the flagship template, onboarding branding and the editor.
+   * =======================================================================
+   * Three namespaces, transcribed from 04-UI-SPEC.md § Copywriting Contract
+   * and landed in ONE pass by plan 04-04, in wave 1, BEFORE any component that
+   * renders them exists. Every later plan in this phase only READS them.
+   *
+   * That ordering is the whole point. 04-PATTERNS.md names this file "the
+   * single most likely merge conflict if plans run in parallel waves": five
+   * executors each appending a few keys to the same object is five conflicts
+   * and five chances for the same sentence to be written twice, slightly
+   * differently. A plan that needs a string it cannot find here has found a
+   * bug in this plan, not a licence to inline a literal.
+   *
+   * The voice contract is unchanged and absolute: English, second person, no
+   * exclamation marks, no emoji, no ALL-CAPS. Plus four Phase-4 prohibitions:
+   * never a promise the product cannot keep (no mailing-list signup, no
+   * delivery guarantee, no "Verified"); never an industry-specific claim
+   * (D-04 — the default document is the same for a boutique and a hardware
+   * shop, and Phase 5 owns industry variants); never an internal identifier;
+   * and never fashion-flavoured default copy.
+   *
+   * `flagship` addresses the SHOPPER. `branding` and `editor` address the
+   * MERCHANT. Nothing crosses.
+   */
+
+  /**
+   * 04-UI-SPEC.md § Flagship default content (D-04, TMPL-01).
+   *
+   * The default document every new storefront ships with — what a merchant who
+   * publishes without opening the editor actually shows their customers. It is
+   * read by the section registry's `defaults.ts` (plan 04-06), one key per
+   * settings field, which is why the shape below mirrors the settings schemas
+   * rather than the page layout.
+   *
+   * INDUSTRY-NEUTRAL IS A HARD CONSTRAINT, NOT A STYLE PREFERENCE (D-04). Every
+   * merchant on this platform gets these exact sentences on day one, so a word
+   * that only fits a clothing shop is a word that is wrong for most stores that
+   * ever render it. "New arrivals" and "What we're selling" work for a
+   * boutique, a phone dealer and a grocer alike; "Shop the collection" does
+   * not.
+   *
+   * Nothing here promises anything the platform cannot do. `Delivery in
+   * Douala` says the merchant delivers, not that this platform guarantees it;
+   * `Pay your way` names the two payment paths V1 actually has (D-14/D-17).
+   *
+   * The product-grid empty state is deliberately ABSENT: it is
+   * `strings.storefront.emptyHeading` / `.emptyBody`, reused unchanged, so the
+   * sentence a shopper reads and the sentence the merchant previews cannot
+   * drift apart. Do not copy it in here.
+   *
+   * The editorial-split body is the one instructional default: it reads as a
+   * prompt to the merchant in the editor and is still a coherent, shippable
+   * sentence if they never touch it. Everything else is real copy, not lorem.
+   */
+  flagship: {
+    /** Theme chrome, not a section — renders on every storefront route. */
+    announcement: "Order online. Pay by Mobile Money or on delivery.",
+
+    hero: {
+      eyebrow: "Welcome",
+      heading: "New arrivals",
+      body: "Everything we're selling right now, in one place.",
+      /** The one accent-filled CTA above the fold. */
+      ctaLabel: "Shop now",
+      /** Home, because the product grid lives on `/` — no new routes. */
+      ctaHref: "/",
+    },
+
+    /**
+     * Three fixed items. The icon is a schema enum on the settings row
+     * (`truck`, `message-circle`, `shield-check`), never copy — an icon name
+     * in a copy catalogue is a string an i18n pass would try to translate.
+     */
+    trustBar: {
+      itemOne: {
+        heading: "Delivery in Douala",
+        body: "We'll get your order to you.",
+      },
+      itemTwo: {
+        heading: "Talk to us",
+        body: "Message us on WhatsApp before or after you order.",
+      },
+      itemThree: {
+        heading: "Pay your way",
+        body: "Mobile Money, or cash when your order arrives.",
+      },
+    },
+
+    productGrid: {
+      heading: "What we're selling",
+      /** A link, never a button — 04-UI-SPEC.md § Core contract. */
+      viewAllLabel: "View all",
+      viewAllHref: "/",
+    },
+
+    editorialSplit: {
+      eyebrow: "About us",
+      heading: "A little about this shop",
+      body: "Tell customers who you are and why they should buy from you. You can change this text any time.",
+      ctaLabel: "See what's in stock",
+      ctaHref: "/",
+    },
+
+    /**
+     * Replaces the visual reference's mailing-list band. A store that collects
+     * addresses it will never send to is a promise the product cannot keep;
+     * WhatsApp is the channel these merchants already answer.
+     */
+    contact: {
+      heading: "Questions? Message us.",
+      body: "Send us a message on WhatsApp and we'll get back to you.",
+      ctaLabel: "Message us on WhatsApp",
+    },
+
+    footerTagline: "Thanks for shopping with us.",
+  },
+
+  /**
+   * `/onboarding/branding` (ONB-02, ONB-03, D-02, D-10, D-11) — surface 2.
+   *
+   * The merchant-facing step between `/onboarding/plan` and a published store.
+   * Blue/gold/slate chrome like every other onboarding step; the only place a
+   * merchant's own colour appears on this page is the sample chip beneath each
+   * picker (D-12's "sample, never chrome" exception).
+   *
+   * `industryHelper` is a D-01 honesty clause and must not be softened into a
+   * promise: today every store starts on the same template, and copy implying
+   * a matched industry design exists is copy that lies until Phase 5.
+   *
+   * `contrastWarning` is INFORMATIONAL AND NON-BLOCKING (D-11). It never
+   * disables the submit and it is never styled as a destructive alert — an
+   * accent that is hard to read is the merchant's call, the same way a payment
+   * number is accepted as entered (D-17). There is deliberately no equivalent
+   * warning on the secondary accent: that colour is only ever a fill whose
+   * foreground is derived server-side, so it is readable at every value, and
+   * warning about a problem that cannot occur teaches merchants to dismiss
+   * warnings.
+   */
+  branding: {
+    /** Renders as "Set up how your store looks · EINORT" via the template. */
+    title: "Set up how your store looks",
+    heading: "Set up how your store looks",
+    subline: "This is what your customers see. You can change all of it later.",
+
+    nameCardTitle: "Your business name",
+    nameLabel: "Business name",
+    nameHelper: "This is the name customers see on your storefront.",
+
+    industryCardTitle: "What do you sell?",
+    industryHelper:
+      "We'll use this to suggest a better-matched design later. Every store starts on the same polished template.",
+
+    /**
+     * Keyed by segment id so the tile grid reads its label from the id it
+     * already holds, and a renamed segment is one edit here rather than a
+     * parallel array that can fall out of order.
+     */
+    segments: {
+      "fashion-apparel": "Fashion & apparel",
+      electronics: "Electronics",
+      "beauty-cosmetics": "Beauty & cosmetics",
+      "grocery-food": "Grocery & food",
+      "furniture-home": "Furniture & home",
+      "general-retail": "General retail",
+    },
+
+    logoCardTitle: "Your logo",
+    logoHelper:
+      "Optional. PNG or JPG — a square logo works best. You can add one later.",
+    logoAdd: "Add your logo",
+    logoReplace: "Replace",
+    logoRemove: "Remove",
+    logoUploadFailed: "Upload failed. Tap to try again.",
+
+    coloursCardTitle: "Your brand colours",
+    coloursHelper:
+      "These tint your buttons and links. The rest of your store stays clean black-and-white on purpose.",
+
+    primaryAccentLabel: "Primary accent",
+    /** Caption under the primary sample chip — where that colour shows up. */
+    primaryAccentCaption: "Buttons and links",
+    secondaryAccentLabel: "Secondary accent",
+    secondaryAccentCaption: "Announcement bar",
+
+    contrastWarning:
+      "This colour is light against a white page — links in it may be hard to read. You can use it anyway.",
+    invalidHex: "Use a 6-digit colour code, like #1A1A1A.",
+
+    /** The one primary button on the page. */
+    cta: "Publish my store",
+    /** Width retained while in flight — no layout shift, no full-page spinner. */
+    ctaSubmitting: "Publishing your store…",
+  },
+
+  /**
+   * `/dashboard/storefront-editor` (EDIT-02, EDIT-03, D-05…D-08, D-12…D-15) —
+   * surface 3.
+   *
+   * The editor's own chrome is a dashboard surface: blue/gold/slate, Outfit
+   * headings, 0.75rem radius. The merchant's accent resolves to nothing here
+   * and must never be written (D-12) — the only place they see their colour
+   * applied is inside the preview iframe, which is a different document.
+   *
+   * There is no add-section and no remove-section copy in this namespace and
+   * there must never be one (D-05). The section list is fixed: reorderable,
+   * never addable or removable, and nothing at all is rendered for either — not
+   * even a disabled control, because a disabled affordance invites a support
+   * question about a capability that does not exist.
+   *
+   * `discard*` is the phase's only destructive confirmation. Publishing is a
+   * forward action and gets a toast, not a dialog.
+   *
+   * The three error strings are the honest surfacing of three different
+   * failures and must stay distinct: a refused publish left the live store
+   * untouched, a failed save left the draft untouched, and a preview that never
+   * loaded touched nothing at all. Collapsing them into one "Something went
+   * wrong" throws away the only reassurance the merchant actually needs.
+   */
+  editor: {
+    /** Renders as "Storefront editor · EINORT" through the layout template. */
+    title: "Storefront editor",
+    heading: "Storefront editor",
+
+    /* --- the rail ------------------------------------------------------- */
+    railThemeGroup: "Theme",
+    railSectionsGroup: "Sections",
+    railThemeEntry: "Brand & logo",
+    /** Back row of the settings-panel view — this is a push/pop, not a pane. */
+    railBack: "All sections",
+
+    /**
+     * Keyed by section type. `trust-bar` and `editorial-split` are named for
+     * what the merchant sees, not for what the registry calls them: nobody
+     * outside this codebase knows what an editorial split is.
+     */
+    sectionLabels: {
+      hero: "Hero",
+      "trust-bar": "Why shop with us",
+      "product-grid": "Products",
+      "editorial-split": "About",
+      contact: "Contact",
+    },
+
+    fixedListFootnote:
+      "This template's sections are fixed. You can reorder them and change what's inside.",
+
+    /** `{section}` is the label above. Reorder is keyboard-reachable. */
+    moveSectionUp: "Move {section} up",
+    moveSectionDown: "Move {section} down",
+    /** Announced in a polite live region — the move is silent otherwise. */
+    sectionMoved: "{section} moved to position {n} of {total}.",
+
+    /* --- field kinds ---------------------------------------------------- */
+    linkHelper:
+      "Where this button goes — a path like /cart, or a full https:// address.",
+    linkInvalid: "Use a path starting with / or a full https:// address.",
+    /**
+     * The internal route shape is named here, and only here, because the
+     * merchant can type it and the proxy hard-404s it. Telling them the rule
+     * without telling them the fix is a dead end.
+     */
+    linkInternalPrefix: "Leave out the /s/ part — just use /cart.",
+
+    imageAdd: "Add image",
+    imageReplace: "Replace",
+    imageRemove: "Remove",
+    imageUploadFailed: "Upload failed. Tap to try again.",
+
+    /**
+     * Shown on the contact section's settings panel when no WhatsApp number is
+     * saved. The section still renders — this is a nudge, never a block.
+     */
+    contactNoWhatsapp:
+      "Add a WhatsApp number in payment settings so this button works.",
+    contactNoWhatsappLink: "Payment settings",
+
+    /* --- preview canvas -------------------------------------------------- */
+    previewFrameTitle: "Your storefront preview",
+    previewLoading: "Loading your storefront preview…",
+    previewTimeout:
+      "The preview didn't load. Your changes are safe — try loading it again.",
+    reloadPreview: "Reload preview",
+    viewportDesktop: "Desktop",
+    viewportMobile: "Mobile",
+    /** The below-`lg` pane switch. No side-by-side at 360px. */
+    paneEdit: "Edit",
+    panePreview: "Preview",
+
+    /* --- publish bar ----------------------------------------------------- */
+    statusUnsaved: "Unsaved changes",
+    statusSaved: "Saved · not published yet",
+    statusPublished: "Published",
+
+    save: "Save",
+    saveSubmitting: "Saving…",
+    publish: "Publish",
+    publishSubmitting: "Publishing…",
+    discard: "Discard",
+    viewStore: "View store",
+
+    /** Stay-on-page publish, so a toast is the correct success signal. */
+    publishedToast: "Your storefront is live",
+
+    publishRefused:
+      "We couldn't publish these changes. Reload the editor and try again — what customers see right now hasn't changed.",
+    saveFailed:
+      "Couldn't save your changes. Check your connection and try again.",
+
+    /* --- the one destructive confirmation --------------------------------- */
+    discardTitle: "Discard your unpublished changes?",
+    discardBody:
+      "Your storefront will go back to exactly what customers see right now. This can't be undone.",
+    discardConfirm: "Discard changes",
+    discardCancel: "Keep editing",
+
+    /**
+     * D-13/D-15. The message `assertCanEditStorefront` hands back when an
+     * expired-trial Starter merchant calls save or publish anyway — the
+     * disabled buttons are courtesy, never the control, so this string is what
+     * the SERVER returns and what the inline notice renders. Both read it from
+     * this one key.
+     *
+     * It names what still works before it names what does not, because the
+     * whole proposition of the view-only state is that the merchant can try the
+     * editor properly before deciding to pay for it.
+     */
+    starterViewOnly:
+      "You're on the Starter plan. Try the editor as much as you like — saving and publishing changes needs Business or Professional.",
+    /**
+     * The inline link inside the view-only notice above, to `/dashboard/plan`.
+     * Named for the link rather than for the notice so a grep for the notice's
+     * key finds exactly one line — that key is an interface (plan 04-09 passes
+     * it to `assertCanEditStorefront`) and it must be unambiguous.
+     */
+    seePlansLink: "See plans",
   },
 } as const;
