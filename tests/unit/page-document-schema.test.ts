@@ -276,12 +276,17 @@ describe("pageDocumentSchema", () => {
   });
 
   it("refuses a document containing one bad section", () => {
-    const sections = validSections();
-    sections[0] = {
-      id: "s-hero",
-      type: "hero",
-      settings: { ...HERO, overlayOpacity: 5 },
-    };
+    // Built as a fresh literal rather than by mutating `validSections()`: the
+    // helper's element type is narrowed to the legal shapes, so assigning an
+    // out-of-range value into it is a compile error before it is a parse error.
+    const sections = [
+      {
+        id: "s-hero",
+        type: "hero",
+        settings: { ...HERO, overlayOpacity: 5 },
+      },
+      ...validSections().slice(1),
+    ];
     expect(pageDocumentSchema.safeParse({ version: 1, sections }).success).toBe(
       false,
     );
