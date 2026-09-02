@@ -186,8 +186,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-08-PLAN.md — Flagship sections B: product-grid, contact, and the one exhaustive section renderer
-- [ ] 04-09-PLAN.md — The theming server domain: queries (read-only, degrade-not-throw) and actions (saveDraft, publish, discard, seed, saveBranding)
+- [x] 04-08-PLAN.md — Flagship sections B: product-grid, contact, and the one exhaustive section renderer
+- [x] 04-09-PLAN.md — The theming server domain: queries (read-only, degrade-not-throw) and actions (saveDraft, publish, discard, seed, saveBranding)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -254,6 +254,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
-| 4. Theme/Section/Block System & Flagship Template | 7/16 | In Progress|  |
+| 4. Theme/Section/Block System & Flagship Template | 9/16 | In Progress|  |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
