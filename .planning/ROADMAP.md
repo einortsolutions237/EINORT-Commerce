@@ -181,8 +181,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-06-PLAN.md — The theming registry (SECTION_TYPES, TEMPLATES, INDUSTRY_SEGMENTS), the flagship default document, and the registry drift guard
-- [ ] 04-07-PLAN.md — Flagship sections A: the render-data contract, Reveal, hero, trust-bar, editorial-split
+- [x] 04-06-PLAN.md — The theming registry (SECTION_TYPES, TEMPLATES, INDUSTRY_SEGMENTS), the flagship default document, and the registry drift guard
+- [x] 04-07-PLAN.md — Flagship sections A: the render-data contract, Reveal, hero, trust-bar, editorial-split
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -254,6 +254,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
-| 4. Theme/Section/Block System & Flagship Template | 5/16 | In Progress|  |
+| 4. Theme/Section/Block System & Flagship Template | 7/16 | In Progress|  |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
