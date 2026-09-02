@@ -490,6 +490,53 @@ const MODEL_FIXTURES: Record<
     payoutNotice: null,
     updatedAt: FIXTURE_EPOCH,
   }),
+
+  /**
+   * EDIT-01 / D-03. ONE ROW PER TENANT — `tenantId` is a single-field `@unique`
+   * here for the same reason `MerchantPaymentSettings` above is, so the
+   * isolation battery gives it the same `singleRowPerTenant` treatment.
+   *
+   * `publishedTokens` deliberately equals `draftTokens` and `publishedAt` is
+   * set: the fixture represents an already-published theme with no pending
+   * edits, which is the quiet baseline a test asserting "there ARE unpublished
+   * changes" has to move away from before it means anything.
+   *
+   * `updatedAt` is set explicitly for the same byte-identity reason the
+   * `Product` builder above documents — an implicit `@updatedAt` stamps
+   * `now()` and makes two runs of the fixture differ.
+   */
+  StorefrontTheme: (tenant) => ({
+    id: `${tenant.id}-storefront-theme`,
+    templateKey: "flagship-fashion",
+    logoKey: null,
+    draftTokens: { primaryAccent: "#18181B", secondaryAccent: "#71717A" },
+    publishedTokens: { primaryAccent: "#18181B", secondaryAccent: "#71717A" },
+    publishedAt: FIXTURE_EPOCH,
+    createdAt: FIXTURE_EPOCH,
+    updatedAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * EDIT-01. One row per (tenant, pageType) — `@@unique([tenantId, pageType])`.
+   * `"home"` is the only page type this phase ships.
+   *
+   * An EMPTY `sections` array is deliberate. This fixture exists to prove
+   * tenant scoping, not document validity; plan 04-13's own isolation tests
+   * seed real section trees. Keeping the document trivial here means a future
+   * change to `pageDocumentSchema` cannot break the generic isolation battery.
+   *
+   * `draftUpdatedAt === publishedAt` is the "no unpublished changes" baseline,
+   * matching the `StorefrontTheme` fixture above.
+   */
+  StorefrontPage: (tenant) => ({
+    id: `${tenant.id}-storefront-page`,
+    pageType: "home",
+    draft: { version: 1, sections: [] },
+    published: { version: 1, sections: [] },
+    publishedAt: FIXTURE_EPOCH,
+    draftUpdatedAt: FIXTURE_EPOCH,
+    createdAt: FIXTURE_EPOCH,
+  }),
 };
 
 /** `StoreSlugHistory` -> `storeSlugHistory`. */
