@@ -202,7 +202,7 @@ The live values are injected by `src/app/s/[slug]/layout.tsx` (and by `preview-c
 | `--brand-accent-foreground` | **Derived server-side** — `accentForeground(accent, "#FFFFFF", "#18181B")` | `#FFFFFF` |
 | `--brand-accent-secondary` | `…publishedTokens.secondaryAccent` | `#71717A` (zinc-500) |
 | `--brand-accent-secondary-foreground` | **Derived server-side**, same function | `#FFFFFF` |
-| `--brand-accent-ring` | **Derived server-side** — `contrastRatio(accent, "#FFFFFF") >= 3 ? accent : ZINC_400` | zinc-400 |
+| `--brand-accent-ring` | **Derived server-side** — `contrastRatio(accent, "#FFFFFF") >= 3 ? accent : ZINC_400` | `#18181B` (ink clears 3:1 at 17.72:1) |
 
 All five default constants live in `src/lib/theme-defaults.ts`. **Never in a `.tsx` under `src/app` or `src/components`** — ban #1's regex would fail the build (Pitfall 1).
 
@@ -230,7 +230,7 @@ D-10 captures two colours; this is where the second one is visible. Both uses ar
 |---|---|---|---|
 | Hero CTA | Near-black pill, white label — reads exactly like the zinc reference | Orange pill, **white** label (derived: white wins 4.5:1) | Pale-yellow pill, **`#18181B`** label (derived: ink wins) — still legible, never a white-on-yellow break |
 | "View all" link | Ink text, underlined | Orange text, underlined — clears 4.5:1, no warning | Pale-yellow text, underlined — **fails 4.5:1**, inline non-blocking warning shown at the picker (D-11), still shipped if the merchant insists; the underline + arrow keep it discoverable |
-| Focus ring | zinc-400 (accent fails 3:1 vs white → falls back) | Orange ring (clears 3:1) | zinc-400 (fails 3:1 → falls back). **The ring is never unusable.** |
+| Focus ring | Ink ring (clears 3:1 vs white at 17.72:1) | Orange ring (clears 3:1) | zinc-400 (accent fails 3:1 vs white → falls back). **The ring is never unusable.** |
 | Selected category chip | Ink fill, white label | Orange fill, white label | Pale-yellow fill, ink label |
 | Announcement bar | zinc-500 strip, white label | secondary colour strip, derived label | secondary colour strip, derived label |
 
