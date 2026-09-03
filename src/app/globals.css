@@ -331,6 +331,32 @@
   --sidebar-ring: oklch(0.623 0.188 259.8); /* brand-500 */
 }
 
+/*
+ * A dark sidebar rail on an otherwise light dashboard — Shopify's admin
+ * structure, EINORT's own colors. Quick task 260903-ugl.
+ *
+ * Deliberately NOT `.dark`: that block also redeclares
+ * `--gold-accent-foreground` to a light value while `--gold-accent` (the
+ * fill) does not invert ("gold does not invert", see the comment above), so
+ * applying `.dark` here would leave the pending-claims badge's text illegible
+ * against its own fill. This selector carries only the 8 `--sidebar-*`
+ * tokens, copied verbatim from `.dark` above — if a future edit changes that
+ * block's sidebar tokens, mirror the change here too. Scoped to exactly
+ * these 8 tokens so nothing outside the sidebar rail is affected; see
+ * `src/components/ui/sidebar.tsx` for the three DOM nodes this class is
+ * applied to.
+ */
+.sidebar-dark-scope {
+  --sidebar: oklch(0.208 0.04 265.8); /* slate-900 */
+  --sidebar-foreground: oklch(0.984 0.003 247.9); /* slate-50  */
+  --sidebar-primary: oklch(0.623 0.188 259.8); /* brand-500 */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.279 0.037 260); /* slate-800 */
+  --sidebar-accent-foreground: oklch(0.984 0.003 247.9); /* slate-50 */
+  --sidebar-border: oklch(0.279 0.037 260); /* slate-800 */
+  --sidebar-ring: oklch(0.623 0.188 259.8); /* brand-500 */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -161,6 +161,19 @@ function SidebarProvider({
  * `shadcn add sidebar` overwrites this file, the two `lg:` utilities (the
  * wrapper's `lg:block` and the container's `lg:flex`) are the whole diff to
  * re-apply.
+ *
+ * A new dark-rail scope class (declared in `globals.css` — see the comment
+ * on that selector for why it exists) is now applied at all three places
+ * this component hardcodes `bg-sidebar`/`text-sidebar-foreground`, added by
+ * quick task 260903-ugl. It is deliberately NOT the shadcn `.dark` class.
+ * It is applied inside this file rather than as a `className` prop from
+ * `app-sidebar.tsx` because the mobile branch renders through
+ * `SheetContent` → `SheetPortal` → base-ui's `Dialog.Portal`, which
+ * teleports its DOM node to `document.body` outside any ancestor wrapper's
+ * subtree — a class passed from a parent component would style the desktop
+ * rail and silently never reach the mobile sheet. If a future
+ * `shadcn add sidebar` overwrites this file, re-apply that scope class at
+ * all three sites alongside the existing `lg:` fix above.
  */
 function Sidebar({
   side = "left",
@@ -182,7 +195,7 @@ function Sidebar({
       <div
         data-slot="sidebar"
         className={cn(
-          "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
+          "sidebar-dark-scope flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
           className
         )}
         {...props}
@@ -200,7 +213,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          className="sidebar-dark-scope w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -255,7 +268,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
+          className="sidebar-dark-scope flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
         >
           {children}
         </div>
