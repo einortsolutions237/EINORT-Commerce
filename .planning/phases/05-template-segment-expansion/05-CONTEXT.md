@@ -241,6 +241,48 @@ is unrelated to this phase and already closed out separately.)
 
 </deferred>
 
+## Addendum (resolved after research)
+
+Research (`05-RESEARCH.md`) surfaced five real decisions the initial discussion didn't cover.
+All five were confirmed with the user via AskUserQuestion on 2026-09-03, after research, before
+planning:
+
+- **D-10 (segment coverage):** All 6 segments get their own layout skeleton this phase, not just
+  the minimum 3 TMPL-03 requires. Rationale: the picker is tier-filtered by industry (D-07), so
+  3-of-6 coverage would leave merchants in the other 3 segments facing an empty or irrelevant
+  picker — exactly the "generic" failure TMPL-05 penalizes. Every segment must have at least one
+  Starter-accessible template (10 Starter slots across 6 segments: four segments get 2, two get
+  1 — cannot be 2-everywhere).
+- **D-11 (accent/logo survival on switch):** A template switch (D-09) preserves the merchant's
+  `primaryAccent`, `secondaryAccent`, and `logoKey` — these are brand identity, not template
+  content. `announcementText` and `footerTagline` reset to the new template's defaults. State
+  this explicitly in the switch confirmation dialog's copy.
+- **D-12 (no trial elevation for templates):** Unlike the storefront editor (D-15, Phase 4 —
+  granted to every tier during trial), template access is gated on `ctx.plan.tier` directly and
+  is NOT trial-elevated. A Starter merchant on trial gets the full editor but only the 10 Starter
+  templates. Rationale: the editor grant is reversible at trial expiry (the merchant just loses
+  edit access, storefront unchanged); a template grant is not — there is no safe way to downgrade
+  a live storefront off a template it's not entitled to without violating the permanent
+  no-auto-migration rule (`registry.ts`'s D-03). The gate applies to the WRITE (picker,
+  `switchTemplate`) only, never to rendering — a merchant who downgrades tier keeps rendering
+  their existing template forever; the picker still shows their current template even if it's
+  now above their tier, marked retained-not-reselectable.
+- **D-13 (templateKey → draft/published split):** `StorefrontTheme.templateKey` splits into
+  `draftTemplateKey`/`publishedTemplateKey`, matching the existing draft/published pairing used
+  everywhere else on this model. The Prisma migration renames the column via hand-edited SQL
+  (`ALTER TABLE ... RENAME COLUMN`) rather than trusting the default DROP+ADD diff, which would
+  silently reset every existing merchant's template with no test catching it (every merchant is
+  currently on `flagship-fashion`, so a reset would be invisible). A dedicated migration-safety
+  isolation test is required.
+- **D-14 (fold Phase 4's deferred stranger test into Phase 5's gate):** Phase 4's Wave 7 Task 3
+  (the Design-Distinctiveness stranger test, deferred by the user 2026-09-03 alongside Task 2) is
+  folded into Phase 5's own, larger distinctiveness gate rather than run twice. Phase 5's gate
+  naturally includes the flagship template in at least one adversarial comparison pair, so
+  passing Phase 5's check also closes Phase 4's outstanding one. `.planning/STATE.md` should
+  reflect Phase 4's Wave 7 Task 3 as closed once Phase 5's gate passes (Wave 7 Task 2, the
+  live-preview device pass, remains separately open — it is not a distinctiveness check and is
+  not folded in).
+
 ---
 
 *Phase: 05-template-segment-expansion*
