@@ -163,17 +163,31 @@ function SidebarProvider({
  * re-apply.
  *
  * A new dark-rail scope class (declared in `globals.css` — see the comment
- * on that selector for why it exists) is now applied at all three places
- * this component hardcodes `bg-sidebar`/`text-sidebar-foreground`, added by
- * quick task 260903-ugl. It is deliberately NOT the shadcn `.dark` class.
+ * on that selector for why it exists) is now applied at three places, added
+ * by quick task 260903-ugl. It is deliberately NOT the shadcn `.dark` class.
  * It is applied inside this file rather than as a `className` prop from
  * `app-sidebar.tsx` because the mobile branch renders through
  * `SheetContent` → `SheetPortal` → base-ui's `Dialog.Portal`, which
  * teleports its DOM node to `document.body` outside any ancestor wrapper's
  * subtree — a class passed from a parent component would style the desktop
- * rail and silently never reach the mobile sheet. If a future
- * `shadcn add sidebar` overwrites this file, re-apply that scope class at
- * all three sites alongside the existing `lg:` fix above.
+ * rail and silently never reach the mobile sheet.
+ *
+ * THE DESKTOP SITE IS THE OUTER `data-slot="sidebar"` WRAPPER BELOW
+ * (`text-sidebar-foreground lg:block`), NOT the inner `data-slot="sidebar-inner"`
+ * div. `color` is an inherited property that computes ONCE, where a
+ * `text-*` utility is actually applied, and every descendant then inherits
+ * that already-resolved value — it does not re-read `--color-sidebar-foreground`
+ * fresh at each level. Scoping only `sidebar-inner` left every nav label and
+ * icon inheriting `color` from THIS outer wrapper, computed against
+ * `:root`'s un-scoped (near-black) value, while `background-color` on
+ * `sidebar-inner` looked correct in isolation (`background-color` is not
+ * inherited, so it re-reads the custom property fresh regardless of where
+ * the scope class sits) — a genuinely confusing split that shipped once and
+ * was caught by a live contrast check, not by any automated gate. If a
+ * future `shadcn add sidebar` overwrites this file, re-apply the scope
+ * class at this outer wrapper and the two Sheet/none-branch sites above,
+ * alongside the existing `lg:` fix — and re-verify contrast in a real
+ * browser, not just by reading the CSS.
  */
 function Sidebar({
   side = "left",
@@ -233,7 +247,7 @@ function Sidebar({
 
   return (
     <div
-      className="group peer hidden text-sidebar-foreground lg:block"
+      className="sidebar-dark-scope group peer hidden text-sidebar-foreground lg:block"
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}
@@ -268,7 +282,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="sidebar-dark-scope flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
+          className="flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
         >
           {children}
         </div>

@@ -345,6 +345,21 @@
  * these 8 tokens so nothing outside the sidebar rail is affected; see
  * `src/components/ui/sidebar.tsx` for the three DOM nodes this class is
  * applied to.
+ *
+ * BOTH THE RAW TOKEN AND ITS `--color-*` ALIAS ARE SET HERE, AND THAT IS NOT
+ * REDUNDANT. `@theme inline` above declares `--color-sidebar-foreground: var(--sidebar-foreground)`
+ * once, at `:root` — every utility class (`text-sidebar-foreground`, etc.)
+ * actually reads the `--color-*` name, not the raw one. Confirmed live in the
+ * browser: overriding only `--sidebar-foreground` here left every
+ * `--color-sidebar-*` alias resolving through `:root`'s original chain, so
+ * nav-item text still rendered slate-950-on-slate-900 (unreadable) even
+ * though the raw `--sidebar-foreground` variable measured correctly on the
+ * same element. Setting the alias directly is what the generated CSS
+ * actually consumes; the raw name is kept alongside it only because some
+ * `ui/sidebar.tsx` rules reference `--sidebar-width` etc. via the raw form
+ * and for readability against `.dark` above. Do not "simplify" this back
+ * down to one set per token without re-measuring computed `color` in a real
+ * browser first.
  */
 .sidebar-dark-scope {
   --sidebar: oklch(0.208 0.04 265.8); /* slate-900 */
@@ -355,6 +370,15 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.9); /* slate-50 */
   --sidebar-border: oklch(0.279 0.037 260); /* slate-800 */
   --sidebar-ring: oklch(0.623 0.188 259.8); /* brand-500 */
+
+  --color-sidebar: oklch(0.208 0.04 265.8); /* slate-900 */
+  --color-sidebar-foreground: oklch(0.984 0.003 247.9); /* slate-50  */
+  --color-sidebar-primary: oklch(0.623 0.188 259.8); /* brand-500 */
+  --color-sidebar-primary-foreground: oklch(1 0 0);
+  --color-sidebar-accent: oklch(0.279 0.037 260); /* slate-800 */
+  --color-sidebar-accent-foreground: oklch(0.984 0.003 247.9); /* slate-50 */
+  --color-sidebar-border: oklch(0.279 0.037 260); /* slate-800 */
+  --color-sidebar-ring: oklch(0.623 0.188 259.8); /* brand-500 */
 }
 
 @layer base {
