@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 fully planned (16 plans, 7 waves), verification passed
-last_updated: "2026-09-02T09:54:40.588Z"
-last_activity: 2026-09-02 -- Phase 04 execution started
+stopped_at: Phase 4 Wave 6 (04-15, editor assembly) merged and gate-verified; only Wave 7 (04-16, phase gate) remains
+last_updated: "2026-09-03T16:30:00.000Z"
+last_activity: 2026-09-03 -- Phase 04 Wave 6 (plan 04-15) merged, gates green (lint/typecheck/test:unit 566/566/build), pushed
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 46
-  completed_plans: 29
+  completed_plans: 44
   percent: 33
 ---
 
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 ## Current Position
 
 Phase: 04 (theme-section-block-system-flagship-template) — EXECUTING
-Plan: 1 of 16
+Plan: 15 of 16 complete (Waves 1-6 done; only Wave 7 / 04-16, the phase gate, remains)
 Status: Executing Phase 04
 Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on to Phase 4 planning in the meantime (2026-09-01) rather than complete it first; it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
-Last activity: 2026-09-02 -- Phase 04 execution started
+Last activity: 2026-09-03 -- Wave 6 (plan 04-15, the storefront editor assembly: nav entry, editor-shell reducer/postMessage/iframe, RSC page, loading skeleton) merged into master, all gates green. Next: dispatch Wave 7 (04-16), the phase gate with the Design-Distinctiveness checkpoint and live-preview device pass -- requires human interaction, not autonomous.
 
-Progress: [███░░░░░░░] 33% phases (2/6 complete) · 63% plans (29/46 complete — Phase 3's 03-16 and all 16 of Phase 4's plans still to execute)
+Progress: [███░░░░░░░] 33% phases (2/6 complete) · 96% plans (44/46 complete — Phase 3's 03-16 and Phase 4's 04-16 still to execute)
 
 ## Performance Metrics
 
