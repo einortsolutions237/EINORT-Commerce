@@ -507,6 +507,22 @@ export const strings = {
       openNavigation: "Open navigation",
     },
 
+    /**
+     * Quick task 260903-ugl. VISUAL PLACEHOLDER ONLY, per CONTEXT.md's
+     * locked decision #3: no search Server Action or query is wired to this
+     * copy anywhere in the codebase. Real cross-entity search across
+     * products/orders/customers is a deliberately separate future task —
+     * these strings existing is not a sign the feature is live.
+     *
+     * `searchShortcutHint` in particular is decorative only; no keydown
+     * listener is registered anywhere in this task.
+     */
+    topbar: {
+      searchPlaceholder: "Search",
+      searchAriaLabel: "Search",
+      searchShortcutHint: "⌘K",
+    },
+
     emptyHeading: "Your store is live",
     emptyBody:
       "Your storefront is ready at your address. Open it to see what your customers see.",
