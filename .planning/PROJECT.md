@@ -17,7 +17,7 @@ A merchant picks an industry, adds a logo and a few products, and within minutes
 ### Active
 
 - [ ] Merchant signup → guided onboarding (business name, industry, logo, brand colors) → live storefront on an EINORT subdomain, in minutes
-- [ ] ~20 visually distinct storefront template variations, produced by recombining a small set of segment-flagship layouts through a Theme → Page → Section → Block system (not 20 independently bespoke designs) — mapped to real Cameroonian merchant segments (fashion, electronics, beauty/cosmetics, grocery/food, furniture/home, general retail)
+- [ ] 50 visually distinct storefront template variations (10 Starter / 15 Business / 25 Professional), produced by recombining a small set of segment-flagship layouts through a Theme → Page → Section → Block system (not 50 independently bespoke designs) — mapped to real Cameroonian merchant segments (fashion, electronics, beauty/cosmetics, grocery/food, furniture/home, general retail)
 - [ ] Flagship template (fashion/apparel segment) built to genuinely polished, portfolio-quality standard, anchored on the zinc-monochrome DTC visual reference already supplied — this is the pattern library the other variations inherit from
 - [ ] Section/block-based storefront customization editor, gated by subscription tier
 - [ ] Product catalog: images (with automatic enhancement/cropping), variants, price, simple stock count, categories
@@ -38,7 +38,7 @@ A merchant picks an industry, adds a logo and a few products, and within minutes
 - Live payment gateway / PSP API integration (MTN MoMo, Orange Money APIs, Stripe, Paystack, etc.) — explicitly rejected for V1 even though the v4.0 reference document listed a live integration as P0; the user's own confirmed approach is manual transfer + claim + verification only. Pursue provider conversations in parallel if desired later; never a launch blocker.
 - Vendure or Medusa as the commerce engine — v4.0 recommended evaluating these, but rejected in favor of a custom Next.js/Prisma layer to avoid framework learning-curve risk for a solo 30-day build.
 - 40-day timeline / v4.0's larger feature set as a whole — v4.0 is a useful reference for detail (data model, pricing structure, non-functional requirements) but the 30-day window governs scope, not v4.0's schedule.
-- 20 independently hand-designed bespoke templates — recombination of a smaller flagship set via the block system instead, to keep the highest-risk phase (template visual quality) achievable solo.
+- 50 independently hand-designed bespoke templates — recombination of a smaller flagship set via the block system instead, to keep the highest-risk phase (template visual quality) achievable solo.
 - Wholesale/B2B, staff accounts beyond one owner login, discount codes, customer segmentation, AI-generated descriptions, analytics beyond basics, multi-warehouse, dedicated search infrastructure — deferred; matches both source documents' exclusion lists.
 - Custom domains — fast-follow if time allows within the 30 days, not a launch blocker.
 - Any platform admin module beyond the pilot-scoped list (analytics, fraud/abuse, theme library management, feature flags, broadcast notifications, full observability, usage dashboards) — deferred to post-launch per both source documents.
@@ -67,7 +67,7 @@ Two prior planning documents inform this project and were reconciled during init
 |----------|-----------|---------|
 | 30-day timeline governs over v4.0's 40-day figure | Solo builder capacity; original 30-day plan's risk analysis already stress-tested against this team size | — Pending |
 | Custom Next.js/Prisma over Vendure/Medusa | Avoid commerce-framework learning curve and "fighting the framework's opinions" for a solo dev on a tight timeline | — Pending |
-| ~20 template variations via Theme→Page→Section→Block recombination, not 20 bespoke designs | Achievable solo; matches the block-based customization architecture already required for the section editor | — Pending |
+| 50 template variations (10 Starter / 15 Business / 25 Professional) via Theme→Page→Section→Block recombination, not 50 bespoke designs | Achievable solo; matches the block-based customization architecture already required for the section editor | — Pending |
 | No live payment gateway in V1; manual Mobile Money/Orange Money transfer + claim + USSD tap-to-dial assist | Matches actual Cameroonian merchant/customer behavior per the user; avoids PSP approval/integration delays as a launch blocker | — Pending |
 | Zinc-monochrome DTC reference adopted as the fashion-segment flagship template direction | User-supplied visual reference judged as a tasteful, non-generic starting point superior to inventing a direction from adjectives | — Pending |
 | Architect for v4.0's 2,000,000-store / 300-products-per-store scale target without building or load-testing it in V1 | Cheap as a schema/indexing design discipline now; expensive to retrofit later; zero added engineering time at pilot scale | — Pending |

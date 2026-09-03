@@ -29,7 +29,7 @@
 - [ ] **TMPL-01**: One fashion/apparel flagship template is built to genuinely polished, portfolio-quality standard, anchored on the supplied zinc-monochrome DTC visual reference
 - [ ] **TMPL-02**: The flagship template's patterns (layout structure, section types, motion language, typography system) form the pattern library that other segment templates inherit from
 - [ ] **TMPL-03**: At least 3 additional merchant segments (from: electronics, beauty/cosmetics, grocery/food, furniture/home, general retail) get their own structurally distinct layout — not just a recolored copy of the flagship
-- [ ] **TMPL-04**: The full template library reaches ~20 visually distinct variations by recombining the segment layouts' sections/blocks with different imagery, color, and copy — not 20 independently designed templates
+- [ ] **TMPL-04**: The full template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional tier split) by recombining the segment layouts' sections/blocks with different imagery, color, and copy — not 50 independently designed templates
 - [ ] **TMPL-05**: Template distinctiveness is checked explicitly (side-by-side comparison) before the library is considered done — genericness is treated as a failure condition, not a subjective nice-to-have
 
 ### Storefront Editor

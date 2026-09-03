@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Merchant Auth, Entitlements & Trial** - Session-scoped merchant login with server-enforced plan limits and a 10-day trial (completed 2026-08-23)
 - [ ] **Phase 3: Product Catalog & Order/Payment-Claim State Machine** - A customer can browse, buy, and pay by claim; a merchant can list products and confirm payment
 - [ ] **Phase 4: Theme/Section/Block System & Flagship Template** - Onboarding produces a live, branded, portfolio-quality storefront; merchants can customize it
-- [ ] **Phase 5: Template Segment Expansion** - ~20 structurally distinct template variations across real merchant segments
+- [ ] **Phase 5: Template Segment Expansion** - 50 structurally distinct template variations (10 Starter / 15 Business / 25 Professional) across real merchant segments
 - [ ] **Phase 6: Merchant Dashboard & Platform Admin** - Merchants run their business day-to-day; the platform owner operates the pilot fleet
 
 ## Phase Details
@@ -212,14 +212,14 @@ Plans:
 
 ### Phase 5: Template Segment Expansion
 
-**Goal**: Merchants outside the fashion segment get their own structurally distinct storefront, and the template library reaches ~20 visually distinct variations that a stranger would not mistake for one another.
+**Goal**: Merchants outside the fashion segment get their own structurally distinct storefront, and the template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional) that a stranger would not mistake for one another.
 **Mode:** mvp
 **Depends on**: Phase 4
 **Requirements**: TMPL-03, TMPL-04, TMPL-05
 **Success Criteria** (what must be TRUE):
 
   1. At least 3 additional merchant segments (from electronics, beauty/cosmetics, grocery/food, furniture/home, general retail) each get their own structurally distinct layout skeleton — not a recolored copy of the flagship.
-  2. The full template library reaches ~20 visually distinct variations by recombining the segment layouts' sections/blocks with different imagery, color, and copy, not 20 independently designed templates.
+  2. The full template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional) by recombining the segment layouts' sections/blocks with different imagery, color, and copy, not 50 independently designed templates.
   3. Template distinctiveness is checked explicitly via side-by-side comparison ("would a stranger think these are the same product") before the library is considered done — genericness is treated as a failure condition.
 
 **Plans**: TBD
