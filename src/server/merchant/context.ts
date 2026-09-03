@@ -73,6 +73,16 @@ const MERCHANT_COLUMNS = {
   planTier: true,
   trialEndsAt: true,
   subscriptionStatus: true,
+  /*
+   * ONB-02. Added here deliberately, which is what the paragraph above asks
+   * for: the branding rung below reads it and nothing else does. It is read
+   * for the redirect ONLY and is NOT threaded into `resolveEntitlements`'s
+   * `OrgRow` — that type is structural, so an extra property on the value is
+   * accepted without widening it, and widening it would force every fixture in
+   * `tests/unit/entitlements.test.ts` to carry a column the resolver never
+   * consults.
+   */
+  industry: true,
 } as const;
 
 /** The only status that may reach the dashboard. Allowlisted, so a status a
@@ -114,6 +124,19 @@ export const requireMerchantContext = cache(
     // routing them through it would loop the merchant on the surface that fixes
     // exactly this state.
     if (org.planTier === null) redirect("/onboarding/plan");
+
+    // ONB-02: the branding step is mandatory too, and this is the gate that
+    // enforces it. Exactly one rung, immediately below the plan rung, because
+    // the two states are ordered — a merchant picks a plan and then brands the
+    // store the plan is for.
+    //
+    // The branding screen and `saveBranding` are deliberately outside this
+    // wrapper, for the same reason the plan screen and `selectPlan` are:
+    // routing them through it would loop the merchant on the surface that fixes
+    // exactly this state. A merchant submitting that form has a null industry
+    // BY DEFINITION, so the wrapper would redirect the write back to the page
+    // it came from and the step could never be completed (T-04-27).
+    if (org.industry === null) redirect("/onboarding/branding");
 
     // The one place in the system that reads the clock for trial purposes. The
     // resolver stays pure and takes `now` as a parameter, which is what makes
