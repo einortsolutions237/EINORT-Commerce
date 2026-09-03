@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
+import einortLogo from "@/assets/brand/einort-logo.png";
 import { Card, CardContent } from "@/components/ui/card";
-import { strings } from "@/lib/strings";
+import { BRAND, strings } from "@/lib/strings";
 
 import { SignupForm } from "./signup-form";
 
@@ -33,6 +35,8 @@ export default function SignupPage() {
        * layout is designed at 360px first and widened, not the reverse.
        */}
       <div className="w-full max-w-md">
+        <Image src={einortLogo} alt={BRAND} className="mb-6 h-9 w-auto" priority />
+
         {/* Heading role: 24px / 600 / 1.2 */}
         <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.signup.heading}

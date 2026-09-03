@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -24,6 +25,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import einortLogo from "@/assets/brand/einort-logo.png";
 import { BRAND, strings } from "@/lib/strings";
 
 /**
@@ -157,9 +159,12 @@ export function AppSidebar({ pendingClaims }: { pendingClaims: number }) {
   return (
     <Sidebar className="border-sidebar-border">
       <SidebarHeader className="min-h-14 justify-center border-b border-sidebar-border px-4">
-        <span className="text-sm leading-normal font-semibold tracking-wide text-sidebar-foreground">
-          {BRAND}
-        </span>
+        <div className="flex items-center gap-2">
+          <Image src={einortLogo} alt={BRAND} className="h-6 w-auto shrink-0" />
+          <span className="text-sm leading-normal font-semibold tracking-wide text-sidebar-foreground">
+            {BRAND}
+          </span>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>

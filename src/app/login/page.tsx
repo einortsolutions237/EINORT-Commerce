@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
+import einortLogo from "@/assets/brand/einort-logo.png";
 import { Card, CardContent } from "@/components/ui/card";
-import { strings } from "@/lib/strings";
+import { BRAND, strings } from "@/lib/strings";
 
 import { LoginForm } from "./login-form";
 
@@ -25,6 +27,8 @@ export default function LoginPage() {
     <main className="flex flex-1 flex-col items-center px-4 py-16 sm:px-8">
       {/* Single column, max-w-md (448px), centered — identical to /signup. */}
       <div className="w-full max-w-md">
+        <Image src={einortLogo} alt={BRAND} className="mb-6 h-9 w-auto" priority />
+
         {/* Heading role: 24px / 600 / 1.2 */}
         <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.login.heading}
