@@ -166,6 +166,16 @@ None — every surface this plan adds is covered by the plan's own `<threat_mode
 - Plan 04-12's editor colour field is specified as "identical to the onboarding colour field" — `ColourField` in `branding-form.tsx` is the reference implementation, and its copy already reads from `strings.branding` (which is why `THEME_FIELDS` points there too).
 - Manual smoke on `npm run dev` (fresh signup walking the whole ladder) has **not** been performed and remains open.
 
+## Self-Check: PASSED
+
+All five source files and this summary exist on disk. All four commits
+(`141a580`, `ae3bfa2`, `de534a0`, `2300135`) are present on
+`worktree-agent-a734442f413a59a5c` above base `28a4287`, the working tree is
+clean, and `git diff --diff-filter=D` across the range reports no deletions.
+
+`STATE.md` and `ROADMAP.md` were deliberately NOT touched — the orchestrator
+owns those writes after the wave merges.
+
 ---
 *Phase: 04-theme-section-block-system-flagship-template*
 *Completed: 2026-09-03*
