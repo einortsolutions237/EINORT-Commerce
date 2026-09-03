@@ -53,6 +53,17 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+/**
+ * `@/server/theming/actions` imports `revalidatePath` at module scope for the
+ * onboarding branding action this test now calls (ONB-02's mandatory industry
+ * gate — see the test body below). Outside a Next request scope the real
+ * module throws, which would fail this file during import for a reason that
+ * has nothing to do with the database. Same idiom as
+ * `tests/isolation/branding.test.ts`.
+ */
+const revalidatePath = vi.hoisted(() => vi.fn());
+vi.mock("next/cache", () => ({ revalidatePath }));
+
 // ---------------------------------------------------------------------------
 // Rate limiters with controllable verdicts
 // ---------------------------------------------------------------------------
@@ -78,6 +89,7 @@ vi.mock("@/server/rate-limit", async (importOriginal) => {
 
 const { signUpMerchant } = await import("@/server/auth/signup");
 const { selectPlan } = await import("@/server/merchant/actions");
+const { saveBranding } = await import("@/server/theming/actions");
 const { requireMerchantContext } = await import("@/server/merchant/context");
 const { platformDb } = await import("@/server/db/platform");
 const { TRIAL_DAYS } = await import("@/server/entitlements/resolve");
@@ -148,6 +160,27 @@ describe("trial anchored to createdAt", () => {
         "stored number that can drift from TRIAL_DAYS.",
     ).toBeNull();
     expect(row?.subscriptionStatus).toBe("none");
+
+    /*
+     * ONB-02's mandatory branding step. `requireMerchantContext()` redirects a
+     * merchant whose `industry` is still null to `/onboarding/branding`
+     * (plan 04-11), and this test predates that gate. The branding write does
+     * not touch `createdAt`, `trialEndsAt` or `subscriptionStatus` — the three
+     * links this test proves — so completing it here does not change what is
+     * being asserted, only stops the direct `requireMerchantContext()` call
+     * below from throwing an uncaught `NEXT_REDIRECT` before it can prove
+     * anything.
+     */
+    const branded = await saveBranding({
+      businessName: "Trial Store",
+      industry: "general-retail",
+      logoKey: null,
+      primaryAccent: "#18181B",
+      secondaryAccent: "#71717A",
+    });
+    if (!branded.ok) {
+      throw new Error(`fixture branding failed: ${JSON.stringify(branded.error)}`);
+    }
 
     const ctx = await requireMerchantContext();
     const createdAt = row?.createdAt as Date;

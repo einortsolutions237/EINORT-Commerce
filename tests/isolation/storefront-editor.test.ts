@@ -129,8 +129,13 @@ vi.mock("@/server/rate-limit", async (importOriginal) => {
 // Imported after the mocks so the modules under test pick them up.
 const { signUpMerchant } = await import("@/server/auth/signup");
 const { selectPlan } = await import("@/server/merchant/actions");
-const { saveDraft, publishStorefront, discardDraft, ensureStorefrontSeeded } =
-  await import("@/server/theming/actions");
+const {
+  saveDraft,
+  publishStorefront,
+  discardDraft,
+  ensureStorefrontSeeded,
+  saveBranding,
+} = await import("@/server/theming/actions");
 const { getEditorStorefront } = await import("@/server/theming/queries");
 const { flagshipDefaultDocument, flagshipDefaultTokens } = await import(
   "@/server/theming/defaults"
@@ -192,6 +197,26 @@ async function signUpChooseAndCarrySession(
   const chosen = await selectPlan({ tier });
   if (!chosen.ok) {
     throw new Error(`fixture plan pick failed: ${JSON.stringify(chosen.error)}`);
+  }
+
+  /*
+   * ONB-02's mandatory branding step. `requireMerchantContext()` — which every
+   * editor action built with `merchantAction()` reaches — redirects a merchant
+   * whose `industry` is still null to `/onboarding/branding` (plan 04-11).
+   * This fixture predates that gate; without this call every editor action
+   * below (including through `seededMerchant`, which calls through here)
+   * would throw an uncaught `NEXT_REDIRECT` instead of exercising the
+   * behaviour under test.
+   */
+  const branded = await saveBranding({
+    businessName: "Editor Store",
+    industry: "general-retail",
+    logoKey: null,
+    primaryAccent: "#18181B",
+    secondaryAccent: "#71717A",
+  });
+  if (!branded.ok) {
+    throw new Error(`fixture branding failed: ${JSON.stringify(branded.error)}`);
   }
 
   const organization = await platformDb.organization.findUnique({

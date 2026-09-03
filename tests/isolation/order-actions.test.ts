@@ -59,6 +59,17 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+/**
+ * `@/server/theming/actions` imports `revalidatePath` at module scope for the
+ * onboarding branding action this fixture now calls (ONB-02's mandatory
+ * industry gate — see `signUpAndCarrySession` below). Outside a Next request
+ * scope the real module throws, which would fail this file during import for
+ * a reason that has nothing to do with the database. Same idiom as
+ * `tests/isolation/branding.test.ts`.
+ */
+const revalidatePath = vi.hoisted(() => vi.fn());
+vi.mock("next/cache", () => ({ revalidatePath }));
+
 // ---------------------------------------------------------------------------
 // Rate limiters with controllable verdicts
 // ---------------------------------------------------------------------------
@@ -85,6 +96,7 @@ vi.mock("@/server/rate-limit", async (importOriginal) => {
 // Imported after the mocks so the modules under test pick them up.
 const { signUpMerchant } = await import("@/server/auth/signup");
 const { selectPlan } = await import("@/server/merchant/actions");
+const { saveBranding } = await import("@/server/theming/actions");
 const { platformDb } = await import("@/server/db/platform");
 const { auth } = await import("@/server/auth/auth");
 const { scopedDb } = await import("@/server/db/tenant-scoped");
@@ -145,6 +157,25 @@ async function signUpAndCarrySession(
   const chosen = await selectPlan({ tier: "business" });
   if (!chosen.ok) {
     throw new Error(`fixture plan pick failed: ${JSON.stringify(chosen.error)}`);
+  }
+
+  /*
+   * ONB-02's mandatory branding step. `requireMerchantContext()` — which
+   * `confirmOrder`/`markFulfilled` reach through `merchantAction()` — redirects
+   * a merchant whose `industry` is still null to `/onboarding/branding`
+   * (plan 04-11). This fixture predates that gate; without this call every
+   * order action below would throw an uncaught `NEXT_REDIRECT` instead of
+   * exercising the behaviour under test.
+   */
+  const branded = await saveBranding({
+    businessName: "Order Actions Store",
+    industry: "general-retail",
+    logoKey: null,
+    primaryAccent: "#18181B",
+    secondaryAccent: "#71717A",
+  });
+  if (!branded.ok) {
+    throw new Error(`fixture branding failed: ${JSON.stringify(branded.error)}`);
   }
 
   const organization = await platformDb.organization.findUniqueOrThrow({

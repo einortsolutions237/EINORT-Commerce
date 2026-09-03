@@ -63,6 +63,17 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+/**
+ * `@/server/theming/actions` imports `revalidatePath` at module scope for the
+ * onboarding branding action this fixture now calls (ONB-02's mandatory
+ * industry gate — see `signUpChooseAndCarrySession` below). Outside a Next
+ * request scope the real module throws, which would fail this file during
+ * import for a reason that has nothing to do with the database. Same idiom as
+ * `tests/isolation/branding.test.ts`.
+ */
+const revalidatePath = vi.hoisted(() => vi.fn());
+vi.mock("next/cache", () => ({ revalidatePath }));
+
 // ---------------------------------------------------------------------------
 // Rate limiters with controllable verdicts
 // ---------------------------------------------------------------------------
@@ -90,6 +101,7 @@ vi.mock("@/server/rate-limit", async (importOriginal) => {
 const { signUpMerchant } = await import("@/server/auth/signup");
 const { selectPlan, switchPlan } = await import("@/server/merchant/actions");
 const { merchantAction } = await import("@/server/merchant/action");
+const { saveBranding } = await import("@/server/theming/actions");
 const { platformDb } = await import("@/server/db/platform");
 const { auth } = await import("@/server/auth/auth");
 
@@ -143,6 +155,25 @@ async function signUpChooseAndCarrySession(
   const chosen = await selectPlan({ tier });
   if (!chosen.ok) {
     throw new Error(`fixture plan pick failed: ${JSON.stringify(chosen.error)}`);
+  }
+
+  /*
+   * ONB-02's mandatory branding step. `requireMerchantContext()` — which every
+   * `merchantAction()` built here reaches, including `switchPlan` — redirects a
+   * merchant whose `industry` is still null to `/onboarding/branding`
+   * (plan 04-11). This fixture predates that gate; without this call every
+   * read/switch case below would throw an uncaught `NEXT_REDIRECT` instead of
+   * exercising the behaviour under test.
+   */
+  const branded = await saveBranding({
+    businessName: "Read Only Store",
+    industry: "general-retail",
+    logoKey: null,
+    primaryAccent: "#18181B",
+    secondaryAccent: "#71717A",
+  });
+  if (!branded.ok) {
+    throw new Error(`fixture branding failed: ${JSON.stringify(branded.error)}`);
   }
 
   return result.slug;
