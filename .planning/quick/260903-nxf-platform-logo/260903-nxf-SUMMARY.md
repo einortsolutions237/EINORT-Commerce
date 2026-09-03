@@ -41,21 +41,22 @@ patterns-established:
   - "scripts/*.mjs generator scripts self-verify their own output (dimension/alpha assertions on the source, byte-level ICO header checks on the result) and exit 1 loudly rather than writing a silently-wrong derived asset"
 
 requirements-completed: [QUICK-260903-nxf]
+status: complete
 
 # Metrics
-duration: ~12min (Tasks 1-2 only; Task 3 checkpoint pending)
+duration: ~12min (Tasks 1-2) + checkpoint verification
 completed: 2026-09-03
 ---
 
 # Phase quick/260903-nxf Plan 01: EINORT Platform Logo Summary
 
-**EINORT platform brand mark (blue-to-purple gradient faceted "S") added as favicon/icon/apple-icon via Next 16's App Router file convention and rendered inline via next/image in the dashboard sidebar, /login, and /signup headers — Task 3's real-browser confirmation is still pending.**
+**EINORT platform brand mark (blue-to-purple gradient faceted "S") added as favicon/icon/apple-icon via Next 16's App Router file convention and rendered inline via next/image in the dashboard sidebar, /login, and /signup headers — Task 3's real-browser checkpoint is approved.**
 
 ## Performance
 
-- **Duration:** ~12 min (Tasks 1-2)
-- **Completed:** 2026-09-03 (Tasks 1-2; Task 3 checkpoint outstanding)
-- **Tasks:** 2 of 3 complete (Task 3 is a blocking human-verify checkpoint)
+- **Duration:** ~12 min (Tasks 1-2) + checkpoint verification pass
+- **Completed:** 2026-09-03 (all 3 tasks complete)
+- **Tasks:** 3 of 3 complete
 - **Files modified:** 8 (5 created, 3 edited)
 
 ## Accomplishments
@@ -71,7 +72,21 @@ Each task was committed atomically:
 
 1. **Task 1: Bring the logo into the repo and derive the favicon/icon/apple-icon files** - `c89860d` (feat)
 2. **Task 2: Render the logo in the dashboard sidebar, login and signup headers** - `3e94aec` (feat)
-3. **Task 3: Confirm the mark renders correctly in a real browser** - NOT YET RUN (blocking checkpoint, requires a human with a real browser)
+3. **Task 3: Confirm the mark renders correctly in a real browser** - APPROVED (checkpoint, no code change — verification-only, no commit)
+
+## Task 3: Checkpoint Verification — APPROVED
+
+**Verification method:** This checkpoint was driven by the orchestrator using Claude Code's Browser pane (a real Chromium instance hitting the actual dev server on port 3001) — not a developer directly at the keyboard. This distinction is recorded honestly: the check exercised a genuine browser rendering the genuine app over a live connection (not a headless/automated assertion re-implementing the plan's checks), but the click-through and visual judgment were performed by the orchestrator agent relaying screenshots, not a human set of eyes at first hand. The user reviewed and approved the resulting report before this checkpoint was marked closed.
+
+**Steps performed and results, against the plan's `<how-to-verify>` block:**
+
+1. **Favicon** — `/login` tab shows the blue-to-purple gradient mark (not Next's default icon); `/favicon.ico` loads directly as a real 32x32 image, not a 404. **PASS.**
+2. **Sidebar** — signed in as a freshly-created test merchant (`logocheck@example.test` / `logocheck-store`, completed real signup → plan-select → branding), landed on `/dashboard`; the logo mark sits immediately left of "EINORT" in the sidebar header, both vertically centered, no clipping against the sidebar background. (Incidentally also confirmed plan 04-15's "Storefront" nav item is present between Products and Orders, as expected — unrelated to this task.) **PASS.**
+3. **Login** — `/login` shows the mark above "Sign in", left-aligned with the card content, sized as a deliberate brand mark. **PASS.**
+4. **Signup** — `/signup` shows the mark above "Create your store", same sizing as login. **PASS.**
+5. **Storefront isolation** — visited `http://megasolution.localhost:3001/`; the platform logo does NOT appear anywhere, the storefront renders its own merchant branding (wordmark "MEGASOLUTION", no logo image) completely independent of the platform mark. **PASS.**
+
+All five checks pass. No surface showed missing, cropped, stretched, or hard-edged-box rendering. No follow-up fix was required — Tasks 1-2's implementation is confirmed correct as shipped.
 
 ## Files Created/Modified
 - `src/assets/brand/einort-logo.png` - Master platform brand asset (source of truth for every derivative)
@@ -114,23 +129,14 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-**Task 3 (checkpoint:human-verify, gate="blocking") is NOT complete.** This plan stops here per its own instructions: Task 3 requires a real browser to confirm the favicon tab icon, the sidebar mark's alignment/spacing against the sidebar background, the login/signup mark sizing, and — critically — that the platform mark does NOT appear on any seeded storefront (`http://megasolution.localhost:3001/` or equivalent).
+**All 3 tasks complete, including Task 3 (checkpoint:human-verify, gate="blocking").** The checkpoint was approved 2026-09-03 after the orchestrator drove a real browser through all five `<how-to-verify>` steps (favicon, sidebar, login, signup, storefront isolation) and confirmed each passed — see the "Task 3: Checkpoint Verification — APPROVED" section above. No follow-up fixes were needed.
 
-**How to resume:** A developer (or the orchestrator relaying to one) should follow the exact steps in Task 3's `<how-to-verify>` block in `260903-nxf-PLAN.md`:
-1. Start `npm run dev` if not already running on port 3001 (a `npm run test:full` process may already be running concurrently in this working directory — unrelated, do not kill it).
-2. Check the browser tab icon on `/login` and load `/favicon.ico` directly.
-3. Check the sidebar header on `/dashboard`.
-4. Check `/login` and `/signup` heading marks.
-5. Confirm the mark is absent from a seeded storefront subdomain.
-
-Report "approved" or describe what looked wrong — a follow-up execution pass can then fix any surface issue found (all three edited files and the generator script are small and easy to adjust) and this SUMMARY should be updated/re-run once Task 3 closes.
-
-No blockers on Tasks 1-2's own correctness — both are fully committed, gate-verified, and ready for the visual check.
+This quick task is closed. No blockers remain.
 
 ---
 *Phase: quick/260903-nxf*
-*Completed: 2026-09-03 (Tasks 1-2 only; Task 3 pending)*
+*Completed: 2026-09-03 (all 3 tasks, checkpoint approved)*
 
 ## Self-Check: PASSED
 
-All 8 files listed in `key-files` (created + modified) verified present on disk. Both task commits (`c89860d`, `3e94aec`) verified present in `git log`.
+All 8 files listed in `key-files` (created + modified) verified present on disk. Both task commits (`c89860d`, `3e94aec`) verified present in `git log`. Task 3 required no code commit (verification-only checkpoint); approval is recorded in this SUMMARY per the orchestrator's relayed browser-verification report.
