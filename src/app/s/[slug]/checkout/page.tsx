@@ -10,7 +10,6 @@ import * as payments from "@/server/payments/settings";
 import { cartLineCount, hydrateCart } from "@/server/storefront/queries";
 import { resolveTenantBySlug } from "@/server/tenant/resolve";
 
-import { StoreHeader } from "../store-header";
 import { CheckoutForm } from "./checkout-form";
 
 /**
@@ -97,8 +96,12 @@ export default async function CheckoutPage({
 
   return (
     <>
-      <StoreHeader slug={slug} tenantId={tenant.id} storeName={tenant.name} />
-
+      {/*
+       * The header moved to `src/app/s/[slug]/layout.tsx` in plan 04-10 — it is
+       * theme chrome now (04-RESEARCH Pattern 12) and every storefront route
+       * inherits it, along with the announcement bar and the footer. Rendering
+       * it here as well would draw two.
+       */}
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 py-6">
         <CheckoutForm
           slug={slug}
