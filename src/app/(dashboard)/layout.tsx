@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { DashboardTopbarSearch } from "@/components/dashboard-topbar-search";
 import {
   SidebarInset,
   SidebarProvider,
@@ -106,6 +107,7 @@ export default async function DashboardLayout({
           <span className="text-sm leading-normal font-semibold text-foreground">
             {ctx.storeName}
           </span>
+          <DashboardTopbarSearch />
           {/* Calls the signOutMerchant server action; see sign-out-button.tsx. */}
           <div className="ml-auto">
             <SignOutButton />
