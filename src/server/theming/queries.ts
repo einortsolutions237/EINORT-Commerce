@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { scopedDb } from "@/server/db/tenant-scoped";
 
 import { flagshipDefaultDocument, flagshipDefaultTokens } from "./defaults";
@@ -87,8 +89,29 @@ export type PublishedStorefront = {
  * model declares a relation to the other or to `Organization` (plan 04-01 —
  * `scopedDb` is the isolation mechanism, not a foreign key), so there is no
  * join to make. Both are single-row lookups on a unique index.
+ *
+ * ---------------------------------------------------------------------------
+ * WRAPPED IN REACT'S `cache()`, AND NOT IN REDIS (plan 04-10, T-04-28).
+ * ---------------------------------------------------------------------------
+ * TWO callers read this per storefront render: `src/app/s/[slug]/layout.tsx`
+ * needs the tokens and the logo for the chrome, and `src/app/s/[slug]/page.tsx`
+ * needs the document for the section list. `cache()` dedupes them to one pair of
+ * lookups inside a single render pass — the same per-render memoization
+ * `resolveTenantBySlug` uses, and for the same two callers.
+ *
+ * It is PER-RENDER ONLY. Cross-request caching is deliberately not added here:
+ * widening the Redis tenant cache to carry theme data would create an
+ * `invalidateTenantHost` obligation on every publish (`src/server/tenant/
+ * cache.ts` documents it), and the visible failure of forgetting it is a
+ * merchant who publishes a colour change and still sees the old accent for up
+ * to five minutes. One extra pair of indexed reads on an already-dynamic page
+ * is the correct trade.
+ *
+ * `cache()` changes nothing about the no-write rule above — memoizing a read
+ * does not make it a write, and there is still no `create`, `update` or
+ * `upsert` in this file.
  */
-export async function getPublishedStorefront(
+export const getPublishedStorefront = cache(async function getPublishedStorefront(
   tenantId: string,
 ): Promise<PublishedStorefront> {
   const db = scopedDb(tenantId);
@@ -133,7 +156,7 @@ export async function getPublishedStorefront(
     tokens: parsedTokens.success ? parsedTokens.data : flagshipDefaultTokens(),
     logoKey: theme?.logoKey ?? null,
   };
-}
+});
 
 /** What `/dashboard/storefront-editor` loads before it renders. */
 export type EditorStorefront = {

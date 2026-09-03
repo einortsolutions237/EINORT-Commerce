@@ -115,3 +115,37 @@ export function buildWhatsAppOrderLink(
 
   return `https://wa.me/${merchantMsisdn}?text=${encodeURIComponent(message)}`;
 }
+
+/**
+ * The storefront contact band's click-to-chat URL (TMPL-01, plan 04-10).
+ *
+ * The same host and the same number segment as the order link above, with NO
+ * `text` parameter: this link opens an empty conversation because the shopper
+ * has not ordered anything yet and pre-filling a message they did not write is
+ * a sentence they then have to delete.
+ *
+ * IT RETURNS `null` INSTEAD OF THROWING, and that is the one deliberate
+ * difference from `buildWhatsAppOrderLink`. The order link is built at the end
+ * of a checkout the merchant has already been gated through, so a malformed
+ * number there is a bug that must be loud. This one is built on the anonymous
+ * public render path for a merchant who may simply never have opened the
+ * payment settings page — a store with no number is the ordinary case, not an
+ * error, and `null` is what `ContactSection` reads to render a shorter section
+ * with no CTA rather than a dead one. A `throw` here would take a live
+ * storefront down over an unconfigured field.
+ *
+ * The pattern check still runs, so a number that somehow escaped
+ * `normalizeCameroonMsisdn` produces no link rather than a link to a dead end.
+ */
+export function buildWhatsAppContactLink(
+  merchantMsisdn: string | null,
+): string | null {
+  if (
+    typeof merchantMsisdn !== "string" ||
+    !WA_MSISDN_PATTERN.test(merchantMsisdn)
+  ) {
+    return null;
+  }
+
+  return `https://wa.me/${merchantMsisdn}`;
+}
