@@ -1633,6 +1633,25 @@ export const strings = {
       "Add a WhatsApp number in payment settings so this button works.",
     contactNoWhatsappLink: "Payment settings",
 
+    /**
+     * The product grid's twin of the nudge above, shown on that section's
+     * settings panel when the merchant has no active products.
+     *
+     * MERCHANT-FACING, AND THEREFORE NOT THE SECTION'S EMPTY STATE. The rendered
+     * grid shows `strings.storefront`'s shopper-voiced line, because `/preview`
+     * IS the storefront and the merchant has to see exactly the copy their
+     * customers would (04-UI-SPEC.md § Flagship default content). This sentence
+     * is the one only they can see.
+     *
+     * Missed by plan 04-04's transcription: 04-UI-SPEC.md § S3 names the copy
+     * and the link but neither reached this file, and plan 04-15 is the first
+     * caller. Added here rather than inlined in the shell for the reason the
+     * namespace header gives.
+     */
+    productGridNoProducts:
+      "Add your first product so this section fills up.",
+    productGridNoProductsLink: "Products",
+
     /* --- preview canvas -------------------------------------------------- */
     previewFrameTitle: "Your storefront preview",
     previewLoading: "Loading your storefront preview…",
