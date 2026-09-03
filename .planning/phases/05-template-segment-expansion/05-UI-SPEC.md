@@ -74,10 +74,11 @@ Inherited verbatim from `04-UI-SPEC.md` — the seven-step scale, closed, unchan
 | `hero:split` minimum height | `md:min-h-[70svh]` | Shorter than `full-bleed`'s 85svh — a two-column layout carries visual weight without needing the same vertical dominance as a single full-bleed photo |
 | `hero:stack` minimum height | `min-h-[70svh]`, `max-h-[900px]` | Same family as the other two hero variants, kept modest since there is no image to fill the frame |
 | Template thumbnail (picker card) | `aspect-[3/4]`, min width `140px` | Small enough that a 25-card grid stays a few kilobytes of DOM at any tier (`05-RESEARCH.md` Pattern 7 payload note), large enough that the 12 possible block arrangements stay legible |
-| `product-grid:dense` grid gap | `gap-2` (8px) < `sm`, `gap-3` (12px) ≥ `md` | Tighter than `grid`'s 16/24px — "dense" is the distinctiveness signal |
 | `product-grid:showcase` grid gap | `gap-8` (32px), `gap-12` (48px) ≥ `md` | These ARE scale tokens (`xl`/`2xl`) reused, not new values — listed here only so the "generous gap" claim in `05-RESEARCH.md`'s variant table has a concrete number |
 
 Any value outside these two tables plus `04-UI-SPEC.md`'s own exceptions table is a contract violation. Product tile aspect stays `aspect-[4/5]` site-wide, unchanged — `showcase` does not get a new aspect ratio, only more surrounding space.
+
+`product-grid:dense`'s grid gap is `gap-2` (8px) at every breakpoint — a genuine spacing-scale token (`sm`), not a one-off constant, so it does not appear in the exceptions table above. It stays tighter than `grid`'s 16/24px at every breakpoint, which is the "dense" distinctiveness signal (§ New Variant Contracts).
 
 ---
 
@@ -203,7 +204,7 @@ A template's default order must alternate treatments the same way the flagship d
 | Property | Contract |
 |---|---|
 | Container | Identical to `grid`'s (`mx-auto max-w-7xl px-6 py-16 md:px-8 md:py-24`), header row and category chips unchanged |
-| Grid | `grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:gap-3` — one column step denser at every breakpoint than `grid` |
+| Grid | `grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5` — one column step denser at every breakpoint than `grid`, gap held at `gap-2` (8px, the `sm` scale token) at every breakpoint — tighter than `grid`'s 16/24px, which is the "dense" distinctiveness signal |
 | Tile image | `aspect-square` (not `4/5]` — the tighter aspect is part of the density signal) |
 | Tile copy | Name and price render **inline on one line**: `mt-2 flex items-baseline justify-between gap-2` — name `line-clamp-1` Body 16/400 (single line, not `grid`'s two), price Body 16/600 `tabular-nums` |
 | Out-of-stock, no-image, item count | Unchanged from `grid`'s contract |
@@ -257,6 +258,8 @@ Consequence for this UI-SPEC: `hero:stack` and `editorial-split:banner` have **n
 
 **Surface 2. Blue/gold/slate, Outfit headings, 0.75rem radius. No storefront token — no `--brand-accent`, no zinc palette, no `font-sans`-only heading — appears anywhere on this card.**
 
+**Focal point:** the template grid is the card's primary focal point — it is the largest, most visually dense element on Card 3 and the reason the card exists. The selected-card ring (`border-primary ring-2 ring-primary`) is the secondary cue, confirming which card the merchant has committed to once a pick is made; nothing else on the card competes for attention.
+
 ### Placement
 
 Inserted as a **new Card 3** inside `<BrandingForm>`, immediately below the existing industry-selection card. The existing Card 3 (Logo) and Card 4 (Brand colours) renumber to Card 4 and Card 5. Nothing else in `04-UI-SPEC.md`'s onboarding contract changes — same page chrome, same `max-w-2xl`, same card shape (`rounded-lg border border-border bg-muted`), same submit button, same redirect-ladder gating.
@@ -298,6 +301,8 @@ Inserted as a **new Card 3** inside `<BrandingForm>`, immediately below the exis
 ## Editor "Change Template" Action (D-08, D-09, D-11, Finding 6)
 
 **Surface 3. Blue/gold/slate, Outfit headings, 0.75rem radius. `--brand-accent*` resolves to nothing here and must never be written.**
+
+**Focal point:** the picker panel's template grid is the primary focal point, identical in weight to the onboarding card's grid. The current template's card is the secondary cue — its ring (`border-primary ring-2 ring-primary`) plus the `Current` pill badge distinguish it from a plain hover/selected state so the merchant can locate "what I have now" before scanning for something else.
 
 ### Rail entry
 
