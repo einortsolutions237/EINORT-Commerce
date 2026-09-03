@@ -11,7 +11,6 @@ import { publicUrlFor } from "@/server/images/r2";
 import { hydrateCart as fetchCartLines } from "@/server/storefront/queries";
 import { resolveTenantBySlug } from "@/server/tenant/resolve";
 
-import { StoreHeader } from "../store-header";
 import { CartLines } from "./cart-lines";
 
 /**
@@ -83,8 +82,12 @@ export default async function CartPage({ params }: PageProps<"/s/[slug]/cart">) 
 
   return (
     <>
-      <StoreHeader slug={slug} tenantId={tenant.id} storeName={tenant.name} />
-
+      {/*
+       * The header moved to `src/app/s/[slug]/layout.tsx` in plan 04-10 — it is
+       * theme chrome now (04-RESEARCH Pattern 12) and every storefront route
+       * inherits it, along with the announcement bar and the footer. Rendering
+       * it here as well would draw two.
+       */}
       {isEmpty ? (
         <main className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center px-4 py-16 text-center">
           {/* Heading role: 24px / 600 / 1.2 */}
