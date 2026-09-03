@@ -92,15 +92,25 @@ export default async function PlanPage() {
 
   const organization = await platformDb.organization.findUnique({
     where: { id: organizationId },
-    select: { slug: true, planTier: true },
+    select: { slug: true, planTier: true, industry: true },
   });
   if (!organization) redirect("/onboarding/create-store");
 
   /**
-   * Already chosen: send them to their store rather than rendering a
-   * "you already picked" screen. A merchant arriving here from a stale tab, a
-   * bookmark or the browser's back button has nothing to do on this page.
+   * Already chosen: send them onward rather than rendering a "you already
+   * picked" screen. A merchant arriving here from a stale tab, a bookmark or
+   * the browser's back button has nothing to do on this page.
+   *
+   * ONWARD IS THE NEXT UNFINISHED STEP, NOT THE STOREFRONT (ONB-02). Onboarding
+   * is a two-step ladder now, and sending a merchant who has a plan but no
+   * industry straight to their store would let the back button skip branding
+   * permanently — the one bounce-back path the DAL's rung cannot see, because
+   * this route is deliberately outside `requireMerchantContext()`.
    */
+  if (organization.planTier !== null && organization.industry === null) {
+    redirect("/onboarding/branding");
+  }
+
   if (organization.planTier !== null) {
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "einort.com";
     // Their storefront is a different host, so this is an absolute redirect.
