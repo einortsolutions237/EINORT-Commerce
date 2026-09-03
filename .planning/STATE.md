@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 Wave 6 (04-15, editor assembly) merged and gate-verified; only Wave 7 (04-16, phase gate) remains
-last_updated: "2026-09-03T16:30:00.000Z"
-last_activity: 2026-09-03 -- Phase 04 Wave 6 (plan 04-15) merged, gates green (lint/typecheck/test:unit 566/566/build), pushed
+stopped_at: Phase 4 Wave 7 (04-16) Task 1 (automated gate) clean; Tasks 2-3 (human-verify checkpoints) deferred by user choice; Phase 5 starting
+last_updated: "2026-09-03T23:00:00.000Z"
+last_activity: 2026-09-03 -- Phase 04 Wave 7 Task 1 confirmed clean (test:full regression fixed and verified over 6 runs, 0 NEXT_REDIRECT failures); Tasks 2-3 deferred; user directed start of Phase 5
 progress:
   total_phases: 6
   completed_phases: 2
@@ -21,15 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 04 — theme-section-block-system-flagship-template
+**Current focus:** Phase 05 — template-segment-expansion (Phase 04 gate deferred, see below)
 
 ## Current Position
 
-Phase: 04 (theme-section-block-system-flagship-template) — EXECUTING
-Plan: 15 of 16 complete (Waves 1-6 done; only Wave 7 / 04-16, the phase gate, remains)
-Status: Executing Phase 04
-Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on to Phase 4 planning in the meantime (2026-09-01) rather than complete it first; it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
-Last activity: 2026-09-03 -- Wave 6 (plan 04-15, the storefront editor assembly: nav entry, editor-shell reducer/postMessage/iframe, RSC page, loading skeleton) merged into master, all gates green. Next: dispatch Wave 7 (04-16), the phase gate with the Design-Distinctiveness checkpoint and live-preview device pass -- requires human interaction, not autonomous.
+Phase: 05 (template-segment-expansion) — STARTING
+Phase 04 (theme-section-block-system-flagship-template) remains genuinely incomplete, deliberately, by the user's own choice (2026-09-03), mirroring the Phase 3 precedent below: all 16 plans (Waves 1-6) are merged and gate-verified, and Wave 7's Task 1 (the fully-automated gate: lint/typecheck/test:unit/build plus all six token-hygiene greps) is confirmed clean -- a real regression (04-11's industry-null redirect breaking 7 pre-Phase-4 isolation test fixtures, 36 tests) was found and fixed (`b9295d2`), then `test:full` came back 0/882 failing on a clean retry. But Wave 7's Tasks 2-3 -- the live-preview device pass and the Design-Distinctiveness stranger test, both blocking `checkpoint:human-verify` tasks requiring the user's direct involvement (and, for Task 3, a real third-party bystander) -- have NOT been run. The phase's own closing gates (Requirements Coverage Gate, Decision Coverage Gate, verifier + code-review + `phase.complete`) have also not run. `04-16-PLAN.md` is not ticked complete in ROADMAP.md. Once the user resumes this, finish Wave 7's Tasks 2-3, then run Phase 4's completion gate.
+Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete for the same kind of reason: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on rather than complete it first (2026-09-01); it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
+Last activity: 2026-09-03 -- Phase 4 Wave 7 Task 1 confirmed clean; user explicitly directed deferring Wave 7's remaining checkpoints and starting Phase 5's discuss/research/plan pipeline.
 
 Progress: [███░░░░░░░] 33% phases (2/6 complete) · 96% plans (44/46 complete — Phase 3's 03-16 and Phase 4's 04-16 still to execute)
 
