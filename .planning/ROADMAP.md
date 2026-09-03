@@ -191,10 +191,10 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-10-PLAN.md — Brand-token injection, theme chrome (header, footer, announcement bar) and the flagship home render
-- [ ] 04-11-PLAN.md — The /onboarding/branding step and the industry redirect-ladder rung (ONB-02/03/04)
-- [ ] 04-12-PLAN.md — Editor rail and panel components: section list, six field kinds, settings panel, publish bar
-- [ ] 04-13-PLAN.md — Isolation suites: publish atomicity, cross-tenant refusal, tier refusal, branding idempotency
+- [x] 04-10-PLAN.md — Brand-token injection, theme chrome (header, footer, announcement bar) and the flagship home render
+- [x] 04-11-PLAN.md — The /onboarding/branding step and the industry redirect-ladder rung (ONB-02/03/04)
+- [x] 04-12-PLAN.md — Editor rail and panel components: section list, six field kinds, settings panel, publish bar
+- [x] 04-13-PLAN.md — Isolation suites: publish atomicity, cross-tenant refusal, tier refusal, branding idempotency
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -254,6 +254,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
-| 4. Theme/Section/Block System & Flagship Template | 9/16 | In Progress|  |
+| 4. Theme/Section/Block System & Flagship Template | 13/16 | In Progress|  |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
