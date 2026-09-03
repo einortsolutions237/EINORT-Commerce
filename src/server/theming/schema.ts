@@ -226,3 +226,107 @@ export type SectionInstance = z.infer<typeof sectionInstanceSchema>;
 export type SectionType = SectionInstance["type"];
 export type PageDocument = z.infer<typeof pageDocumentSchema>;
 export type ThemeTokens = z.infer<typeof themeTokensSchema>;
+
+// ---------------------------------------------------------------------------
+// The caps, read back out
+// ---------------------------------------------------------------------------
+
+/**
+ * THE CAPS ARE READ OUT OF THE SCHEMAS ABOVE, NEVER RESTATED BESIDE THEM.
+ *
+ * 04-UI-SPEC.md § The six field kinds gives every `text` and `textarea` field a
+ * `{n}/{max}` counter that turns `text-destructive` at the cap, and
+ * `<SettingsPanel>` takes those numbers as a `maxima` prop (plan 04-12). The
+ * numbers have to come from somewhere, and the two obvious somewheres are both
+ * wrong:
+ *
+ *   - A hand-written table in the registry or the editor page is the same
+ *     failure mode `src/server/theming/registry.ts`'s header names for field
+ *     keys, one level down. A cap written twice is a cap free to disagree with
+ *     itself, and the copy that disagrees is always the one the merchant sees:
+ *     a counter reading `120` over an input the server refuses at `80`.
+ *   - Putting a `max` on each `FieldDescriptor` moves the same duplication into
+ *     the registry, where that file's own header explicitly refuses it
+ *     ("There is no `href` validation, no character cap … on a descriptor.
+ *     Those live in `schema.ts` and nowhere else").
+ *
+ * So this reads Zod's own metadata. `maxLength` is a public getter on
+ * `ZodString`, so nothing below reaches into `_zod`; an array is detected by
+ * its equally public `element`. The cost of the reflection is that a field
+ * whose cap moves inside a wrapper — `.nullable()`, today — reports no cap. That
+ * is correct rather than merely tolerable here: the only nullable settings are
+ * `backgroundImageKey` and `imageKey`, both `image` fields, and an image field
+ * has no counter to drive.
+ *
+ * Called from a Server Component per render. The document has five sections and
+ * the deepest walk is two levels, so memoizing it would cost more to explain
+ * than it saves.
+ */
+
+/** A Zod node that may carry a string cap. Structural, so no import widens. */
+type MaybeCapped = {
+  readonly maxLength?: number | null;
+  readonly element?: { readonly shape?: Record<string, unknown> };
+};
+
+/**
+ * Every capped string key in a Zod object shape, flattened.
+ *
+ * An ARRAY IS WALKED INTO RATHER THAN MEASURED, and the order of the two
+ * branches below is what makes that true: `z.array(…).max(4)` also answers
+ * `maxLength`, so reading the cap first would report "4" for `trust-bar`'s
+ * `blocks` and never reach the per-block `heading` and `body` the panel
+ * actually renders. `SECTION_TYPES["trust-bar"].fields` describes ONE ITEM of
+ * that array (see the registry), so the item's keys are the keys the panel
+ * looks up — flattening is the shape the caller needs, and there is no
+ * collision to worry about because a repeatable section's settings hold the
+ * array and nothing else.
+ */
+function collectCaps(
+  shape: Record<string, unknown>,
+  into: Record<string, number>,
+): void {
+  for (const [key, field] of Object.entries(shape)) {
+    const node = field as MaybeCapped;
+
+    const elementShape = node.element?.shape;
+    if (elementShape !== undefined) {
+      collectCaps(elementShape, into);
+      continue;
+    }
+
+    if (typeof node.maxLength === "number") into[key] = node.maxLength;
+  }
+}
+
+/**
+ * The `{n}/{max}` counters for one section type's settings panel.
+ *
+ * The union is searched rather than indexed because a discriminated union is
+ * not a `Record` — the same reason `SectionRenderer` is a switch. A type with no
+ * capped field returns `{}`, which the panel reads as "no counters", so the
+ * lookup cannot fail loudly for a caller that passes a legitimate type.
+ */
+export function sectionFieldMaxima(type: SectionType): Record<string, number> {
+  const option = sectionInstanceSchema.options.find(
+    (candidate) => candidate.shape.type.value === type,
+  );
+  if (option === undefined) return {};
+
+  const maxima: Record<string, number> = {};
+  collectCaps(option.shape.settings.shape, maxima);
+  return maxima;
+}
+
+/**
+ * The same, for the rail's `Brand & logo` panel.
+ *
+ * `logoKey` is deliberately absent: it is not a `themeTokensSchema` member at
+ * all (the registry's `THEME_NON_TOKEN_FIELD` says why), and it is an `image`
+ * field, so it has no counter either way.
+ */
+export function themeFieldMaxima(): Record<string, number> {
+  const maxima: Record<string, number> = {};
+  collectCaps(themeTokensSchema.shape, maxima);
+  return maxima;
+}

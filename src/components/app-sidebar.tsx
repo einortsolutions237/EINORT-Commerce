@@ -7,6 +7,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Package,
+  Paintbrush,
   Settings,
   ShoppingBag,
   type LucideIcon,
@@ -84,8 +85,10 @@ interface NavItem {
 const OVERVIEW_HREF = "/dashboard";
 
 /**
- * The six destinations, in render order. Adding a dashboard route means adding
- * it here; there is no second list to keep in step.
+ * The seven destinations, in render order. Adding a dashboard route means adding
+ * it here AND to `REQUIRED_HREFS` in `tests/unit/dashboard-nav.test.ts`, in the
+ * same commit — adding either half alone fails that test, which is the whole
+ * point of it (04-RESEARCH.md Pitfall 10).
  */
 const NAV_ITEMS: readonly NavItem[] = [
   {
@@ -97,6 +100,21 @@ const NAV_ITEMS: readonly NavItem[] = [
     href: "/dashboard/products",
     label: strings.dashboard.nav.products,
     icon: Package,
+  },
+  /*
+   * Phase 4, EDIT-02. Between `Products` and `Orders`, per 04-UI-SPEC.md
+   * § Navigation.
+   *
+   * NO `badged` KEY, AND ITS ABSENCE IS THE CONTRACT. The gold budget is fully
+   * spent on the pending-claims count and the `Payment claimed` order chip (see
+   * the header above), and `tests/unit/dashboard-nav.test.ts` counts exactly one
+   * `variant="gold"` in this file. This destination is a workbench, not a queue:
+   * nothing here needs a human to look at it now.
+   */
+  {
+    href: "/dashboard/storefront-editor",
+    label: strings.dashboard.nav.storefrontEditor,
+    icon: Paintbrush,
   },
   {
     href: "/dashboard/orders",
