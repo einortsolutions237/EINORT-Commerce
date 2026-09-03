@@ -46,7 +46,8 @@ const SIDEBAR_FILE = "src/components/app-sidebar.tsx";
 const GOLD_SCAN_DIRS = ["src/app", "src/components"] as const;
 
 /**
- * The six destinations the rail must offer, in 03-UI-SPEC.md's order.
+ * The seven destinations the rail must offer, in 03-UI-SPEC.md's order, extended
+ * by 04-UI-SPEC.md § Navigation.
  *
  * This list is the contract. Adding a dashboard route means adding it here and
  * in the rail, in that order — which is the point: the test is what turns
@@ -56,6 +57,12 @@ const GOLD_SCAN_DIRS = ["src/app", "src/components"] as const;
 const REQUIRED_HREFS = [
   "/dashboard",
   "/dashboard/products",
+  /*
+   * Phase 4, EDIT-02. Placed between `Products` and `Orders` because that is
+   * where 04-UI-SPEC.md § Navigation puts the rail item, and this list is
+   * ordered to match the rail rather than sorted.
+   */
+  "/dashboard/storefront-editor",
   "/dashboard/orders",
   "/dashboard/claims",
   "/dashboard/plan",
