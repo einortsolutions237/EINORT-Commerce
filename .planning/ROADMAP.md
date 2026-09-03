@@ -198,7 +198,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 04-14-PLAN.md — The /preview route and the origin-checked, Zod-validated postMessage receiver
+- [x] 04-14-PLAN.md — The /preview route and the origin-checked, Zod-validated postMessage receiver
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -254,6 +254,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
-| 4. Theme/Section/Block System & Flagship Template | 13/16 | In Progress|  |
+| 4. Theme/Section/Block System & Flagship Template | 14/16 | In Progress|  |
 | 5. Template Segment Expansion | 0/TBD | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
