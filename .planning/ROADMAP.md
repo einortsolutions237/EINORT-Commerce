@@ -226,9 +226,9 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — The variant vocabulary in marker-free schema.ts, the extended TemplateDefinition, variantsForTemplate, and the marker-boundary guard
-- [ ] 05-02-PLAN.md — templateKey → draft/published split, the hand-edited RENAME migration, the [BLOCKING] schema push, and the two read paths
-- [ ] 05-03-PLAN.md — strings.ts → strings/ directory split, six segment copy namespaces, and all Phase-5 chrome copy
+- [x] 05-01-PLAN.md — The variant vocabulary in marker-free schema.ts, the extended TemplateDefinition, variantsForTemplate, and the marker-boundary guard
+- [x] 05-02-PLAN.md — templateKey → draft/published split, the hand-edited RENAME migration, the [BLOCKING] schema push, and the two read paths
+- [x] 05-03-PLAN.md — strings.ts → strings/ directory split, six segment copy namespaces, and all Phase-5 chrome copy
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -296,5 +296,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 15/16 | In Progress|  |
-| 5. Template Segment Expansion | 0/TBD | Not started | - |
+| 5. Template Segment Expansion | 3/22 | In Progress|  |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |

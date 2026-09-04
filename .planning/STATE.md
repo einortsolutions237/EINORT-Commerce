@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 planned (22 plans, 6 waves), plan-checker passed
-last_updated: "2026-09-04T07:30:24.929Z"
-last_activity: 2026-09-03 -- Phase 4 Wave 7 Task 1 confirmed clean; user explicitly directed deferring Wave 7's remaining checkpoints and starting Phase 5's discuss/research/plan pipeline.
+stopped_at: Phase 5 Wave 1 (05-01/02/03) merged and gate-verified; Wave 2 next
+last_updated: "2026-09-04T13:50:00.000Z"
+last_activity: 2026-09-04 -- Phase 5 Wave 1 merged: rendering-variant vocabulary + template contract (05-01), StorefrontTheme templateKey split into draft/published columns via hand-edited migration applied to both dev and test Neon branches with a migration-safety test (05-02), strings.ts split into strings/ directory with six per-segment copy namespaces (05-03). Gates green (lint/typecheck/test:unit 571/571/build); test:full retried once due to Neon transaction-timeout contention (documented pattern, unrelated to the merge -- StorefrontTheme itself confirmed passing in an independent run).
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 68
-  completed_plans: 44
+  completed_plans: 47
   percent: 33
 ---
 
