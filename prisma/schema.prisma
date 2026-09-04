@@ -156,10 +156,11 @@ model Organization {
   /// `/onboarding/plan`. Same "the third state IS the flow" reasoning that
   /// makes `planTier` the other correct nullable enum-ish column here.
   ///
-  /// DELIBERATELY NOT the same thing as `StorefrontTheme.templateKey` (D-03).
-  /// Industry is what the merchant said their business is; templateKey is what
-  /// their storefront actually renders. Keeping them independent is what lets
-  /// Phase 5 ship real segment templates without auto-migrating anyone.
+  /// DELIBERATELY NOT the same thing as `StorefrontTheme.draftTemplateKey` /
+  /// `.publishedTemplateKey` (D-03). Industry is what the merchant said their
+  /// business is; the template key is what their storefront actually renders.
+  /// Keeping them independent is what lets Phase 5 ship real segment
+  /// templates without auto-migrating anyone.
   ///
   /// Declared `input: false` in the Better Auth organization
   /// `additionalFields`, so no request body can set it — the only writer is
@@ -607,7 +608,22 @@ model StorefrontTheme {
   /// MUST NOT auto-migrate anyone onto one — that is only expressible if the
   /// two are independent columns, and it is why this is stored rather than
   /// derived from `industry` at read time. Do not "simplify" this away.
-  templateKey String @default("flagship-fashion")
+  ///
+  /// Split into draft/published (Phase 5, D-13) for the same reason every
+  /// other mutable field on this row is split: the merchant previews a
+  /// template switch and then publishes it, exactly as they do for their
+  /// document (`StorefrontPage.draft`/`.published`) and their tokens
+  /// (`draftTokens`/`publishedTokens` below). Writing `publishedTemplateKey`
+  /// outside `publishStorefront` is a silent publish — the live customer-
+  /// facing storefront would re-render under new variants the instant a
+  /// merchant clicked, while `published` still held the old document.
+  draftTemplateKey String @default("flagship-fashion")
+
+  /// See `draftTemplateKey` above for the full rationale. This is the value
+  /// `getPublishedStorefront` reads; `publishStorefront` is the only place
+  /// permitted to set it (`publishedTemplateKey = draftTemplateKey`, inside
+  /// its existing transaction).
+  publishedTemplateKey String @default("flagship-fashion")
 
   /// The R2 derivative PREFIX (e.g. `tenants/{id}/logos/{uuid}`), matching
   /// `ProductImage.storageKey`'s convention. NEVER a full URL.
