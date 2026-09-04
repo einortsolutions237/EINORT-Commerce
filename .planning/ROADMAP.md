@@ -222,7 +222,48 @@ Plans:
   2. The full template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional) by recombining the segment layouts' sections/blocks with different imagery, color, and copy, not 50 independently designed templates.
   3. Template distinctiveness is checked explicitly via side-by-side comparison ("would a stranger think these are the same product") before the library is considered done — genericness is treated as a failure condition.
 
-**Plans**: TBD
+**Plans**: 22 plans (6 waves)
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — The variant vocabulary in marker-free schema.ts, the extended TemplateDefinition, variantsForTemplate, and the marker-boundary guard
+- [ ] 05-02-PLAN.md — templateKey → draft/published split, the hand-edited RENAME migration, the [BLOCKING] schema push, and the two read paths
+- [ ] 05-03-PLAN.md — strings.ts → strings/ directory split, six segment copy namespaces, and all Phase-5 chrome copy
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05-04-PLAN.md — The tier gate: PLAN_TIER_RANK, PlanLimits.templates, TemplateLockedError, and the boolean/throw access pair (D-12, not trial-elevated)
+- [ ] 05-05-PLAN.md — Hero variants: the three-arm switch plus split and stack (no image slot)
+- [ ] 05-06-PLAN.md — trust-bar:strip and contact:card variants
+- [ ] 05-07-PLAN.md — product-grid:dense, product-grid:showcase and editorial-split:banner variants
+- [ ] 05-08-PLAN.md — The 50 registry rows, 25 skeletons, tier allocation, and the TEMPLATE_DEFAULTS builder dispatch
+- [ ] 05-09-PLAN.md — The zero-byte geometric template thumbnail and the shared picker grid
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05-10-PLAN.md — Render path: the variants prop by literal key, both storefront routes, and the fourth validated postMessage field
+- [ ] 05-11-PLAN.md — switchTemplate plus template-aware publish, discard and saveBranding
+- [ ] 05-12-PLAN.md — fashion-apparel: 8 templates, 4 skeletons (flagship frozen)
+- [ ] 05-13-PLAN.md — electronics: 9 templates, 4 skeletons
+- [ ] 05-14-PLAN.md — beauty-cosmetics: 8 templates, 4 skeletons
+- [ ] 05-15-PLAN.md — grocery-food: 8 templates, 4 skeletons
+- [ ] 05-16-PLAN.md — furniture-home: 8 templates, 4 skeletons
+- [ ] 05-17-PLAN.md — general-retail: 9 templates, 5 skeletons
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 05-18-PLAN.md — The onboarding template picker as Card 3, submitted with saveBranding
+- [ ] 05-19-PLAN.md — The editor's Change template rail row, picker panel, destructive confirm and preview repaint
+- [ ] 05-20-PLAN.md — The eight-rule distinctiveness metric and the drift guard generalized to 50
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 05-21-PLAN.md — Isolation suites: the non-elevated tier gate, draft-only switch, discard revert and onboarding seed
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 05-22-PLAN.md — Phase gate: full automated suite, the 50-template contact sheet, and the six adversarial-pair stranger tests (closes Phase 4's D-14 check)
+
 **UI hint**: yes
 
 ### Phase 6: Merchant Dashboard & Platform Admin
