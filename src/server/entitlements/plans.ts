@@ -29,6 +29,24 @@ export const PLAN_TIERS = ["starter", "business", "professional"] as const;
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
 /**
+ * D-06's nesting, made structural. Starter's reachable template set is a
+ * subset of Business's, which is a subset of Professional's, as a
+ * CONSEQUENCE of `rank >= TEMPLATES[key].minTier`'s rank in
+ * `src/server/theming/access.ts` — not because three hand-maintained lists
+ * happen to agree today. Adding a fourth tier is a compile error at this
+ * table AND at every other `Readonly<Record<PlanTier, …>>` in the codebase,
+ * which is the same drift detection `PLANS` below already relies on.
+ *
+ * Mirrors `INDUSTRY_SEGMENT_ICONS`'s `Readonly<Record<K, V>>` shape
+ * (`src/server/theming/registry.ts`).
+ */
+export const PLAN_TIER_RANK: Readonly<Record<PlanTier, number>> = {
+  starter: 0,
+  business: 1,
+  professional: 2,
+};
+
+/**
  * D-07: every limit this product will ever gate is REGISTERED here now, even
  * where nothing reads it yet. A registered-but-unenforced key is a later-phase
  * wiring task with a compile-time home; an unregistered one is a design
@@ -116,6 +134,32 @@ export interface PlanLimits {
   readonly discountCodes: boolean;
   /** ENFORCED IN v2 (COM-V2-03, bulk product import). Registered now. */
   readonly bulkImport: boolean;
+  /**
+   * How many templates this tier can SELECT from in the picker (TMPL-04).
+   * `null` is all of them. These are CUMULATIVE reachable counts (nested,
+   * per D-06) — Business's 25 is Starter's 10 plus 15 more, not a per-tier
+   * increment.
+   *
+   * ENFORCED, but NEVER FROM THIS KEY DIRECTLY — see the warning below, the
+   * same register as `storefrontEditor` above.
+   *
+   * This key is the DOCUMENTED catalog size, not the gate. The gate is a
+   * per-template `minTier` comparison against `PLAN_TIER_RANK` in
+   * `src/server/theming/access.ts`: `accessibleTemplateKeys(tier)` walks
+   * `TEMPLATE_KEYS` and includes a key when
+   * `PLAN_TIER_RANK[tier] >= PLAN_TIER_RANK[TEMPLATES[key].minTier]`.
+   * Gating on this count directly would make the reachable set depend on
+   * registry declaration order rather than on each template's own
+   * `minTier` — an ordering nobody has promised to keep stable.
+   *
+   * `tests/unit/template-distinctiveness.test.ts` asserts the registry's
+   * ACTUAL accessible count for each tier equals this number, so a drift
+   * between the two is a red unit test, not a silent mismatch.
+   *
+   * DO NOT READ THIS VALUE AT A CALL SITE, AND DO NOT GATE TEMPLATE ACCESS
+   * WITH `can(ctx, …)` or a raw comparison against this number.
+   */
+  readonly templates: number | null;
 }
 
 export interface PlanDefinition {
@@ -155,6 +199,7 @@ export const PLANS: Readonly<Record<PlanTier, PlanDefinition>> = {
       storefrontEditor: false,
       discountCodes: false,
       bulkImport: false,
+      templates: 10,
     },
   },
   business: {
@@ -168,6 +213,7 @@ export const PLANS: Readonly<Record<PlanTier, PlanDefinition>> = {
       storefrontEditor: true,
       discountCodes: true,
       bulkImport: true,
+      templates: 25,
     },
   },
   professional: {
@@ -181,6 +227,7 @@ export const PLANS: Readonly<Record<PlanTier, PlanDefinition>> = {
       storefrontEditor: true,
       discountCodes: true,
       bulkImport: true,
+      templates: null,
     },
   },
 } as const;
