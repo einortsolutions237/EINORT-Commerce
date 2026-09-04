@@ -61,7 +61,13 @@ import "server-only";
 
 import { strings } from "@/lib/strings";
 
-import type { SectionType } from "@/server/theming/schema";
+import type { PlanTier } from "@/server/entitlements/plans";
+import {
+  SECTION_VARIANTS,
+  type SectionType,
+  type SectionVariantMap,
+  type TemplateSectionRef,
+} from "@/server/theming/schema";
 
 // ---------------------------------------------------------------------------
 // Field kinds
@@ -416,8 +422,33 @@ export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export interface TemplateDefinition {
   readonly key: TemplateKey;
-  /** The ordered section types a new storefront on this template ships with. */
-  readonly sections: readonly SectionType[];
+  /**
+   * The industry segment this template was DESIGNED FOR — a property of the
+   * template row, never a derivation from any merchant's
+   * `Organization.industry`. D-03/D-05 still bind here unchanged: the Phase 5
+   * picker sorts and pre-filters templates on this field and must always
+   * offer a "show all" affordance, and there is no function anywhere — here
+   * or in the picker — that maps an organization's industry to a template.
+   * That mapping would recreate the exact auto-migration hole D-03 forbids
+   * below, one level removed.
+   */
+  readonly segment: IndustrySegment;
+  /**
+   * D-06: the lowest plan tier that may SELECT this template from the
+   * picker. Explicitly NOT a render gate — `variantsForTemplate()` and the
+   * storefront renderer do not consult it. A merchant who downgrades after
+   * choosing a template keeps rendering it forever (the D-12 corollary to
+   * D-03's no-auto-migration rule): losing write access to the editor is not
+   * the same as losing the storefront they already published.
+   */
+  readonly minTier: PlanTier;
+  /**
+   * The ordered section types a new storefront on this template ships with,
+   * each paired with the variant IT renders in (D-02, TMPL-03/TMPL-04). A
+   * `TemplateSectionRef` is a discriminated union, so a row cannot pair
+   * `"hero"` with `"trust-bar"`'s `"strip"` variant and still compile.
+   */
+  readonly sections: readonly TemplateSectionRef[];
 }
 
 /**
@@ -449,18 +480,25 @@ export interface TemplateDefinition {
 export const TEMPLATES: Readonly<Record<TemplateKey, TemplateDefinition>> = {
   "flagship-fashion": {
     key: "flagship-fashion",
+    segment: "fashion-apparel",
+    minTier: "starter",
     /*
      * The order is LOCKED and is not alphabetical — see the header of
      * `src/server/theming/defaults.ts` for the background-treatment alternation
      * rule it encodes. `flagshipDefaultDocument()` builds against this list and
      * the drift test asserts the two agree.
+     *
+     * Every variant below is the FIRST entry of that section type's
+     * `SECTION_VARIANTS` list — i.e. exactly Phase 4's design, unchanged by
+     * this plan. `TEMPLATE_KEYS` stays a single row this plan; 05-08 grows it
+     * to 50.
      */
     sections: [
-      "hero",
-      "trust-bar",
-      "product-grid",
-      "editorial-split",
-      "contact",
+      { type: "hero", variant: "full-bleed" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "grid" },
+      { type: "editorial-split", variant: "split" },
+      { type: "contact", variant: "band" },
     ],
   },
 };
@@ -470,6 +508,37 @@ const TEMPLATE_KEY_SET: ReadonlySet<string> = new Set(TEMPLATE_KEYS);
 /** Narrows an untrusted value — a stored column, a form field — to a template. */
 export function isTemplateKey(value: unknown): value is TemplateKey {
   return typeof value === "string" && TEMPLATE_KEY_SET.has(value);
+}
+
+/**
+ * Resolves a (possibly untrusted) template key to a COMPLETE variant map.
+ *
+ * `Organization.draftTemplateKey`/`publishedTemplateKey` are `String?`
+ * columns, so nothing at the type level stops one holding a value from a bad
+ * backfill or a template retired in a later phase. This function is the one
+ * place that drift is absorbed: for each section type it uses the variant
+ * `TEMPLATES[key]` declares, if `key` is a real template AND that template
+ * declares that section type, and otherwise the FIRST entry of
+ * `SECTION_VARIANTS` for that type — the same degrade-don't-throw posture
+ * `isIndustrySegment` documents above. An unrecognised key therefore renders
+ * the all-first flagship map (T-05-02) instead of crashing a live storefront.
+ *
+ * MUST NEVER THROW AND MUST NEVER RETURN A PARTIAL MAP. Every section type in
+ * `SECTION_VARIANTS` gets an entry regardless of what `key` resolves to,
+ * which is what lets `SectionVariantMap` stay complete rather than `Partial`.
+ */
+export function variantsForTemplate(key: string): SectionVariantMap {
+  const template = isTemplateKey(key) ? TEMPLATES[key] : undefined;
+
+  const entries = (Object.keys(SECTION_VARIANTS) as SectionType[]).map(
+    (type) => {
+      const declared = template?.sections.find((ref) => ref.type === type);
+      const variant = declared ? declared.variant : SECTION_VARIANTS[type][0];
+      return [type, variant] as const;
+    },
+  );
+
+  return Object.fromEntries(entries) as SectionVariantMap;
 }
 
 // ---------------------------------------------------------------------------
