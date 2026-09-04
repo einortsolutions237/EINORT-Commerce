@@ -451,7 +451,7 @@ describe("theming registry / schema drift", () => {
         "sections share a treatment. It is also the order the " +
         "Design-Distinctiveness Gate is judged against.\n" +
         "  FIX: change both, deliberately, in one commit.",
-    ).toEqual([...TEMPLATES["flagship-fashion"].sections]);
+    ).toEqual(TEMPLATES["flagship-fashion"].sections.map((ref) => ref.type));
   });
 
   it("uses each section's own type as its id", () => {
@@ -538,7 +538,7 @@ describe("theming registry / schema drift", () => {
 
     expect(
       missingFrom(
-        TEMPLATES["flagship-fashion"].sections,
+        TEMPLATES["flagship-fashion"].sections.map((ref) => ref.type),
         new Set(settingsShapes.keys()),
       ),
       "The flagship template lists a section type the Zod union does not " +

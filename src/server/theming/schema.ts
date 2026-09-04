@@ -31,6 +31,14 @@ import { z } from "zod";
  * schema is exactly the retargeting vector that architecture exists to prevent.
  * The audit for that boundary is a plain grep, so this file deliberately does
  * not spell the column name in prose either.
+ *
+ * EDIT-01 names three doors above. Phase 5 (TMPL-03/TMPL-04, D-02) adds a
+ * FOURTH, narrower one: `sectionVariantsSchema` validates the per-section
+ * rendering-variant map carried on the `postMessage` payload only. It is
+ * deliberately NOT folded into `pageDocumentSchema` — a variant is a property
+ * of the template a storefront is built on, not of the document a merchant
+ * edits, so a direct POST to `saveDraft`/`discardDraft` can never set one. See
+ * `sectionVariantsSchema`'s own comment below for the full rationale.
  */
 
 // ---------------------------------------------------------------------------
@@ -226,6 +234,114 @@ export type SectionInstance = z.infer<typeof sectionInstanceSchema>;
 export type SectionType = SectionInstance["type"];
 export type PageDocument = z.infer<typeof pageDocumentSchema>;
 export type ThemeTokens = z.infer<typeof themeTokensSchema>;
+
+// ---------------------------------------------------------------------------
+// Rendering variants (TMPL-03, TMPL-04, D-02)
+// ---------------------------------------------------------------------------
+//
+// A section TYPE is what a document instance is ("hero"); a VARIANT is how a
+// template renders it ("full-bleed" vs "split" vs "stack"). Phase 4 shipped
+// exactly one rendering per type. Phase 5 gives every type a closed, typed
+// list of variants a template row can select from, so pairing a section type
+// with another type's variant — "hero" rendered as "dense" — is a compile
+// error, not a runtime crash on a public storefront.
+//
+// 05-RESEARCH.md Finding 1: this vocabulary belongs HERE, in the marker-free
+// schema module, and not in `src/server/theming/registry.ts`. The registry
+// carries `import "server-only"` on line 1; the variant type is read by
+// `src/app/s/[slug]/sections/section-renderer.tsx` and every section
+// component beneath it, none of which may import a server-only module
+// (T-04-24). Putting the vocabulary in the registry is "the single most
+// likely wrong turn in this phase, and it fails at *build* time on the
+// editor route" — this module is where it must live instead.
+
+/**
+ * The closed, per-section-type list of rendering variants a template row may
+ * select from. The FIRST entry of every list is the flagship's current
+ * rendering (Phase 4's design) and is the degraded-read default every
+ * unrecognised template key falls back to — see `variantsForTemplate()` in
+ * `src/server/theming/registry.ts`.
+ *
+ * `as const satisfies Readonly<Record<SectionType, …>>` rather than a plain
+ * object literal: adding a sixth `SectionType` member becomes a COMPILE error
+ * right here, the same drift detection `INDUSTRY_SEGMENTS` /
+ * `INDUSTRY_SEGMENT_ICONS` provide in `registry.ts`. `satisfies` is used
+ * instead of a type annotation so the literal string values are preserved
+ * (a `: Readonly<Record<…>>` annotation would widen every entry to
+ * `readonly string[]`, and `SectionVariant<T>` below needs the literal union,
+ * not `string`).
+ */
+export const SECTION_VARIANTS = {
+  hero: ["full-bleed", "split", "stack"],
+  "trust-bar": ["band", "strip"],
+  "product-grid": ["grid", "dense", "showcase"],
+  "editorial-split": ["split", "banner"],
+  contact: ["band", "card"],
+} as const satisfies Readonly<
+  Record<SectionType, readonly [string, string, ...string[]]>
+>;
+
+/** The closed set of variants one section type may render as. */
+export type SectionVariant<T extends SectionType> =
+  (typeof SECTION_VARIANTS)[T][number];
+
+/**
+ * The variant every section type renders in, for one resolved template.
+ *
+ * COMPLETE, NEVER `Partial`. A `Partial<…>` would widen every renderer read
+ * to `SectionVariant<T> | undefined` and force the `?? "full-bleed"`
+ * lookup-with-a-default shape `section-renderer.tsx`'s header bans — the same
+ * failure mode that file's own comment names for a `Record`-keyed component
+ * registry. `variantsForTemplate()` is the one function that produces this
+ * type, and it always produces a complete map, degrading a missing entry to
+ * that type's own first variant rather than omitting the key.
+ */
+export type SectionVariantMap = {
+  readonly [K in SectionType]: SectionVariant<K>;
+};
+
+/**
+ * One row of a template's `sections` list: a section type PLUS the variant it
+ * renders in, as a single discriminated union rather than two independent
+ * fields.
+ *
+ * `{ type: K; variant: SectionVariant<K> }` mapped over every `K` and indexed
+ * back out by `SectionType` is what makes the pairing exhaustive: TypeScript
+ * narrows `variant` from `type` the same way `sectionInstanceSchema` narrows
+ * `settings` from `type`, so `{ type: "hero", variant: "dense" }` (a real
+ * variant, just not `hero`'s) is a compile error instead of a value that
+ * parses and then renders nothing recognisable. A plain
+ * `{ type: SectionType; variant: string }` shape would accept that pairing
+ * silently.
+ */
+export type TemplateSectionRef = {
+  [K in SectionType]: { readonly type: K; readonly variant: SectionVariant<K> };
+}[SectionType];
+
+/**
+ * The FOURTH trust boundary this file validates (see the file header):
+ * `postMessage` only, and DELIBERATELY NOT a member of `pageDocumentSchema`.
+ *
+ * A section's rendering variant is a property of the TEMPLATE, not of the
+ * document a merchant edits (D-02) — the picker in
+ * `src/components/theming/template-picker.tsx` sets it by choosing a
+ * template, and `switchTemplate` in `src/server/theming/actions.ts` is the
+ * only write path. Folding this schema into `pageDocumentSchema` would make a
+ * variant reachable from `saveDraft`'s direct-POST surface, which turns
+ * "pick a template" into "pick any variant of any section, independent of any
+ * template that declares that combination" — a merchant-editable field this
+ * decision explicitly refuses. `preview-canvas.tsx`'s `safeParse` step
+ * validates a payload's `variants` field with this schema before any state
+ * update, exactly as it already does for `pageDocumentSchema` and
+ * `themeTokensSchema`.
+ */
+export const sectionVariantsSchema = z.object({
+  hero: z.enum(SECTION_VARIANTS.hero),
+  "trust-bar": z.enum(SECTION_VARIANTS["trust-bar"]),
+  "product-grid": z.enum(SECTION_VARIANTS["product-grid"]),
+  "editorial-split": z.enum(SECTION_VARIANTS["editorial-split"]),
+  contact: z.enum(SECTION_VARIANTS.contact),
+});
 
 // ---------------------------------------------------------------------------
 // The caps, read back out
