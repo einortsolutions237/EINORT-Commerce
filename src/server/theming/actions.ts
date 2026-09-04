@@ -418,7 +418,8 @@ export const ensureStorefrontSeeded = merchantAction({
       await tx.storefrontTheme.upsert({
         where: { tenantId: ctx.tenantId },
         create: scopedCreateData<StorefrontThemeCreateInput>({
-          templateKey: DEFAULT_TEMPLATE_KEY,
+          draftTemplateKey: DEFAULT_TEMPLATE_KEY,
+          publishedTemplateKey: DEFAULT_TEMPLATE_KEY,
           logoKey: null,
           draftTokens: tokens,
           // Published at seed time, exactly as at onboarding: a storefront that
@@ -625,7 +626,8 @@ export async function saveBranding(
     await tx.storefrontTheme.upsert({
       where: { tenantId },
       create: scopedCreateData<StorefrontThemeCreateInput>({
-        templateKey: DEFAULT_TEMPLATE_KEY,
+        draftTemplateKey: DEFAULT_TEMPLATE_KEY,
+        publishedTemplateKey: DEFAULT_TEMPLATE_KEY,
         logoKey,
         draftTokens: tokens,
         publishedTokens: tokens,

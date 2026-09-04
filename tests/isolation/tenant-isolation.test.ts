@@ -271,8 +271,8 @@ const MODEL_PROBES: Record<string, ModelProbe> = {
       draftTokens: { primaryAccent: "#000000", secondaryAccent: "#111111" },
       publishedTokens: { primaryAccent: "#000000", secondaryAccent: "#111111" },
     }),
-    // `templateKey` carries no unique constraint — safe to scribble on.
-    mutation: () => ({ templateKey: "probe-mutated" }),
+    // `draftTemplateKey` carries no unique constraint — safe to scribble on.
+    mutation: () => ({ draftTemplateKey: "probe-mutated" }),
   },
 
   StorefrontPage: {
