@@ -76,6 +76,15 @@ export type PublishedStorefront = {
   tokens: ThemeTokens;
   /** The R2 derivative PREFIX, never a URL. `null` when no logo was uploaded. */
   logoKey: string | null;
+  /**
+   * The LIVE template — sourced from `publishedTemplateKey`, never
+   * `draftTemplateKey` (D-13/Phase 5). A merchant previewing a template switch
+   * in the editor must not change what an anonymous customer sees until they
+   * publish; reading the draft column here would make every preview a silent
+   * publish of the structural variant, on top of everything else this file's
+   * header already protects.
+   */
+  publishedTemplateKey: string;
 };
 
 /**
@@ -123,7 +132,7 @@ export const getPublishedStorefront = cache(async function getPublishedStorefron
     }),
     db.storefrontTheme.findUnique({
       where: { tenantId },
-      select: { publishedTokens: true, logoKey: true },
+      select: { publishedTokens: true, logoKey: true, publishedTemplateKey: true },
     }),
   ]);
 
@@ -155,6 +164,15 @@ export const getPublishedStorefront = cache(async function getPublishedStorefron
       : flagshipDefaultDocument(),
     tokens: parsedTokens.success ? parsedTokens.data : flagshipDefaultTokens(),
     logoKey: theme?.logoKey ?? null,
+    /*
+     * `"flagship-fashion"` for a missing row, WITHOUT a `console.error` — the
+     * same silent-fallback rule the lines above this comment already apply to
+     * `document`/`tokens` for the pre-seed state. A missing theme row is not a
+     * degraded read (nothing failed to parse); it is the expected shape of a
+     * pre-Phase-4 organization, and logging it would print a line on every
+     * request to every legacy store.
+     */
+    publishedTemplateKey: theme?.publishedTemplateKey ?? "flagship-fashion",
   };
 });
 
@@ -203,7 +221,7 @@ export async function getEditorStorefront(
     }),
     db.storefrontTheme.findUnique({
       where: { tenantId },
-      select: { draftTokens: true, logoKey: true, templateKey: true },
+      select: { draftTokens: true, logoKey: true, draftTemplateKey: true },
     }),
   ]);
 
@@ -230,13 +248,20 @@ export async function getEditorStorefront(
     tokens: parsedTokens.success ? parsedTokens.data : flagshipDefaultTokens(),
     logoKey: theme?.logoKey ?? null,
     /*
+     * Sourced from `draftTemplateKey`, NOT `publishedTemplateKey` (D-08: the
+     * editor reads draft, the storefront reads published — the exact split
+     * `EDIT-01`/`EDIT-02` already apply to `document`/`tokens`). The returned
+     * field keeps the name `templateKey` so downstream editor code has one
+     * obvious name to read, matching the shape it had before the draft/
+     * published split — only the SOURCE column changed, not the contract.
+     *
      * The column carries a database default, so an unseeded read still hands
      * the editor a template it can render. `templateKey` stays a plain string
      * rather than the `TemplateKey` union: the column is a `String` and D-03
      * keeps it independent of everything else, so narrowing belongs at the one
      * call site that maps it to a renderer, via `isTemplateKey`.
      */
-    templateKey: theme?.templateKey ?? "flagship-fashion",
+    templateKey: theme?.draftTemplateKey ?? "flagship-fashion",
     /*
      * `new Date(0)` for an unseeded page, not `new Date()`. The epoch is
      * strictly less than any real `publishedAt`, so the caller's

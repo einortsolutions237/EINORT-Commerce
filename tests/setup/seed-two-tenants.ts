@@ -507,7 +507,11 @@ const MODEL_FIXTURES: Record<
    */
   StorefrontTheme: (tenant) => ({
     id: `${tenant.id}-storefront-theme`,
-    templateKey: "flagship-fashion",
+    // Phase 5 (D-13) split this into a draft/published pair, mirroring
+    // draftTokens/publishedTokens below — both equal, matching the "already
+    // published, no pending edits" baseline the token pair documents.
+    draftTemplateKey: "flagship-fashion",
+    publishedTemplateKey: "flagship-fashion",
     logoKey: null,
     draftTokens: { primaryAccent: "#18181B", secondaryAccent: "#71717A" },
     publishedTokens: { primaryAccent: "#18181B", secondaryAccent: "#71717A" },
