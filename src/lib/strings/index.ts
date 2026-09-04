@@ -27,6 +27,14 @@
  * language.
  */
 
+import { flagshipCopy } from "./flagship";
+import { beautyCosmeticsTemplates } from "./templates/beauty-cosmetics";
+import { electronicsTemplates } from "./templates/electronics";
+import { fashionApparelTemplates } from "./templates/fashion-apparel";
+import { furnitureHomeTemplates } from "./templates/furniture-home";
+import { generalRetailTemplates } from "./templates/general-retail";
+import { groceryFoodTemplates } from "./templates/grocery-food";
+
 export const BRAND = "EINORT" as const;
 
 export const strings = {
@@ -1319,67 +1327,54 @@ export const strings = {
    * prompt to the merchant in the editor and is still a coherent, shippable
    * sentence if they never touch it. Everything else is real copy, not lorem.
    */
-  flagship: {
-    /** Theme chrome, not a section — renders on every storefront route. */
-    announcement: "Order online. Pay by Mobile Money or on delivery.",
+  /**
+   * `strings.flagship`'s value now lives in `./flagship.ts` (05-03) — moved
+   * out, not deleted, and read here verbatim so this property's value and
+   * shape are byte-identical to before the move. See that module's header
+   * for why: the six per-segment template namespaces spliced into
+   * `strings.templates` below need `typeof flagshipCopy` (re-exported there
+   * as `FlagshipCopy`) to type themselves against, and importing that type
+   * from THIS file (`@/lib/strings`) instead would create a real circular
+   * type reference — `strings`'s own initializer would transitively depend
+   * on its own not-yet-inferred type.
+   */
+  flagship: { ...flagshipCopy },
 
-    hero: {
-      eyebrow: "Welcome",
-      heading: "New arrivals",
-      body: "Everything we're selling right now, in one place.",
-      /** The one accent-filled CTA above the fold. */
-      ctaLabel: "Shop now",
-      /** Home, because the product grid lives on `/` — no new routes. */
-      ctaHref: "/",
-    },
-
-    /**
-     * Three fixed items. The icon is a schema enum on the settings row
-     * (`truck`, `message-circle`, `shield-check`), never copy — an icon name
-     * in a copy catalogue is a string an i18n pass would try to translate.
-     */
-    trustBar: {
-      itemOne: {
-        heading: "Delivery in Douala",
-        body: "We'll get your order to you.",
-      },
-      itemTwo: {
-        heading: "Talk to us",
-        body: "Message us on WhatsApp before or after you order.",
-      },
-      itemThree: {
-        heading: "Pay your way",
-        body: "Mobile Money, or cash when your order arrives.",
-      },
-    },
-
-    productGrid: {
-      heading: "What we're selling",
-      /** A link, never a button — 04-UI-SPEC.md § Core contract. */
-      viewAllLabel: "View all",
-      viewAllHref: "/",
-    },
-
-    editorialSplit: {
-      eyebrow: "About us",
-      heading: "A little about this shop",
-      body: "Tell customers who you are and why they should buy from you. You can change this text any time.",
-      ctaLabel: "See what's in stock",
-      ctaHref: "/",
-    },
-
-    /**
-     * Replaces the visual reference's mailing-list band. A store that collects
-     * addresses it will never send to is a promise the product cannot keep;
-     * WhatsApp is the channel these merchants already answer.
-     */
-    contact: {
-      heading: "Questions? Message us.",
-      body: "Send us a message on WhatsApp and we'll get back to you.",
-      ctaLabel: "Message us on WhatsApp",
-    },
-
-    footerTagline: "Thanks for shopping with us.",
+  /**
+   * The 50-template library's per-template copy (TMPL-04, Phase 5). Flat by
+   * template key, never nested by segment — the picker and the default-document
+   * builders both look copy up by `TemplateKey`, and a second nesting level
+   * would mean every call site restates the segment it already knows from the
+   * registry (`TEMPLATES[key].segment`).
+   *
+   * Spliced together from the six `src/lib/strings/templates/<segment>.ts`
+   * modules, one per `INDUSTRY_SEGMENTS` id. Each module is typed
+   * `Partial<Record<TemplateKey, Partial<FlagshipCopy>>>` — `FlagshipCopy`
+   * (`./flagship.ts`) is `typeof flagshipCopy`, the exact value assigned to
+   * `strings.flagship` above, so this is structurally identical to
+   * `Partial<typeof strings.flagship>` without importing `strings` itself
+   * (see `./flagship.ts`'s header for why that specific import would be
+   * circular). The outer `Partial` is why a template that has not been
+   * authored yet simply has no entry, and the inner `Partial` is why a
+   * template that omits a section (per its registry row) simply omits that
+   * section's copy group. This phase (05-03) only creates the six namespaces
+   * empty; plans 05-12 through 05-17 (Wave 3) fill them with real per-template
+   * copy under this exact type, and plan 05-08 (Wave 2) reads from this
+   * namespace today via optional chaining (`strings.templates[key]?.hero
+   * ?.eyebrow ?? ""`) — it typechecks before any real content exists because
+   * the type, not the content, is what this plan ships.
+   *
+   * `strings.flagship` is NOT part of this namespace — it stays its own
+   * top-level key, read directly by `flagshipDefaultDocument()`, because moving
+   * it would break `tests/setup/seed-two-tenants.ts`'s fixture byte-identity.
+   */
+  templates: {
+    ...fashionApparelTemplates,
+    ...electronicsTemplates,
+    ...beautyCosmeticsTemplates,
+    ...groceryFoodTemplates,
+    ...furnitureHomeTemplates,
+    ...generalRetailTemplates,
   },
 
   /**
