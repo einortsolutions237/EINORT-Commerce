@@ -8,7 +8,7 @@ Every plan gets the same 10-day full-feature trial. Annual pricing is ~10 months
 **5,000 FCFA/month | 50,000 FCFA/year**
 Target: small retailers, individual entrepreneurs, first structured online store.
 
-- Storefront: 1 online store, EINORT subdomain, custom domain connection, 3–5 standard templates, basic theme customization, logo and brand colors, basic homepage sections, About/Contact pages, responsive storefront
+- Storefront: 1 online store, EINORT subdomain, custom domain connection, 10 standard templates, basic theme customization, logo and brand colors, basic homepage sections, About/Contact pages, responsive storefront
 - Products & Inventory: up to 50 products, categories, product images, variants, prices, stock quantities, basic inventory management
 - Commerce: shopping cart, checkout, order creation and dashboard, order status management, customer information and history, Cash on Delivery, one supported online payment integration (subject to provider availability — **not built in V1**, see PROJECT.md constraints), basic delivery zones and fixed fees, WhatsApp contact/support
 - Analytics: orders, revenue, products sold, basic merchant dashboard
@@ -18,7 +18,7 @@ Target: small retailers, individual entrepreneurs, first structured online store
 **12,500 FCFA/month | 125,000 FCFA/year**
 Target: growing businesses needing more catalogue capacity, operational controls, reporting. Includes everything in Starter, plus:
 
-- Up to 250 products; advanced storefront customization, more homepage sections, featured products and promotional banners, custom navigation, additional pages
+- Up to 250 products; 25 templates reachable (Starter's 10, plus 15 more); advanced storefront customization, more homepage sections, featured products and promotional banners, custom navigation, additional pages
 - Advanced product variants; bulk product import, export and editing
 - Inventory history; stock alerts / low-stock indicators
 - Advanced order search and filtering; order export
@@ -32,7 +32,7 @@ Target: growing businesses needing more catalogue capacity, operational controls
 **25,000 FCFA/month | 250,000 FCFA/year**
 Target: established businesses, larger teams, maximum V1 operational capability. Includes everything in Business, plus:
 
-- Unlimited products; advanced storefront customization, more advanced theme controls, custom promotional sections, advanced homepage configuration
+- Unlimited products; all 50 templates reachable; advanced storefront customization, more advanced theme controls, custom promotional sections, advanced homepage configuration
 - Advanced inventory dashboard, inventory adjustments, stock movement history, bulk inventory management
 - Advanced order filtering and management; exportable order data
 - Customer groups, tagging and basic segmentation

@@ -292,7 +292,7 @@ export const strings = {
       tagline: "For small retailers and first online stores.",
       features: [
         "1 online store on your EINORT address, plus your own domain",
-        "3–5 templates with your logo, brand colors and basic sections",
+        "10 templates with your logo, brand colors and basic sections",
         "Up to 50 products with images, variants, prices and stock",
         "Cart, checkout, orders and customer history",
         "Cash on delivery and WhatsApp orders",
@@ -310,6 +310,7 @@ export const strings = {
       featuresHeader: "Everything in Starter, plus",
       features: [
         "Up to 250 products",
+        "25 templates reachable (Starter's 10, plus 15 more)",
         "Advanced storefront customization, featured products and promotional banners",
         "Bulk product import, export and editing",
         "Inventory history and low-stock alerts",
@@ -328,6 +329,7 @@ export const strings = {
       featuresHeader: "Everything in Business, plus",
       features: [
         "Unlimited products",
+        "All 50 templates reachable",
         "Advanced theme controls and custom promotional sections",
         "Inventory adjustments and stock movement history",
         "Customer groups, tagging and segmentation",
@@ -1448,6 +1450,26 @@ export const strings = {
       "This colour is light against a white page — links in it may be hard to read. You can use it anyway.",
     invalidHex: "Use a 6-digit colour code, like #1A1A1A.",
 
+    /**
+     * Card 3, `<TemplatePicker>` (D-07, TMPL-04, Phase 5) — 05-UI-SPEC.md
+     * § Onboarding Template Picker. `{tier}`/`{n}` are integers/tier names the
+     * server computed from the registry and `PlanLimits`, never typed here —
+     * same discipline as `plan.dashboard`'s `{plan}`/`{n}`/`{m}` above.
+     */
+    templateCardTitle: "Choose your template",
+    templateHelper:
+      "We've matched these to what you sell. See every template, or switch any time from your storefront editor.",
+    /** Overlay chip on a tier-locked thumbnail. */
+    templateLockedChip: "Requires {tier}",
+    /** Tooltip on focus/hover of a tier-locked card. */
+    templateLockedTooltip: "Available on the {tier} plan.",
+    /** Collapsed state of the show-all/show-recommended sort toggle. */
+    templateShowAll: "Show all {n} templates",
+    /** Expanded state of the same toggle — never removes a card, only re-sorts. */
+    templateShowRecommended: "Show recommended only",
+    /** Inline error beneath the grid when the form is submitted unselected. */
+    templateRequired: "Choose a template to continue.",
+
     /** The one primary button on the page. */
     cta: "Publish my store",
     /** Width retained while in flight — no layout shift, no full-page spinner. */
@@ -1487,6 +1509,15 @@ export const strings = {
     railThemeGroup: "Theme",
     railSectionsGroup: "Sections",
     railThemeEntry: "Brand & logo",
+    /**
+     * D-08, TMPL-04, Phase 5 — 05-UI-SPEC.md § Editor "Change Template" Action.
+     * Second row under the `Theme` group, below `Brand & logo`. Identical
+     * push/pop pattern: selecting it swaps the rail's list view for the
+     * picker panel plus a back row. That back row reads `railBack` below —
+     * same string, same push/pop back-row role as `Brand & logo`'s panel
+     * already uses, so it is reused rather than duplicated under a second key.
+     */
+    railChangeTemplateEntry: "Change template",
     /** Back row of the settings-panel view — this is a push/pop, not a pane. */
     railBack: "All sections",
 
@@ -1722,5 +1753,36 @@ export const strings = {
      * it to `assertCanEditStorefront`) and it must be unambiguous.
      */
     seePlansLink: "See plans",
+
+    /**
+     * D-08/D-09/D-11, TMPL-04, Phase 5 — 05-UI-SPEC.md § Editor "Change
+     * Template" Action. `switchTemplate`'s destructive confirm dialog: same
+     * register as `discard*` above (it discards section customization even
+     * though nothing is deleted from the database), and the one dialog this
+     * phase adds. `{templateName}` is the target template's display name
+     * (`strings.templates[key].name`), never the internal `TemplateKey`.
+     */
+    changeTemplateTitle: "Change to {templateName}?",
+    changeTemplateBody:
+      "Switching replaces your sections and their content with {templateName}'s defaults. Your logo and brand colors carry over — your announcement text and footer message reset to the new template's defaults. This won't change what customers see until you publish.",
+    changeTemplateConfirm: "Change template",
+    changeTemplateCancel: "Keep current template",
+
+    /** Pill badge on the picker card matching `draftTemplateKey`. */
+    templateCurrentBadge: "Current",
+    /**
+     * Caption beneath the current-template card when it sits above the
+     * merchant's tier (Finding 6 corollary) — the one card the accessible-set
+     * filter never hides.
+     */
+    templateRetainedCaption: "Your current template · kept from a previous plan.",
+    /** Text link beneath the editor's picker grid, to `/dashboard/plan`. */
+    templateUpsellLink: "Want more templates? See plans",
+    /**
+     * Non-destructive `alert` inside the panel when `switchTemplate` throws
+     * `TemplateLockedError` — e.g. a stale client posting an out-of-tier key.
+     * Same register as the publish bar's `publishRefused`/`saveFailed` above.
+     */
+    templateTierLocked: "This template needs a higher plan. See plans.",
   },
 } as const;
