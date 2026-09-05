@@ -1,16 +1,19 @@
 import { MessageCircleIcon } from "lucide-react";
+import type { ReactElement } from "react";
 
 import { cn } from "@/lib/utils";
-import type { SectionInstance } from "@/server/theming/schema";
+import type { SectionInstance, SectionVariant } from "@/server/theming/schema";
 
+import { ContactCard } from "./contact-card";
 import type { StorefrontRenderData } from "./render-data";
 import { Reveal } from "./reveal";
 
 /**
- * S5 — the contact band (TMPL-01, TMPL-02, D-09).
+ * S5 — the contact section (TMPL-01, TMPL-02, TMPL-03, D-02, D-09).
  *
- * 04-UI-SPEC.md § S5 is the contract; every class string below is quoted from
- * it rather than chosen here.
+ * 04-UI-SPEC.md § S5 is `band`'s contract; 05-UI-SPEC.md § New Section-Type
+ * Variant Contracts adds `card` (`./contact-card.tsx`) alongside it. Every
+ * class string below is quoted from 04-UI-SPEC.md rather than chosen here.
  *
  * ---------------------------------------------------------------------------
  * DEVIATION 1 (04-RESEARCH.md § Pattern 9): THIS IS WHERE THE VISUAL REFERENCE
@@ -50,7 +53,12 @@ import { Reveal } from "./reveal";
  * the meaning and the icon carries the affordance.
  */
 
-export function ContactSection({
+/**
+ * `band` — Phase 4's original rendering, kept as a local component so
+ * `ContactSection` below can dispatch to it. Not exported: the only public
+ * entry point for this section type is the variant switch.
+ */
+function ContactBand({
   settings,
   data,
 }: {
@@ -125,4 +133,39 @@ export function ContactSection({
       </section>
     </Reveal>
   );
+}
+
+/**
+ * The variant switch (TMPL-03, D-02) — THE one place `contact` dispatches to
+ * a rendering. Two arms, no `default`, `: ReactElement` return annotation: an
+ * unrecognised variant is a compile error here, never a blank band on a live
+ * public storefront (T-05-20) — the same discipline `section-renderer.tsx`'s
+ * own header documents for section TYPES, applied one level down to variants
+ * of a single type. Mirrors `trust-bar-section.tsx`'s `TrustBarSection`
+ * switch exactly.
+ *
+ * `variant` defaults to `"band"` — `SECTION_VARIANTS["contact"][0]` in
+ * `src/server/theming/schema.ts`, the flagship's Phase 4 rendering — so this
+ * component keeps compiling against `section-renderer.tsx`'s current
+ * single-argument call site. Threading a real `variant` through that switch
+ * is a later plan's job (05-10, per its own frontmatter); this default is
+ * what keeps that boundary from being a broken build in between.
+ */
+export function ContactSection({
+  settings,
+  data,
+  variant = "band",
+}: {
+  /* Narrowed out of the union — see the note in `hero-section.tsx`. */
+  readonly settings: Extract<SectionInstance, { type: "contact" }>["settings"];
+  readonly data: StorefrontRenderData;
+  readonly variant?: SectionVariant<"contact">;
+}): ReactElement {
+  switch (variant) {
+    case "band":
+      return <ContactBand settings={settings} data={data} />;
+
+    case "card":
+      return <ContactCard settings={settings} data={data} />;
+  }
 }
