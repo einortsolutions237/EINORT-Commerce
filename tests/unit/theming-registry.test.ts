@@ -533,17 +533,27 @@ describe("theming registry / schema drift", () => {
 
   // -- templates (D-03) ------------------------------------------------------
 
-  it("declares one template whose sections are all real section types", () => {
-    expect(Object.keys(TEMPLATES)).toEqual(["flagship-fashion"]);
+  it("declares fifty templates whose sections are all real section types", () => {
+    // 05-08 grows the registry from the single Phase 4 row to the full
+    // TMPL-03/TMPL-04 allocation. `tests/unit/template-distinctiveness.test.ts`
+    // (05-20) is where the tier-count, skeleton-count and sibling-cap
+    // assertions live; this test's job is unchanged from Phase 4 — every
+    // template's `sections` list is real section types the Zod union defines,
+    // now checked for all fifty rather than the one flagship row.
+    expect(Object.keys(TEMPLATES).length).toBe(50);
 
-    expect(
-      missingFrom(
-        TEMPLATES["flagship-fashion"].sections.map((ref) => ref.type),
-        new Set(settingsShapes.keys()),
-      ),
-      "The flagship template lists a section type the Zod union does not " +
-        "define, so seeding a new storefront would produce a document that " +
-        "cannot parse.",
-    ).toEqual([]);
+    for (const key of Object.keys(TEMPLATES)) {
+      expect(
+        missingFrom(
+          TEMPLATES[key as keyof typeof TEMPLATES].sections.map(
+            (ref) => ref.type,
+          ),
+          new Set(settingsShapes.keys()),
+        ),
+        `${key} lists a section type the Zod union does not define, so ` +
+          "seeding a new storefront on it would produce a document that " +
+          "cannot parse.",
+      ).toEqual([]);
+    }
   });
 });

@@ -53,7 +53,120 @@ import {
 } from "@/lib/theme-defaults";
 import { strings } from "@/lib/strings";
 
+import { isTemplateKey } from "@/server/theming/registry";
+import type { TemplateKey } from "@/server/theming/registry";
 import type { PageDocument, ThemeTokens } from "@/server/theming/schema";
+
+import {
+  fashionClassicDocument,
+  fashionClassicTokens,
+  fashionEditDocument,
+  fashionEditTokens,
+  fashionMuseDocument,
+  fashionMuseTokens,
+  fashionStudioDocument,
+  fashionStudioTokens,
+  fashionHouseDocument,
+  fashionHouseTokens,
+  fashionRunwayDocument,
+  fashionRunwayTokens,
+  fashionLoftDocument,
+  fashionLoftTokens,
+} from "@/server/theming/templates/fashion-apparel";
+import {
+  electronicsCircuitDocument,
+  electronicsCircuitTokens,
+  electronicsSignalDocument,
+  electronicsSignalTokens,
+  electronicsGridDocument,
+  electronicsGridTokens,
+  electronicsCurrentDocument,
+  electronicsCurrentTokens,
+  electronicsPulseDocument,
+  electronicsPulseTokens,
+  electronicsVoltDocument,
+  electronicsVoltTokens,
+  electronicsModuleDocument,
+  electronicsModuleTokens,
+  electronicsFrameDocument,
+  electronicsFrameTokens,
+  electronicsByteDocument,
+  electronicsByteTokens,
+} from "@/server/theming/templates/electronics";
+import {
+  beautyGlowDocument,
+  beautyGlowTokens,
+  beautyVeilDocument,
+  beautyVeilTokens,
+  beautyBloomDocument,
+  beautyBloomTokens,
+  beautySatinDocument,
+  beautySatinTokens,
+  beautyRadianceDocument,
+  beautyRadianceTokens,
+  beautyLuxeDocument,
+  beautyLuxeTokens,
+  beautyAuraDocument,
+  beautyAuraTokens,
+  beautyMuseDocument,
+  beautyMuseTokens,
+} from "@/server/theming/templates/beauty-cosmetics";
+import {
+  groceryMarketDocument,
+  groceryMarketTokens,
+  groceryHarvestDocument,
+  groceryHarvestTokens,
+  groceryPantryDocument,
+  groceryPantryTokens,
+  groceryFreshDocument,
+  groceryFreshTokens,
+  groceryOrchardDocument,
+  groceryOrchardTokens,
+  groceryGroveDocument,
+  groceryGroveTokens,
+  groceryCellarDocument,
+  groceryCellarTokens,
+  groceryLarderDocument,
+  groceryLarderTokens,
+} from "@/server/theming/templates/grocery-food";
+import {
+  furnitureLoomDocument,
+  furnitureLoomTokens,
+  furnitureGrainDocument,
+  furnitureGrainTokens,
+  furnitureOakDocument,
+  furnitureOakTokens,
+  furnitureHearthDocument,
+  furnitureHearthTokens,
+  furnitureTimberDocument,
+  furnitureTimberTokens,
+  furnitureHavenDocument,
+  furnitureHavenTokens,
+  furnitureNookDocument,
+  furnitureNookTokens,
+  furnitureLoftDocument,
+  furnitureLoftTokens,
+} from "@/server/theming/templates/furniture-home";
+import {
+  retailCornerDocument,
+  retailCornerTokens,
+  retailEmporiumDocument,
+  retailEmporiumTokens,
+  retailBazaarDocument,
+  retailBazaarTokens,
+  retailMercantileDocument,
+  retailMercantileTokens,
+  retailGeneralDocument,
+  retailGeneralTokens,
+  retailProvisionsDocument,
+  retailProvisionsTokens,
+  retailMarketDocument,
+  retailMarketTokens,
+  retailTradingDocument,
+  retailTradingTokens,
+  retailDistrictDocument,
+  retailDistrictTokens,
+} from "@/server/theming/templates/general-retail";
 
 /**
  * The default hero scrim.
@@ -229,4 +342,279 @@ export function flagshipDefaultTokens(): ThemeTokens {
     announcementText: strings.flagship.announcement,
     footerTagline: strings.flagship.footerTagline,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The default-document dispatch (05-08) — every TemplateKey to a builder pair
+// ---------------------------------------------------------------------------
+
+/**
+ * Every `TemplateKey` mapped to the pair of functions that build its default
+ * document and default tokens.
+ *
+ * ---------------------------------------------------------------------------
+ * A RECORD OF BUILDERS, NEVER A RECORD OF DOCUMENTS.
+ * ---------------------------------------------------------------------------
+ * The two callers of this table are the tenant seed path and the storefront
+ * read-path fallback — exactly the two callers `flagshipDefaultDocument()`'s
+ * own header warns about above. A `Record<TemplateKey, PageDocument>` would
+ * hold ONE shared object per key, built once at module-eval time: the first
+ * caller to mutate a nested field (`document.sections[0].settings.heading =
+ * …`, say, while cloning for an edit) would corrupt every subsequent tenant
+ * created on that key in the same process, and the corruption would be
+ * cross-tenant and invisible in the database — the identical failure mode
+ * the flagship functions exist to prevent, recreated one level up. Storing
+ * FUNCTIONS instead means every read calls the builder and gets a fresh
+ * object, which is what `templateDefaultDocument`/`templateDefaultTokens`
+ * below rely on.
+ *
+ * Typed against the full `TemplateKey` union (not `Partial`) so a 51st key
+ * added to the registry without a matching entry here is a compile error at
+ * this exact line, not a runtime gap discovered on a live storefront.
+ * `flagship-fashion` maps to the two existing flagship functions, unchanged;
+ * the other 49 map to the segment-module builders `src/server/theming/
+ * templates/*.ts` exports.
+ */
+export const TEMPLATE_DEFAULTS: Readonly<
+  Record<
+    TemplateKey,
+    {
+      readonly document: () => PageDocument;
+      readonly tokens: () => ThemeTokens;
+    }
+  >
+> = {
+  "flagship-fashion": {
+    document: flagshipDefaultDocument,
+    tokens: flagshipDefaultTokens,
+  },
+  "fashion-classic": {
+    document: fashionClassicDocument,
+    tokens: fashionClassicTokens,
+  },
+  "fashion-edit": {
+    document: fashionEditDocument,
+    tokens: fashionEditTokens,
+  },
+  "fashion-muse": {
+    document: fashionMuseDocument,
+    tokens: fashionMuseTokens,
+  },
+  "fashion-studio": {
+    document: fashionStudioDocument,
+    tokens: fashionStudioTokens,
+  },
+  "fashion-house": {
+    document: fashionHouseDocument,
+    tokens: fashionHouseTokens,
+  },
+  "fashion-runway": {
+    document: fashionRunwayDocument,
+    tokens: fashionRunwayTokens,
+  },
+  "fashion-loft": {
+    document: fashionLoftDocument,
+    tokens: fashionLoftTokens,
+  },
+  "electronics-circuit": {
+    document: electronicsCircuitDocument,
+    tokens: electronicsCircuitTokens,
+  },
+  "electronics-signal": {
+    document: electronicsSignalDocument,
+    tokens: electronicsSignalTokens,
+  },
+  "electronics-grid": {
+    document: electronicsGridDocument,
+    tokens: electronicsGridTokens,
+  },
+  "electronics-current": {
+    document: electronicsCurrentDocument,
+    tokens: electronicsCurrentTokens,
+  },
+  "electronics-pulse": {
+    document: electronicsPulseDocument,
+    tokens: electronicsPulseTokens,
+  },
+  "electronics-volt": {
+    document: electronicsVoltDocument,
+    tokens: electronicsVoltTokens,
+  },
+  "electronics-module": {
+    document: electronicsModuleDocument,
+    tokens: electronicsModuleTokens,
+  },
+  "electronics-frame": {
+    document: electronicsFrameDocument,
+    tokens: electronicsFrameTokens,
+  },
+  "electronics-byte": {
+    document: electronicsByteDocument,
+    tokens: electronicsByteTokens,
+  },
+  "beauty-glow": {
+    document: beautyGlowDocument,
+    tokens: beautyGlowTokens,
+  },
+  "beauty-veil": {
+    document: beautyVeilDocument,
+    tokens: beautyVeilTokens,
+  },
+  "beauty-bloom": {
+    document: beautyBloomDocument,
+    tokens: beautyBloomTokens,
+  },
+  "beauty-satin": {
+    document: beautySatinDocument,
+    tokens: beautySatinTokens,
+  },
+  "beauty-radiance": {
+    document: beautyRadianceDocument,
+    tokens: beautyRadianceTokens,
+  },
+  "beauty-luxe": {
+    document: beautyLuxeDocument,
+    tokens: beautyLuxeTokens,
+  },
+  "beauty-aura": {
+    document: beautyAuraDocument,
+    tokens: beautyAuraTokens,
+  },
+  "beauty-muse": {
+    document: beautyMuseDocument,
+    tokens: beautyMuseTokens,
+  },
+  "grocery-market": {
+    document: groceryMarketDocument,
+    tokens: groceryMarketTokens,
+  },
+  "grocery-harvest": {
+    document: groceryHarvestDocument,
+    tokens: groceryHarvestTokens,
+  },
+  "grocery-pantry": {
+    document: groceryPantryDocument,
+    tokens: groceryPantryTokens,
+  },
+  "grocery-fresh": {
+    document: groceryFreshDocument,
+    tokens: groceryFreshTokens,
+  },
+  "grocery-orchard": {
+    document: groceryOrchardDocument,
+    tokens: groceryOrchardTokens,
+  },
+  "grocery-grove": {
+    document: groceryGroveDocument,
+    tokens: groceryGroveTokens,
+  },
+  "grocery-cellar": {
+    document: groceryCellarDocument,
+    tokens: groceryCellarTokens,
+  },
+  "grocery-larder": {
+    document: groceryLarderDocument,
+    tokens: groceryLarderTokens,
+  },
+  "furniture-loom": {
+    document: furnitureLoomDocument,
+    tokens: furnitureLoomTokens,
+  },
+  "furniture-grain": {
+    document: furnitureGrainDocument,
+    tokens: furnitureGrainTokens,
+  },
+  "furniture-oak": {
+    document: furnitureOakDocument,
+    tokens: furnitureOakTokens,
+  },
+  "furniture-hearth": {
+    document: furnitureHearthDocument,
+    tokens: furnitureHearthTokens,
+  },
+  "furniture-timber": {
+    document: furnitureTimberDocument,
+    tokens: furnitureTimberTokens,
+  },
+  "furniture-haven": {
+    document: furnitureHavenDocument,
+    tokens: furnitureHavenTokens,
+  },
+  "furniture-nook": {
+    document: furnitureNookDocument,
+    tokens: furnitureNookTokens,
+  },
+  "furniture-loft": {
+    document: furnitureLoftDocument,
+    tokens: furnitureLoftTokens,
+  },
+  "retail-corner": {
+    document: retailCornerDocument,
+    tokens: retailCornerTokens,
+  },
+  "retail-emporium": {
+    document: retailEmporiumDocument,
+    tokens: retailEmporiumTokens,
+  },
+  "retail-bazaar": {
+    document: retailBazaarDocument,
+    tokens: retailBazaarTokens,
+  },
+  "retail-mercantile": {
+    document: retailMercantileDocument,
+    tokens: retailMercantileTokens,
+  },
+  "retail-general": {
+    document: retailGeneralDocument,
+    tokens: retailGeneralTokens,
+  },
+  "retail-provisions": {
+    document: retailProvisionsDocument,
+    tokens: retailProvisionsTokens,
+  },
+  "retail-market": {
+    document: retailMarketDocument,
+    tokens: retailMarketTokens,
+  },
+  "retail-trading": {
+    document: retailTradingDocument,
+    tokens: retailTradingTokens,
+  },
+  "retail-district": {
+    document: retailDistrictDocument,
+    tokens: retailDistrictTokens,
+  },
+};
+
+/**
+ * Resolves a (possibly untrusted) template key to a fresh default document.
+ *
+ * Matches `variantsForTemplate()`'s degrade posture in `registry.ts` exactly:
+ * a key that fails `isTemplateKey` — a drifted stored column, a template
+ * retired in a later phase — renders the flagship's default document rather
+ * than throwing on a public read path (T-05-28). This is a lookup, not a
+ * validation step; the caller's own schema parse is what decides whether a
+ * STORED document is usable at all. This function only ever runs when there
+ * is no usable stored document and a default is needed instead.
+ *
+ * Returns a fresh object on every call: it delegates to whichever builder
+ * `TEMPLATE_DEFAULTS` maps the key to, and every builder in this file and in
+ * `src/server/theming/templates/*.ts` returns a new literal per call. Do not
+ * memoise this function — that would turn every builder's fresh-object
+ * guarantee back into the shared-literal hazard `TEMPLATE_DEFAULTS`'s own
+ * comment warns about.
+ */
+export function templateDefaultDocument(key: string): PageDocument {
+  if (isTemplateKey(key)) return TEMPLATE_DEFAULTS[key].document();
+  return flagshipDefaultDocument();
+}
+
+/**
+ * Resolves a (possibly untrusted) template key to a fresh set of default
+ * tokens. Same degrade posture and same fresh-object guarantee as
+ * `templateDefaultDocument()` above.
+ */
+export function templateDefaultTokens(key: string): ThemeTokens {
+  if (isTemplateKey(key)) return TEMPLATE_DEFAULTS[key].tokens();
+  return flagshipDefaultTokens();
 }
