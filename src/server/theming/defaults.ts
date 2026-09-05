@@ -63,11 +63,19 @@ import type { PageDocument, ThemeTokens } from "@/server/theming/schema";
  * NO background image, because the value is what applies the moment the
  * merchant adds one — a hero that renders unreadable on first upload is a worse
  * first impression than one that is slightly dark.
+ *
+ * EXPORTED (05-08) so the 49 segment builders in `src/server/theming/
+ * templates/*.ts` reuse this exact value rather than restating it — the same
+ * "one number, one place" rule `schema.ts`'s caps follow.
  */
-const DEFAULT_OVERLAY_OPACITY = 0.3;
+export const DEFAULT_OVERLAY_OPACITY = 0.3;
 
-/** The grid's default count, one of the schema's three literals. */
-const DEFAULT_ITEM_COUNT = 8 as const;
+/**
+ * The grid's default count, one of the schema's three literals.
+ *
+ * EXPORTED (05-08) for the same reason as `DEFAULT_OVERLAY_OPACITY` above.
+ */
+export const DEFAULT_ITEM_COUNT = 8 as const;
 
 /**
  * A brand-new merchant's storefront document.
