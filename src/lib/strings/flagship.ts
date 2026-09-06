@@ -96,8 +96,35 @@ export const flagshipCopy = {
 } as const;
 
 /**
+ * Deep-widens every literal string type `as const` puts on `flagshipCopy`,
+ * keeping the shape (keys, nesting, arrays) otherwise identical.
+ *
+ * `typeof flagshipCopy` verbatim would type `hero.eyebrow` as the literal
+ * `"Welcome"`, `trustBar.itemOne.heading` as the literal `"Delivery in
+ * Douala"`, and so on for every leaf — because `as const` narrows every
+ * string literal it touches, and the `Partial<FlagshipCopy>` the six
+ * per-segment namespaces are typed against (`src/lib/strings/templates/
+ * *.ts`) only optionalizes ONE level: it does not widen, and does not reach
+ * into `hero`/`trustBar`/etc. to optionalize or widen THEIR fields. Left
+ * unwidened, every one of the 49 non-flagship templates would be a type
+ * error unless its copy were byte-identical to the flagship's own wording —
+ * exactly backwards for TMPL-04, which requires fifty templates with
+ * genuinely distinct copy.
+ */
+type Widen<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? readonly Widen<U>[]
+    : T extends object
+      ? { [K in keyof T]: Widen<T[K]> }
+      : T;
+
+/**
  * The reference shape every one of the 50 templates' copy (`strings.templates
  * [key]`) is typed against — `Partial<FlagshipCopy>`, nested `Partial` at the
- * per-segment-namespace level (see `src/lib/strings/templates/*.ts`).
+ * per-segment-namespace level (see `src/lib/strings/templates/*.ts`). Still
+ * structurally derived from `typeof flagshipCopy` (see `Widen` above), so
+ * this can never drift from `strings.flagship`'s own shape — only the leaf
+ * literal types are relaxed to `string`.
  */
-export type FlagshipCopy = typeof flagshipCopy;
+export type FlagshipCopy = Widen<typeof flagshipCopy>;
