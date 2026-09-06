@@ -9,19 +9,14 @@ import "server-only";
  * `src/server/theming/defaults.ts`, unchanged — it does not get a builder
  * here.
  *
- * CONTRACT-COMPLETE, CONTENT-MINIMAL THIS PLAN (05-08). Every builder's
- * `sections` array matches its registry row's declared section types and
- * order exactly, and every settings field is present. Every copy value reads
- * `strings.templates["<key>"]?.<path> ?? ""` — the ONE access pattern this
- * phase's six segment modules use, with optional chaining down to the leaf
- * field and a `?? ""` fallback so the expression typechecks against the
- * as-yet-empty `strings.templates` namespace 05-03 typed
- * (`Partial<Record<TemplateKey, Partial<typeof strings.flagship>>>`). The
- * `?? ""` fallback is a type-safety bridge for this wave, never a shipped
- * value: plans 05-12 through 05-17 (Wave 3) land real copy under this exact
- * namespace in this same file, and plan 05-20's generalized default-document
- * parse test is the gate that catches an empty string before it ever reaches
- * a live document.
+ * CONTENT-COMPLETE (05-17). Every builder's `sections` array matches its
+ * registry row's declared section types and order exactly, every settings
+ * field is present, and every copy value now reads real content authored in
+ * `src/lib/strings/templates/general-retail.ts` (05-17, Task 1) via
+ * `strings.templates["<key>"]?.<path> ?? ""` — the `?? ""` fallback stays in
+ * place structurally (it is the one access pattern every segment builder
+ * uses) but no longer resolves to an empty string for any of this segment's
+ * nine keys, since Task 1 authored every field this file reads.
  *
  * Three invariants inherited verbatim from the flagship's own document
  * builder (`src/server/theming/defaults.ts`):
@@ -39,25 +34,47 @@ import "server-only";
  *      literal is one careless caller away from corrupting every subsequent
  *      tenant created in the same process.
  *
- * `primaryAccent` / `secondaryAccent` reuse the same neutral defaults
- * `flagshipDefaultTokens()` ships (`DEFAULT_PRIMARY_ACCENT` /
- * `DEFAULT_SECONDARY_ACCENT`) because accent authoring is not part of
- * `strings.templates`'s copy shape — `FlagshipCopy` carries no accent field.
- * Per-template accent differentiation (the second axis of TMPL-05's
- * distinctiveness test) is Wave 3's job, landing alongside the real copy.
+ * `itemCount` follows the registry row's product-grid VARIANT, not a flat
+ * default: `grid` keeps `DEFAULT_ITEM_COUNT` (8), `dense` goes higher (12,
+ * matching the visually denser layout), and `showcase` goes lower (4,
+ * matching the fewer/larger cards that variant renders).
+ *
+ * Trust-bar `icon` values are chosen per template to fit its implied shop
+ * (see `src/lib/strings/templates/general-retail.ts`'s header for the full
+ * list of the nine implied shops) rather than repeating the same three icons
+ * across every row — `truck` (delivery), `shield-check` (quality/trust),
+ * `clock` (hours/timing) and `message-circle` (WhatsApp contact) are the
+ * schema's full closed enum (`src/server/theming/schema.ts`).
+ *
+ * `primaryAccent` / `secondaryAccent` are nine distinct hex pairs, one per
+ * template, satisfying `hexColorSchema`. No two of the four sibling pairs
+ * (`retail-corner`/`retail-emporium`, `retail-bazaar`/`retail-mercantile`,
+ * `retail-general`/`retail-provisions`, `retail-market`/`retail-trading`)
+ * share a `primaryAccent`, and the nine hues are chosen from clearly
+ * different points on the colour wheel — not just "distinct enough within a
+ * pair" — because this segment is the one most at risk of reading as one
+ * generic shop repeated nine times (05-RESEARCH.md § The Distinctiveness
+ * Gate at N=50). `retail-district` (S24, the skeleton shared with
+ * `electronics-byte` outside this segment) still gets its own accent pair,
+ * distinct from the other eight.
  */
 
 import {
   DEFAULT_ITEM_COUNT,
   DEFAULT_OVERLAY_OPACITY,
 } from "@/server/theming/defaults";
-import {
-  DEFAULT_PRIMARY_ACCENT,
-  DEFAULT_SECONDARY_ACCENT,
-} from "@/lib/theme-defaults";
 import { strings } from "@/lib/strings";
 
 import type { PageDocument, ThemeTokens } from "@/server/theming/schema";
+
+/**
+ * `product-grid` variant → item count. `DEFAULT_ITEM_COUNT` (8) is `grid`'s
+ * own value, restated here as a named constant (not `8` inline) so the three
+ * counts read as one deliberate table rather than a magic number next to two
+ * others.
+ */
+const DENSE_ITEM_COUNT = 12;
+const SHOWCASE_ITEM_COUNT = 4;
 
 export function retailCornerDocument(): PageDocument {
   return {
@@ -83,7 +100,8 @@ export function retailCornerDocument(): PageDocument {
           heading: strings.templates["retail-corner"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-corner"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-corner"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          /* `dense` (registry). */
+          itemCount: DENSE_ITEM_COUNT,
         },
       },
       {
@@ -93,7 +111,7 @@ export function retailCornerDocument(): PageDocument {
           blocks: [
             {
               type: "trust-item",
-              icon: "truck",
+              icon: "clock",
               heading: strings.templates["retail-corner"]?.trustBar?.itemOne?.heading ?? "",
               body: strings.templates["retail-corner"]?.trustBar?.itemOne?.body ?? "",
             },
@@ -105,7 +123,7 @@ export function retailCornerDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              icon: "truck",
               heading: strings.templates["retail-corner"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["retail-corner"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -139,8 +157,9 @@ export function retailCornerDocument(): PageDocument {
 
 export function retailCornerTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Earthy terracotta — a warm, welcoming neighbourhood shop. */
+    primaryAccent: "#B45309",
+    secondaryAccent: "#78350F",
     announcementText: strings.templates["retail-corner"]?.announcement ?? "",
     footerTagline: strings.templates["retail-corner"]?.footerTagline ?? "",
   };
@@ -170,7 +189,8 @@ export function retailEmporiumDocument(): PageDocument {
           heading: strings.templates["retail-emporium"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-emporium"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-emporium"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          /* `dense` (registry). */
+          itemCount: DENSE_ITEM_COUNT,
         },
       },
       {
@@ -226,8 +246,9 @@ export function retailEmporiumDocument(): PageDocument {
 
 export function retailEmporiumTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Industrial indigo/blue — a wholesale trading outfit. */
+    primaryAccent: "#1E3A8A",
+    secondaryAccent: "#3B82F6",
     announcementText: strings.templates["retail-emporium"]?.announcement ?? "",
     footerTagline: strings.templates["retail-emporium"]?.footerTagline ?? "",
   };
@@ -257,7 +278,8 @@ export function retailBazaarDocument(): PageDocument {
           heading: strings.templates["retail-bazaar"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-bazaar"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-bazaar"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          /* `showcase` (registry). */
+          itemCount: SHOWCASE_ITEM_COUNT,
         },
       },
       {
@@ -279,7 +301,7 @@ export function retailBazaarDocument(): PageDocument {
           blocks: [
             {
               type: "trust-item",
-              icon: "truck",
+              icon: "clock",
               heading: strings.templates["retail-bazaar"]?.trustBar?.itemOne?.heading ?? "",
               body: strings.templates["retail-bazaar"]?.trustBar?.itemOne?.body ?? "",
             },
@@ -291,7 +313,7 @@ export function retailBazaarDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              icon: "truck",
               heading: strings.templates["retail-bazaar"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["retail-bazaar"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -313,8 +335,9 @@ export function retailBazaarDocument(): PageDocument {
 
 export function retailBazaarTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Vibrant fuchsia — a gift and party supplier. */
+    primaryAccent: "#A21CAF",
+    secondaryAccent: "#F0ABFC",
     announcementText: strings.templates["retail-bazaar"]?.announcement ?? "",
     footerTagline: strings.templates["retail-bazaar"]?.footerTagline ?? "",
   };
@@ -344,7 +367,8 @@ export function retailMercantileDocument(): PageDocument {
           heading: strings.templates["retail-mercantile"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-mercantile"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-mercantile"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          /* `showcase` (registry). */
+          itemCount: SHOWCASE_ITEM_COUNT,
         },
       },
       {
@@ -366,7 +390,7 @@ export function retailMercantileDocument(): PageDocument {
           blocks: [
             {
               type: "trust-item",
-              icon: "truck",
+              icon: "shield-check",
               heading: strings.templates["retail-mercantile"]?.trustBar?.itemOne?.heading ?? "",
               body: strings.templates["retail-mercantile"]?.trustBar?.itemOne?.body ?? "",
             },
@@ -378,7 +402,7 @@ export function retailMercantileDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              icon: "truck",
               heading: strings.templates["retail-mercantile"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["retail-mercantile"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -400,8 +424,9 @@ export function retailMercantileDocument(): PageDocument {
 
 export function retailMercantileTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Steel stone with an orange accent — a hardware and tools shop. */
+    primaryAccent: "#44403C",
+    secondaryAccent: "#EA580C",
     announcementText: strings.templates["retail-mercantile"]?.announcement ?? "",
     footerTagline: strings.templates["retail-mercantile"]?.footerTagline ?? "",
   };
@@ -431,7 +456,7 @@ export function retailGeneralDocument(): PageDocument {
           blocks: [
             {
               type: "trust-item",
-              icon: "truck",
+              icon: "shield-check",
               heading: strings.templates["retail-general"]?.trustBar?.itemOne?.heading ?? "",
               body: strings.templates["retail-general"]?.trustBar?.itemOne?.body ?? "",
             },
@@ -443,7 +468,7 @@ export function retailGeneralDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              icon: "truck",
               heading: strings.templates["retail-general"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["retail-general"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -457,6 +482,7 @@ export function retailGeneralDocument(): PageDocument {
           heading: strings.templates["retail-general"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-general"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-general"]?.productGrid?.viewAllHref ?? "",
+          /* `grid` (registry) — DEFAULT_ITEM_COUNT. */
           itemCount: DEFAULT_ITEM_COUNT,
         },
       },
@@ -487,8 +513,9 @@ export function retailGeneralDocument(): PageDocument {
 
 export function retailGeneralTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Forest green with lime — a sports and outdoor seller. */
+    primaryAccent: "#166534",
+    secondaryAccent: "#84CC16",
     announcementText: strings.templates["retail-general"]?.announcement ?? "",
     footerTagline: strings.templates["retail-general"]?.footerTagline ?? "",
   };
@@ -518,7 +545,7 @@ export function retailProvisionsDocument(): PageDocument {
           blocks: [
             {
               type: "trust-item",
-              icon: "truck",
+              icon: "clock",
               heading: strings.templates["retail-provisions"]?.trustBar?.itemOne?.heading ?? "",
               body: strings.templates["retail-provisions"]?.trustBar?.itemOne?.body ?? "",
             },
@@ -530,7 +557,7 @@ export function retailProvisionsDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              icon: "truck",
               heading: strings.templates["retail-provisions"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["retail-provisions"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -544,6 +571,7 @@ export function retailProvisionsDocument(): PageDocument {
           heading: strings.templates["retail-provisions"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-provisions"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-provisions"]?.productGrid?.viewAllHref ?? "",
+          /* `grid` (registry) — DEFAULT_ITEM_COUNT. */
           itemCount: DEFAULT_ITEM_COUNT,
         },
       },
@@ -574,8 +602,9 @@ export function retailProvisionsDocument(): PageDocument {
 
 export function retailProvisionsTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Navy with red — a stationery and school-supplies seller. */
+    primaryAccent: "#1E293B",
+    secondaryAccent: "#DC2626",
     announcementText: strings.templates["retail-provisions"]?.announcement ?? "",
     footerTagline: strings.templates["retail-provisions"]?.footerTagline ?? "",
   };
@@ -617,7 +646,8 @@ export function retailMarketDocument(): PageDocument {
           heading: strings.templates["retail-market"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-market"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-market"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          /* `dense` (registry). */
+          itemCount: DENSE_ITEM_COUNT,
         },
       },
       {
@@ -627,19 +657,19 @@ export function retailMarketDocument(): PageDocument {
           blocks: [
             {
               type: "trust-item",
-              icon: "truck",
+              icon: "message-circle",
               heading: strings.templates["retail-market"]?.trustBar?.itemOne?.heading ?? "",
               body: strings.templates["retail-market"]?.trustBar?.itemOne?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              icon: "clock",
               heading: strings.templates["retail-market"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["retail-market"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              icon: "truck",
               heading: strings.templates["retail-market"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["retail-market"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -661,8 +691,9 @@ export function retailMarketDocument(): PageDocument {
 
 export function retailMarketTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Deep maroon with amber — a books-and-media shop. */
+    primaryAccent: "#7F1D1D",
+    secondaryAccent: "#D97706",
     announcementText: strings.templates["retail-market"]?.announcement ?? "",
     footerTagline: strings.templates["retail-market"]?.footerTagline ?? "",
   };
@@ -704,7 +735,8 @@ export function retailTradingDocument(): PageDocument {
           heading: strings.templates["retail-trading"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-trading"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-trading"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          /* `dense` (registry). */
+          itemCount: DENSE_ITEM_COUNT,
         },
       },
       {
@@ -714,7 +746,7 @@ export function retailTradingDocument(): PageDocument {
           blocks: [
             {
               type: "trust-item",
-              icon: "truck",
+              icon: "shield-check",
               heading: strings.templates["retail-trading"]?.trustBar?.itemOne?.heading ?? "",
               body: strings.templates["retail-trading"]?.trustBar?.itemOne?.body ?? "",
             },
@@ -726,7 +758,7 @@ export function retailTradingDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              icon: "truck",
               heading: strings.templates["retail-trading"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["retail-trading"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -748,8 +780,9 @@ export function retailTradingDocument(): PageDocument {
 
 export function retailTradingTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Teal with amber — a pet supplies seller. */
+    primaryAccent: "#0F766E",
+    secondaryAccent: "#FBBF24",
     announcementText: strings.templates["retail-trading"]?.announcement ?? "",
     footerTagline: strings.templates["retail-trading"]?.footerTagline ?? "",
   };
@@ -779,6 +812,7 @@ export function retailDistrictDocument(): PageDocument {
           heading: strings.templates["retail-district"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["retail-district"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["retail-district"]?.productGrid?.viewAllHref ?? "",
+          /* `grid` (registry) — DEFAULT_ITEM_COUNT. */
           itemCount: DEFAULT_ITEM_COUNT,
         },
       },
@@ -788,8 +822,9 @@ export function retailDistrictDocument(): PageDocument {
 
 export function retailDistrictTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    /* Violet with amber — a seasonal-and-occasions shop. */
+    primaryAccent: "#6D28D9",
+    secondaryAccent: "#FCD34D",
     announcementText: strings.templates["retail-district"]?.announcement ?? "",
     footerTagline: strings.templates["retail-district"]?.footerTagline ?? "",
   };
