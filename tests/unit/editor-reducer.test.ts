@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { editorReducer, type EditorState } from "@/lib/editor/reducer";
-import type { PageDocument, ThemeTokens } from "@/server/theming/schema";
+import type {
+  PageDocument,
+  SectionVariantMap,
+  ThemeTokens,
+} from "@/server/theming/schema";
 
 /**
  * EDIT-02 — the reorder and field-edit rules, proved without a browser.
@@ -96,12 +100,25 @@ function makeTokens(): ThemeTokens {
   };
 }
 
+/** The flagship's all-first map — the same literal `preview-canvas.tsx` degrades to. */
+function makeVariants(): SectionVariantMap {
+  return {
+    hero: "full-bleed",
+    "trust-bar": "band",
+    "product-grid": "grid",
+    "editorial-split": "split",
+    contact: "band",
+  };
+}
+
 function makeState(overrides: Partial<EditorState> = {}): EditorState {
   return {
     document: makeDocument(),
     tokens: makeTokens(),
     selectedSectionId: null,
     dirty: false,
+    variants: makeVariants(),
+    templateKey: "flagship-fashion",
     ...overrides,
   };
 }
@@ -395,6 +412,52 @@ describe("editorReducer — reset", () => {
     // Cleared even though the incoming state said otherwise: reset MEANS clean.
     expect(next.dirty).toBe(false);
   });
+
+  it("carries a new variant map and template key through, as a completed switchTemplate does (TMPL-04, 05-19)", () => {
+    // `switchTemplate` dispatches `reset` with a document, tokens, variants
+    // AND templateKey that all changed together — the same one-state-update
+    // guarantee `editor-shell.tsx`'s `handleTemplateSwitched` relies on.
+    const current = makeState();
+    const switched = makeState({
+      document: {
+        version: 1,
+        sections: [
+          {
+            id: "s-hero-2",
+            type: "hero",
+            settings: {
+              eyebrow: "",
+              heading: "A different template",
+              body: "",
+              ctaLabel: "",
+              ctaHref: "/",
+              backgroundImageKey: null,
+              overlayOpacity: 0,
+            },
+          },
+        ],
+      },
+      variants: {
+        hero: "stack",
+        "trust-bar": "strip",
+        "product-grid": "showcase",
+        "editorial-split": "banner",
+        contact: "card",
+      },
+      templateKey: "fashion-edit",
+      selectedSectionId: null,
+      dirty: true,
+    });
+
+    const next = editorReducer(current, { kind: "reset", state: switched });
+    expect(next.templateKey).toBe("fashion-edit");
+    expect(next.variants).toEqual(switched.variants);
+    expect(order(next)).toEqual(["s-hero-2"]);
+    // A different template can declare an entirely different section list —
+    // the stale selection from `current` must not survive the switch.
+    expect(next.selectedSectionId).toBeNull();
+    expect(next.dirty).toBe(false);
+  });
 });
 
 describe("editorReducer — the shape of the state", () => {
@@ -412,7 +475,9 @@ describe("editorReducer — the shape of the state", () => {
       "dirty",
       "document",
       "selectedSectionId",
+      "templateKey",
       "tokens",
+      "variants",
     ]);
   });
 });
