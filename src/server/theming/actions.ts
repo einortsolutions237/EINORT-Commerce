@@ -230,7 +230,7 @@ export const publishStorefront = merchantAction<
         }),
         tx.storefrontTheme.findUnique({
           where: { tenantId: ctx.tenantId },
-          select: { id: true, draftTokens: true },
+          select: { id: true, draftTokens: true, draftTemplateKey: true },
         }),
       ]);
       if (!page || !theme) throw new StorefrontNotSeededError(ctx.tenantId);
@@ -257,13 +257,22 @@ export const publishStorefront = merchantAction<
 
       // Two rows, one statement each, one transaction. See the file header for
       // why the data model was chosen to make this expressible without raw SQL.
+      //
+      // `publishedTemplateKey` promotes alongside the document and the
+      // tokens, IN THE SAME TRANSACTION — a partial promotion would leave a
+      // live store rendering the old document under new variants, or the
+      // reverse (05-RESEARCH.md Pitfall 5).
       await tx.storefrontPage.update({
         where: { id: page.id },
         data: { published: document, publishedAt },
       });
       await tx.storefrontTheme.update({
         where: { tenantId: ctx.tenantId },
-        data: { publishedTokens: tokens, publishedAt },
+        data: {
+          publishedTokens: tokens,
+          publishedTemplateKey: theme.draftTemplateKey,
+          publishedAt,
+        },
       });
     });
 
@@ -294,6 +303,14 @@ type DiscardDraftData = {
    */
   document: PageDocument;
   tokens: ThemeTokens;
+  /**
+   * The reverted template key, plus the variant map that goes with it — the
+   * same reason `document`/`tokens` ride along above. A discard reverts the
+   * template choice too (Pitfall 5), so the open editor must repaint under
+   * the RIGHT variants without a reload.
+   */
+  templateKey: string;
+  variants: SectionVariantMap;
 };
 
 export const discardDraft = merchantAction<
@@ -321,7 +338,7 @@ export const discardDraft = merchantAction<
         }),
         tx.storefrontTheme.findUnique({
           where: { tenantId: ctx.tenantId },
-          select: { id: true, publishedTokens: true },
+          select: { id: true, publishedTokens: true, publishedTemplateKey: true },
         }),
       ]);
       if (!page || !theme) throw new StorefrontNotSeededError(ctx.tenantId);
@@ -342,6 +359,12 @@ export const discardDraft = merchantAction<
        * refusal. That is the same document a brand-new store gets, which is the
        * honest meaning of "undo everything I did".
        *
+       * THE FALLBACK IS THE TENANT'S OWN `publishedTemplateKey`, NEVER THE
+       * FLAGSHIP'S (05-RESEARCH.md Pitfall 5). Falling back to the flagship
+       * for a non-flagship tenant would yield the OLD document rendering
+       * under the NEW (flagship) variants — structurally incoherent, and
+       * worse than the refusal it replaces.
+       *
        * A safeParse-with-default rather than a strict parse: this reads the same
        * column the public path reads, so an unparseable `published` must not
        * strand the merchant with a draft they cannot revert.
@@ -350,10 +373,10 @@ export const discardDraft = merchantAction<
       const parsedTokens = themeTokensSchema.safeParse(theme.publishedTokens);
       const document = parsedDocument.success
         ? parsedDocument.data
-        : flagshipDefaultDocument();
+        : templateDefaultDocument(theme.publishedTemplateKey);
       const tokens = parsedTokens.success
         ? parsedTokens.data
-        : flagshipDefaultTokens();
+        : templateDefaultTokens(theme.publishedTemplateKey);
 
       await tx.storefrontPage.update({
         where: { id: page.id },
@@ -365,10 +388,18 @@ export const discardDraft = merchantAction<
       });
       await tx.storefrontTheme.update({
         where: { tenantId: ctx.tenantId },
-        data: { draftTokens: tokens },
+        // The template key reverts too, in the same transaction as the
+        // document and tokens above — Pitfall 5's "revert three things, not
+        // two" is what makes this row structurally coherent again.
+        data: { draftTokens: tokens, draftTemplateKey: theme.publishedTemplateKey },
       });
 
-      return { document, tokens };
+      return {
+        document,
+        tokens,
+        templateKey: theme.publishedTemplateKey,
+        variants: variantsForTemplate(theme.publishedTemplateKey),
+      };
     });
 
     revalidatePath("/dashboard/storefront-editor");
