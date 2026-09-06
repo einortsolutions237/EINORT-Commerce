@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { SectionInstance } from "@/server/theming/schema";
+import type { SectionInstance, SectionVariantMap } from "@/server/theming/schema";
 
 import { ContactSection } from "./contact-section";
 import { EditorialSplitSection } from "./editorial-split-section";
@@ -41,6 +41,22 @@ import { TrustBarSection } from "./trust-bar-section";
  * mode here is the same one wearing different clothes: a lookup with a fallback
  * would make a newly added section type render as nothing at all, on a live
  * public storefront, with every test still green.
+ *
+ * ---------------------------------------------------------------------------
+ * A FOURTH RULE (TMPL-03, 05-RESEARCH.md Finding 2): READ `variants` ONLY BY
+ * LITERAL KEY. NEVER `variants[section.type]`.
+ * ---------------------------------------------------------------------------
+ * `variants.hero`, `variants["trust-bar"]`, `variants["product-grid"]`,
+ * `variants["editorial-split"]`, `variants.contact` — one literal key per arm,
+ * matching the arm's own `case`. `variants[section.type]` looks equivalent and
+ * is not: `section.type` is narrowed to ONE `SectionType` inside its arm, but
+ * `SectionVariantMap`'s index signature is keyed on the FULL `SectionType`
+ * union, so a computed index widens the read to the union of every section's
+ * variant type, not just this arm's. That forces exactly the cast this file
+ * exists to refuse — the same failure mode the header above already bans for
+ * a `Record`-keyed component registry, now one property read lower. If a
+ * later reader "simplifies" the five literal reads into a loop or a computed
+ * index, the fix is upstream (a differently-shaped map), never a cast here.
  *
  * ---------------------------------------------------------------------------
  * WHY A `switch` AND NOT A `Record<string, { schema, Component }>` REGISTRY.
@@ -87,13 +103,21 @@ import { TrustBarSection } from "./trust-bar-section";
 export function SectionRenderer({
   section,
   data,
+  variants,
 }: {
   readonly section: SectionInstance;
   readonly data: StorefrontRenderData;
+  readonly variants: SectionVariantMap;
 }): ReactElement {
   switch (section.type) {
     case "hero":
-      return <HeroSection settings={section.settings} data={data} />;
+      return (
+        <HeroSection
+          settings={section.settings}
+          data={data}
+          variant={variants.hero}
+        />
+      );
 
     /*
      * The trust bar takes no `data`: its content is entirely merchant-authored
@@ -102,15 +126,38 @@ export function SectionRenderer({
      * fields the band depends on.
      */
     case "trust-bar":
-      return <TrustBarSection settings={section.settings} />;
+      return (
+        <TrustBarSection
+          settings={section.settings}
+          variant={variants["trust-bar"]}
+        />
+      );
 
     case "product-grid":
-      return <ProductGridSection settings={section.settings} data={data} />;
+      return (
+        <ProductGridSection
+          settings={section.settings}
+          data={data}
+          variant={variants["product-grid"]}
+        />
+      );
 
     case "editorial-split":
-      return <EditorialSplitSection settings={section.settings} data={data} />;
+      return (
+        <EditorialSplitSection
+          settings={section.settings}
+          data={data}
+          variant={variants["editorial-split"]}
+        />
+      );
 
     case "contact":
-      return <ContactSection settings={section.settings} data={data} />;
+      return (
+        <ContactSection
+          settings={section.settings}
+          data={data}
+          variant={variants.contact}
+        />
+      );
   }
 }

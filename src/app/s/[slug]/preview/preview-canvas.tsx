@@ -17,8 +17,11 @@ import { cn } from "@/lib/utils";
 import {
   hexColorSchema,
   pageDocumentSchema,
+  sectionVariantsSchema,
+  SECTION_VARIANTS,
   themeTokensSchema,
   type PageDocument,
+  type SectionVariantMap,
   type ThemeTokens,
 } from "@/server/theming/schema";
 
@@ -65,6 +68,25 @@ import { SectionRenderer } from "../sections/section-renderer";
  * plan tier, and `src/server/theming/queries.ts` for an unparseable document.
  * A preview that goes white because something posted junk at it is strictly
  * worse than a preview that keeps showing the last good state.
+ *
+ * ---------------------------------------------------------------------------
+ * THE FOURTH FIELD (TMPL-03, 05-RESEARCH.md Finding 2 / Pattern 8) — `variants`.
+ * ---------------------------------------------------------------------------
+ * A section's rendering variant is a property of the merchant's chosen
+ * TEMPLATE, resolved server-side from the published or the draft template
+ * key (`src/server/theming/registry.ts`'s `variantsForTemplate`), never a
+ * field of the page document itself (`sectionVariantsSchema`'s own header in
+ * `src/server/theming/schema.ts`). It travels by `postMessage`, validated by
+ * `sectionVariantsSchema` at step 3 alongside `document` and `tokens`, for the
+ * same reason the draft document does: this route is deliberately UNGATED and
+ * PUBLISHED-ONLY (see `page.tsx`'s file header), so the merchant's unpublished
+ * template choice must never become fetchable from it directly. Resolving it
+ * here from a draft column would leak that unpublished decision to anyone who
+ * requests this URL.
+ * A missing or invalid `variants` field degrades to the all-first (flagship)
+ * map — `FLAGSHIP_VARIANTS` below — independently of `document` and `tokens`,
+ * for the same reason those two are parsed independently of each other: one
+ * bad field must never blank the whole canvas.
  *
  * ---------------------------------------------------------------------------
  * WHAT THIS COMPONENT DELIBERATELY DOES NOT DO.
@@ -124,11 +146,33 @@ const SECTION_ATTRIBUTE = "data-preview-section";
  */
 const INERT_ANCHOR_CLASS = "[&_a]:cursor-default";
 
+/**
+ * The all-first map — one literal object, not a call into
+ * `variantsForTemplate()`. That function lives in `src/server/theming/
+ * registry.ts`, which carries a `server-only` import, and this component
+ * shares its section tree with the client-side editor bundle (T-04-24); a
+ * `server-only` import reached from here would be a build failure on the
+ * editor route, not a runtime one. `SECTION_VARIANTS` itself is safe — it is
+ * declared in `schema.ts`, which this file's own header already establishes
+ * carries no `server-only` marker — so this constant reads the same first
+ * entry per section type that `variantsForTemplate()` degrades to for an
+ * unrecognised template key, without importing the function that does it.
+ */
+const FLAGSHIP_VARIANTS: SectionVariantMap = {
+  hero: SECTION_VARIANTS.hero[0],
+  "trust-bar": SECTION_VARIANTS["trust-bar"][0],
+  "product-grid": SECTION_VARIANTS["product-grid"][0],
+  "editorial-split": SECTION_VARIANTS["editorial-split"][0],
+  contact: SECTION_VARIANTS.contact[0],
+};
+
 export type PreviewCanvasProps = {
   /** The PUBLISHED document, so the first paint is never a blank pane. */
   readonly initialDocument: PageDocument;
   /** The PUBLISHED tokens, replaced by the draft's on the first message. */
   readonly initialTokens: ThemeTokens;
+  /** The PUBLISHED variant map, resolved server-side from `publishedTemplateKey`. */
+  readonly initialVariants: SectionVariantMap;
   readonly data: StorefrontRenderData;
   /** The apex origin, computed server-side from configuration. Never a wildcard. */
   readonly editorOrigin: string;
@@ -148,6 +192,7 @@ function anchorFrom(target: EventTarget | null): HTMLAnchorElement | null {
 export function PreviewCanvas({
   initialDocument,
   initialTokens,
+  initialVariants,
   data,
   editorOrigin,
 }: PreviewCanvasProps) {
@@ -161,6 +206,7 @@ export function PreviewCanvas({
    */
   const [pageDocument, setPageDocument] = useState(initialDocument);
   const [tokens, setTokens] = useState(initialTokens);
+  const [variants, setVariants] = useState(initialVariants);
   const [highlightedSectionId, setHighlightedSectionId] = useState<
     string | null
   >(null);
@@ -265,10 +311,22 @@ export function PreviewCanvas({
       const parsedTokens = themeTokensSchema.safeParse(
         (envelope as { tokens?: unknown }).tokens,
       );
+      /*
+       * The fourth field, parsed the same independent way. A missing or
+       * invalid `variants` — including every message sent before a future
+       * sender is taught to include it at all — falls back to
+       * `FLAGSHIP_VARIANTS` rather than leaving the document/tokens update
+       * blocked on it, exactly as an invalid `tokens` never blocks a valid
+       * `document`.
+       */
+      const parsedVariants = sectionVariantsSchema.safeParse(
+        (envelope as { variants?: unknown }).variants,
+      );
 
       // STEP 4 — and only now.
       if (parsedDocument.success) setPageDocument(parsedDocument.data);
       if (parsedTokens.success) setTokens(parsedTokens.data);
+      setVariants(parsedVariants.success ? parsedVariants.data : FLAGSHIP_VARIANTS);
     }
 
     /*
@@ -409,7 +467,7 @@ export function PreviewCanvas({
               : "outline-transparent",
           )}
         >
-          <SectionRenderer section={section} data={data} />
+          <SectionRenderer section={section} data={data} variants={variants} />
         </div>
       ))}
     </main>
