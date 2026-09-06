@@ -1,20 +1,41 @@
 import { ArrowRightIcon, ImageOffIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactElement } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { strings } from "@/lib/strings";
 import { cn } from "@/lib/utils";
-import type { SectionInstance } from "@/server/theming/schema";
+import type { SectionInstance, SectionVariant } from "@/server/theming/schema";
 
+import { ProductGridDense } from "./product-grid-dense";
+import { ProductGridShowcase } from "./product-grid-showcase";
 import type { StorefrontRenderData } from "./render-data";
 import { Reveal } from "./reveal";
 
 /**
- * S3 — the product grid (TMPL-01, TMPL-02, CHK-01, D-06, D-09).
+ * S3 — the product grid (TMPL-01, TMPL-02, TMPL-03, CHK-01, D-06, D-09, D-02).
  *
- * 04-UI-SPEC.md § S3 is the contract; every class string below is quoted from
- * it rather than chosen here.
+ * 04-UI-SPEC.md § S3 is the contract for `grid`; 05-UI-SPEC.md § `product-grid`
+ * is the contract for `dense`/`showcase`. Every class string below is quoted
+ * from one of the two rather than chosen here.
+ *
+ * ---------------------------------------------------------------------------
+ * A TEMPLATE FIXES THE VARIANT. THE MERCHANT NEVER DOES (D-02).
+ * ---------------------------------------------------------------------------
+ * `ProductGridSection` is a three-arm exhaustive switch over
+ * `SectionVariant<"product-grid">`, with NO `default` arm — a fourth variant
+ * added to `SECTION_VARIANTS["product-grid"]` in `schema.ts` without a
+ * matching arm here is a COMPILE error, not a silently-blank grid on a live
+ * storefront (the same drift discipline `section-renderer.tsx` documents for
+ * section TYPES, one level down for this type's own variants). `variant` is
+ * given a default of `"grid"` — the flagship's own rendering, and
+ * `SECTION_VARIANTS["product-grid"][0]` — purely so this file keeps compiling
+ * against `section-renderer.tsx`'s current, not-yet-variant-aware call site;
+ * plan 05-10 (Wave 3) threads a real `variants["product-grid"]` value through
+ * once every section type's variant switch exists. The default is never a
+ * second source of truth for "which variant a template renders" — that
+ * answer always comes from `variantsForTemplate()`, never from this default.
  *
  * ---------------------------------------------------------------------------
  * THIS IS PHASE 3's CATALOGUE GRID, RE-TOKENED — NOT A SECOND ONE.
@@ -26,7 +47,9 @@ import { Reveal } from "./reveal";
  * 260901-00j already spent 35 minutes on the class of bug that link churn
  * produces here; the answer was to change what the home route RENDERS, never
  * where it lives. Three things changed and they are all visual: the tile
- * proportion, the selected chip's fill, and a hover scale on the image.
+ * proportion, the selected chip's fill, and a hover scale on the image. This
+ * body is now `ProductGridGrid`, moved verbatim under `ProductGridSection`'s
+ * `"grid"` arm — nothing about it changed in this phase.
  *
  * ---------------------------------------------------------------------------
  * EVERY HREF IN THIS FILE IS ORIGIN-RELATIVE, AND MUST STAY THAT WAY.
@@ -61,7 +84,9 @@ import { Reveal } from "./reveal";
  * quoted is read server-side through the tenant-scoped catalogue query and
  * handed down in `data`. A settings field that could name a product would make
  * a merchant-authored document able to select what another merchant's
- * storefront displays, which is the whole reason the split is drawn here.
+ * storefront displays, which is the whole reason the split is drawn here. This
+ * rule binds `ProductGridDense` and `ProductGridShowcase` identically — they
+ * consume the same `data`, never a second read.
  */
 
 /**
@@ -112,7 +137,13 @@ const TILE_ENTER =
  */
 const MAX_STAGGER_INDEX = 7;
 
-export function ProductGridSection({
+/**
+ * The flagship's own rendering — Phase 4's design, moved verbatim under a new
+ * name. Every class string, every comment and every behaviour below is
+ * unchanged from before this plan; only the export name and the wrapping
+ * dispatcher around it are new.
+ */
+function ProductGridGrid({
   settings,
   data,
 }: {
@@ -318,4 +349,32 @@ export function ProductGridSection({
       )}
     </section>
   );
+}
+
+/**
+ * The three-arm dispatcher. See the file header for why there is no `default`
+ * arm: a fourth `SECTION_VARIANTS["product-grid"]` entry must fail the build
+ * here, not render blank on a live storefront.
+ */
+export function ProductGridSection({
+  settings,
+  data,
+  variant = "grid",
+}: {
+  /* Narrowed out of the union — see the note in `hero-section.tsx`. */
+  readonly settings: Extract<
+    SectionInstance,
+    { type: "product-grid" }
+  >["settings"];
+  readonly data: StorefrontRenderData;
+  readonly variant?: SectionVariant<"product-grid">;
+}): ReactElement {
+  switch (variant) {
+    case "grid":
+      return <ProductGridGrid settings={settings} data={data} />;
+    case "dense":
+      return <ProductGridDense settings={settings} data={data} />;
+    case "showcase":
+      return <ProductGridShowcase settings={settings} data={data} />;
+  }
 }

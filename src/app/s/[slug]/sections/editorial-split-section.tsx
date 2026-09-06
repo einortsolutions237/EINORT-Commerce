@@ -1,17 +1,37 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactElement } from "react";
 
 import { cn } from "@/lib/utils";
-import type { SectionInstance } from "@/server/theming/schema";
+import type { SectionInstance, SectionVariant } from "@/server/theming/schema";
 
+import { EditorialSplitBanner } from "./editorial-split-banner";
 import type { StorefrontRenderData } from "./render-data";
 import { Reveal } from "./reveal";
 
 /**
- * S4 — the editorial split (TMPL-01, TMPL-02).
+ * S4 — the editorial split (TMPL-01, TMPL-02, TMPL-03, D-02).
  *
- * 04-UI-SPEC.md § S4 is the contract. No `"use client"`, no `server-only`
- * dependency — see `render-data.ts` for why that is load-bearing.
+ * 04-UI-SPEC.md § S4 is the contract for `split`; 05-UI-SPEC.md § New Variant
+ * Contracts, `editorial-split` variant `banner` is the contract for `banner`.
+ * Every class string below is quoted from one of the two rather than chosen
+ * here.
+ *
+ * ---------------------------------------------------------------------------
+ * A TEMPLATE FIXES THE VARIANT. THE MERCHANT NEVER DOES (D-02).
+ * ---------------------------------------------------------------------------
+ * `EditorialSplitSection` is a two-arm exhaustive switch over
+ * `SectionVariant<"editorial-split">`, with NO `default` arm — a third
+ * variant added to `SECTION_VARIANTS["editorial-split"]` in `schema.ts`
+ * without a matching arm here is a COMPILE error, not a silently-blank band
+ * on a live storefront. `variant` is given a default of `"split"` — the
+ * flagship's own rendering, and `SECTION_VARIANTS["editorial-split"][0]` —
+ * purely so this file keeps compiling against `section-renderer.tsx`'s
+ * current, not-yet-variant-aware call site; plan 05-10 (Wave 3) threads a
+ * real `variants["editorial-split"]` value through once every section type's
+ * variant switch exists. The default is never a second source of truth for
+ * "which variant a template renders" — that answer always comes from
+ * `variantsForTemplate()`, never from this default.
  *
  * ---------------------------------------------------------------------------
  * THIS IS THE PAGE'S ONLY INVERTED REGION, AND THAT IS A DESIGN DECISION, NOT
@@ -22,7 +42,11 @@ import { Reveal } from "./reveal";
  * photo → wash → white → INK → white, and this band is the ink. It is what
  * stops a five-section page from reading as one long white scroll, and it is
  * one of the things the § Design-Distinctiveness Gate is judged on. A second
- * inverted band anywhere on this page cancels the effect of this one.
+ * inverted band anywhere on this page cancels the effect of this one. This
+ * holds for BOTH variants: `banner` is ink too (05-UI-SPEC.md § Background-
+ * treatment classification), and moved verbatim into `EditorialSplitSplit`,
+ * under `EditorialSplitSection`'s `"split"` arm — nothing about it changed
+ * in this phase.
  */
 
 /**
@@ -41,7 +65,13 @@ const COLUMN_ENTER =
   "animate-in fade-in slide-in-from-bottom-4 fill-mode-both " +
   "ease-[var(--motion-ease)] animation-duration-[var(--motion-reveal)]";
 
-export function EditorialSplitSection({
+/**
+ * The flagship's own rendering — Phase 4's design, moved verbatim under a new
+ * name. Every class string, every comment and every behaviour below is
+ * unchanged from before this plan; only the export name and the wrapping
+ * dispatcher around it are new.
+ */
+function EditorialSplitSplit({
   settings,
   data,
 }: {
@@ -165,4 +195,30 @@ export function EditorialSplitSection({
       </section>
     </Reveal>
   );
+}
+
+/**
+ * The two-arm dispatcher. See the file header for why there is no `default`
+ * arm: a third `SECTION_VARIANTS["editorial-split"]` entry must fail the
+ * build here, not render blank on a live storefront.
+ */
+export function EditorialSplitSection({
+  settings,
+  data,
+  variant = "split",
+}: {
+  /* Narrowed out of the union — see the note in `hero-section.tsx`. */
+  readonly settings: Extract<
+    SectionInstance,
+    { type: "editorial-split" }
+  >["settings"];
+  readonly data: StorefrontRenderData;
+  readonly variant?: SectionVariant<"editorial-split">;
+}): ReactElement {
+  switch (variant) {
+    case "split":
+      return <EditorialSplitSplit settings={settings} data={data} />;
+    case "banner":
+      return <EditorialSplitBanner settings={settings} data={data} />;
+  }
 }
