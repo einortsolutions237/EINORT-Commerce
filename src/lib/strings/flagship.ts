@@ -96,8 +96,36 @@ export const flagshipCopy = {
 } as const;
 
 /**
+ * Recursively widens every string-literal leaf of an `as const` object type to
+ * `string`, preserving structure otherwise.
+ *
+ * `flagshipCopy` above is `as const`, so `typeof flagshipCopy` gives every
+ * leaf field a literal type (`heading: "New arrivals"`, not `heading:
+ * string`). `Partial<typeof flagshipCopy>` only widens OPTIONALITY at the top
+ * level — a nested field like `hero.heading` stays the literal
+ * `"New arrivals"`, so a segment module (`src/lib/strings/templates/*.ts`)
+ * that writes its own real prose into `hero.heading` fails with TS2322 the
+ * moment that prose is not byte-identical to the flagship's own string. This
+ * was discovered and fixed once already (Phase 5, Wave 3, plan 05-12) — see
+ * that plan's SUMMARY for the original diagnosis. Any later plan that hits
+ * the same TS2322 pattern should recognise it as this exact bug rather than
+ * re-diagnosing from scratch.
+ */
+type DeepWiden<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? readonly DeepWiden<U>[]
+    : T extends object
+      ? { [K in keyof T]: DeepWiden<T[K]> }
+      : T;
+
+/**
  * The reference shape every one of the 50 templates' copy (`strings.templates
  * [key]`) is typed against — `Partial<FlagshipCopy>`, nested `Partial` at the
  * per-segment-namespace level (see `src/lib/strings/templates/*.ts`).
+ *
+ * `DeepWiden<typeof flagshipCopy>`, not `typeof flagshipCopy` directly — see
+ * `DeepWiden`'s own comment above for why the bare `typeof` breaks every
+ * segment module that writes real (non-empty-object) copy.
  */
-export type FlagshipCopy = typeof flagshipCopy;
+export type FlagshipCopy = DeepWiden<typeof flagshipCopy>;
