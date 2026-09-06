@@ -4,18 +4,22 @@ import { strings } from "@/lib/strings";
 import {
   flagshipDefaultDocument,
   flagshipDefaultTokens,
+  templateDefaultDocument,
+  templateDefaultTokens,
 } from "@/server/theming/defaults";
 import {
   FIELD_KINDS,
   INDUSTRY_SEGMENTS,
   INDUSTRY_SEGMENT_ICONS,
   SECTION_TYPES,
+  TEMPLATE_KEYS,
   TEMPLATES,
   THEME_FIELDS,
   THEME_NON_TOKEN_FIELD,
   isIndustrySegment,
 } from "@/server/theming/registry";
 import {
+  SECTION_VARIANTS,
   pageDocumentSchema,
   sectionInstanceSchema,
   themeTokensSchema,
@@ -554,6 +558,159 @@ describe("theming registry / schema drift", () => {
           "seeding a new storefront on it would produce a document that " +
           "cannot parse.",
       ).toEqual([]);
+    }
+  });
+
+  // -- template defaults, generalized from 1 to 50 (05-20) -------------------
+  //
+  // Every assertion below is the flagship-only assertion above it, generalized
+  // to loop over all 50 `TEMPLATE_KEYS` instead of the single flagship row.
+  // Nothing above this point was deleted or weakened; this section only adds.
+  //
+  // IT MUST NOT PASS VACUOUSLY (see the file header). The very first test
+  // pins the list length and uniqueness BEFORE any loop below is trusted —
+  // Pitfall 3 (05-RESEARCH.md): a short or empty list would make every loop
+  // below pass while checking almost nothing.
+
+  it("declares exactly 50 template keys, all unique", () => {
+    expect(
+      TEMPLATE_KEYS.length,
+      "TEMPLATE_KEYS is not 50 entries long. Every loop below iterates this " +
+        "list, so a short list would make all of them pass while checking " +
+        "almost nothing (Pitfall 3, 05-RESEARCH.md).",
+    ).toBe(50);
+    expect(new Set(TEMPLATE_KEYS).size).toBe(50);
+    expect(Object.keys(TEMPLATES).length).toBe(50);
+    expect(new Set(Object.keys(TEMPLATES)).size).toBe(50);
+  });
+
+  it("gives every one of the 50 templates a non-empty section list of real types and variants", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const template = TEMPLATES[key];
+
+      expect(
+        template.sections.length,
+        `${key} declares no sections — a template with zero sections is a ` +
+          "blank storefront no merchant should be able to pick.",
+      ).toBeGreaterThan(0);
+
+      for (const ref of template.sections) {
+        expect(
+          Object.prototype.hasOwnProperty.call(SECTION_VARIANTS, ref.type),
+          `${key} lists a section type ("${ref.type}") the Zod union does not ` +
+            "define, so seeding a new storefront on it would produce a " +
+            "document that cannot parse." + DRIFT_REMEDY,
+        ).toBe(true);
+
+        expect(
+          (SECTION_VARIANTS[ref.type] as readonly string[]).includes(
+            ref.variant,
+          ),
+          `${key} pairs "${ref.type}" with a variant ("${ref.variant}") that ` +
+            "is not in that type's own SECTION_VARIANTS list.\n" +
+            "  FIX: use one of that type's declared variants, or add a new " +
+            "one to SECTION_VARIANTS in schema.ts and this assertion together.\n" +
+            "  WRONG FIX: do not widen the variant type to `string`.",
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("builds a default document for every one of the 50 templates that parses", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const result = pageDocumentSchema.safeParse(templateDefaultDocument(key));
+
+      expect(
+        result.success ? [] : result.error.issues.map((issue) => issue.message),
+        `${key}'s default document does not satisfy pageDocumentSchema.\n` +
+          "  Most likely cause: a copy string exceeded its schema cap — the " +
+          "cap lives in schema.ts and is the only place it lives.",
+      ).toEqual([]);
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("builds every one of the 50 default documents in its own template's declared order", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const document = templateDefaultDocument(key);
+
+      expect(
+        document.sections.map((section) => section.type),
+        `${key}'s default document and TEMPLATES["${key}"].sections disagree ` +
+          "about which sections a new storefront gets, or in what order.\n" +
+          "  FIX: change both, deliberately, in one commit.",
+      ).toEqual(TEMPLATES[key].sections.map((ref) => ref.type));
+    }
+  });
+
+  it("uses each section's own type as its id, for every one of the 50 templates", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const sections = templateDefaultDocument(key).sections;
+
+      expect(
+        sections
+          .filter((section) => section.id !== section.type)
+          .map((s) => s.id),
+        `${key}'s default document has a section whose id is not its own ` +
+          "type string. D-05 makes the type a stable unique id; a random id " +
+          "would break the fixture byte-identity " +
+          "tests/setup/seed-two-tenants.ts depends on.",
+      ).toEqual([]);
+
+      expect(new Set(sections.map((s) => s.id)).size).toBe(sections.length);
+    }
+  });
+
+  it("returns a fresh default document on every call, for every one of the 50 templates", () => {
+    // T-04-22, generalized. The seed path and the storefront read-path
+    // fallback both call this for every template, not just the flagship; a
+    // shared literal is one careless caller away from corrupting every
+    // subsequent tenant seeded on that key, silently and cross-tenant.
+    for (const key of TEMPLATE_KEYS) {
+      const first = templateDefaultDocument(key);
+      const second = templateDefaultDocument(key);
+
+      expect(first).not.toBe(second);
+      expect(first.sections).not.toBe(second.sections);
+
+      first.sections.pop();
+      (first.sections[0] as { id: string }).id = "mutated";
+
+      expect(
+        templateDefaultDocument(key).sections.length,
+        `Mutating one templateDefaultDocument("${key}") result changed the ` +
+          "next one. The builder is returning a shared object.\n" +
+          "  FIX: build and return a fresh literal inside the builder.\n" +
+          "  WRONG FIX: do not hoist the literal to module scope and freeze " +
+          "it — a frozen object fails silently in non-strict callers and " +
+          "still shares nested arrays.",
+      ).toBe(TEMPLATES[key].sections.length);
+      expect(templateDefaultDocument(key).sections[0].id).not.toBe("mutated");
+    }
+  });
+
+  it("parses and freshly builds default tokens for every one of the 50 templates", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const result = themeTokensSchema.safeParse(templateDefaultTokens(key));
+
+      expect(
+        result.success ? [] : result.error.issues.map((issue) => issue.message),
+        `${key}'s default tokens do not satisfy themeTokensSchema. Both ` +
+          "accents go through hexColorSchema, which is a security control " +
+          "(the value is written into a CSS custom property unsanitised).",
+      ).toEqual([]);
+      expect(result.success).toBe(true);
+
+      // Fresh-object rule, per template — same hazard flagshipDefaultTokens's
+      // own header warns about, one level up.
+      const tokens = templateDefaultTokens(key);
+      tokens.announcementText = "mutated";
+      expect(
+        templateDefaultTokens(key).announcementText,
+        `Mutating one templateDefaultTokens("${key}") result changed the ` +
+          "next one. The builder is returning a shared object — build and " +
+          "return a fresh literal inside it.",
+      ).not.toBe("mutated");
     }
   });
 });
