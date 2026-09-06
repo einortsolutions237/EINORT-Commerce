@@ -15,15 +15,22 @@ import { scopedCreateData, scopedDb } from "@/server/db/tenant-scoped";
 import { assertCanEditStorefront } from "@/server/entitlements/assert";
 import { merchantAction } from "@/server/merchant/action";
 
-import { flagshipDefaultDocument, flagshipDefaultTokens } from "./defaults";
+import { assertTemplateAccess } from "./access";
+import {
+  flagshipDefaultDocument,
+  flagshipDefaultTokens,
+  templateDefaultDocument,
+  templateDefaultTokens,
+} from "./defaults";
 import { StorefrontNotSeededError } from "./errors";
-import { isIndustrySegment } from "./registry";
+import { isIndustrySegment, isTemplateKey, variantsForTemplate } from "./registry";
 import {
   hexColorSchema,
   pageDocumentSchema,
   storageKeySchema,
   themeTokensSchema,
   type PageDocument,
+  type SectionVariantMap,
   type ThemeTokens,
 } from "./schema";
 
@@ -367,6 +374,133 @@ export const discardDraft = merchantAction<
     revalidatePath("/dashboard/storefront-editor");
 
     return { ok: true as const, ...reverted };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// switchTemplate — TMPL-04, D-08 / D-09 / D-11 / D-12
+// ---------------------------------------------------------------------------
+
+/**
+ * Exactly one field, and NO TENANT IDENTIFIER (T-05-42 / T-04-04): this
+ * action is reachable by a direct POST that never rendered the picker, so
+ * the schema IS the trust boundary and the target is `ctx.tenantId` and
+ * nothing else. Narrows through the registry predicate `isTemplateKey`
+ * rather than a `z.enum` restating 50 keys — the `isIndustrySegment`
+ * precedent above — so the closed set lives in one place and this schema
+ * cannot drift from it.
+ */
+const switchTemplateSchema = z.object({
+  templateKey: z.string().refine(isTemplateKey, "Not a template."),
+});
+
+/**
+ * The `discardDraft` precedent: the editor holds its state in the browser
+ * (D-07), so without this payload a switch would leave the open editor
+ * showing the design it just replaced until a full reload. `variants` rides
+ * along too, so the editor can post the new map to its preview iframe.
+ */
+type SwitchTemplateData = {
+  document: PageDocument;
+  tokens: ThemeTokens;
+  variants: SectionVariantMap;
+  templateKey: string;
+  /** ISO, same reason `SaveDraftData.draftUpdatedAt` is. */
+  draftUpdatedAt: string;
+};
+
+export const switchTemplate = merchantAction<
+  typeof switchTemplateSchema,
+  SwitchTemplateData
+>({
+  mode: "write",
+  schema: switchTemplateSchema,
+  handler: async (ctx, { templateKey }) => {
+    // EDIT-03 / D-13 / D-15, unchanged behaviour — before any database call.
+    assertCanEditStorefront(ctx, strings.editor.starterViewOnly);
+    /*
+     * D-06 / D-12. THIS IS THE CONTROL; THE PICKER HIDING A CARD IS NOT.
+     * Reads `ctx.plan.tier` directly (see `access.ts`'s header for why an
+     * active trial must never elevate it) — a Starter account posting a
+     * Professional key directly is refused here, before any row is touched,
+     * trial or no trial.
+     */
+    assertTemplateAccess(ctx, templateKey, strings.editor.templateTierLocked);
+
+    const db = scopedDb(ctx.tenantId);
+    const draftUpdatedAt = new Date();
+    const document = templateDefaultDocument(templateKey);
+
+    const { tokens } = await db.$transaction(async (tx) => {
+      const [page, theme] = await Promise.all([
+        tx.storefrontPage.findUnique({
+          where: {
+            tenantId_pageType: {
+              tenantId: ctx.tenantId,
+              pageType: HOME_PAGE_TYPE,
+            },
+          },
+          select: { id: true },
+        }),
+        tx.storefrontTheme.findUnique({
+          where: { tenantId: ctx.tenantId },
+          select: { id: true, draftTokens: true },
+        }),
+      ]);
+      if (!page || !theme) throw new StorefrontNotSeededError(ctx.tenantId);
+
+      /*
+       * D-11: PRESERVE THE MERCHANT'S BRAND, RESET THE TEMPLATE'S COPY.
+       * `primaryAccent`/`secondaryAccent` survive from the tenant's current
+       * draft tokens; `announcementText`/`footerTagline` come from the NEW
+       * template's defaults. `logoKey` lives on its own column and is simply
+       * not written here, so it survives untouched. Same composition shape
+       * `saveBranding` establishes below — D-09 discards the DOCUMENT, not
+       * the brand: resetting an identity the merchant chose at onboarding
+       * because they changed layout would read as data loss, not as a
+       * template change.
+       */
+      const currentTokens = themeTokensSchema.parse(theme.draftTokens);
+      const templateTokens = templateDefaultTokens(templateKey);
+      const tokens: ThemeTokens = {
+        ...templateTokens,
+        primaryAccent: currentTokens.primaryAccent,
+        secondaryAccent: currentTokens.secondaryAccent,
+      };
+
+      /*
+       * `published`, `publishedTokens` AND `publishedTemplateKey` ARE LEFT
+       * BYTE-IDENTICAL. Writing `publishedTemplateKey` here would be a
+       * SILENT PUBLISH, and it is the single most important thing this
+       * action must not do — `switchTemplate` re-seeds the DRAFT only
+       * (D-08/D-09); publishing it is a separate, explicit action the
+       * merchant must still take.
+       */
+      await tx.storefrontPage.update({
+        where: { id: page.id },
+        data: { draft: document, draftUpdatedAt },
+      });
+      await tx.storefrontTheme.update({
+        where: { tenantId: ctx.tenantId },
+        data: { draftTokens: tokens, draftTemplateKey: templateKey },
+      });
+
+      return { tokens };
+    });
+
+    // Same reason `publishStorefront`/`discardDraft` revalidate: the publish
+    // bar and the editor's own preview state must not go stale until a hard
+    // reload.
+    revalidatePath("/dashboard/storefront-editor");
+
+    return {
+      ok: true as const,
+      document,
+      tokens,
+      variants: variantsForTemplate(templateKey),
+      templateKey,
+      draftUpdatedAt: draftUpdatedAt.toISOString(),
+    };
   },
 });
 
