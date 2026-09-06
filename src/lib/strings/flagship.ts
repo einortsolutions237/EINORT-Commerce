@@ -93,7 +93,7 @@ export const flagshipCopy = {
   },
 
   footerTagline: "Thanks for shopping with us.",
-} as const;
+};
 
 /**
  * `flagshipCopy` is declared `as const` so `strings.flagship` itself carries
@@ -125,5 +125,26 @@ type DeepWiden<T> = T extends string
  * The reference shape every one of the 50 templates' copy (`strings.templates
  * [key]`) is typed against — `Partial<FlagshipCopy>`, nested `Partial` at the
  * per-segment-namespace level (see `src/lib/strings/templates/*.ts`).
+ *
+ * DELIBERATELY NOT `typeof flagshipCopy` OVER AN `as const` LITERAL (05-13
+ * fix). `flagshipCopy` was originally declared `as const`, which types every
+ * leaf as its own string LITERAL (`name: "Flagship"`, `hero.heading: "New
+ * arrivals"`, …) rather than `string`. `Partial<FlagshipCopy>` over that
+ * shape does not loosen the leaf types — a `Partial` only makes each KEY
+ * optional, not its value type — so the only value TypeScript would ever
+ * accept for, say, `hero.heading` on any of the other 49 templates is the
+ * flagship's own literal "New arrivals". That silently made this segment's
+ * (and every other segment's) real copy impossible to typecheck the moment
+ * it stopped being an empty placeholder string, since `""` happens to be
+ * assignable to nothing here either — the empty scaffold from 05-08 only
+ * compiled because `?? ""` produces `string`, and reading `undefined` off an
+ * absent key never touched the literal. Declaring `flagshipCopy` without
+ * `as const` (mutable inference: every leaf widens to `string`) is the
+ * intended contract restored — `FlagshipCopy`'s leaves are `string`, so
+ * `Partial<FlagshipCopy>` is genuinely "any of these keys, each holding any
+ * string", which is what every per-segment module has relied on since 05-03.
+ * No caller of `strings.flagship`/`flagshipCopy` narrows on a literal value
+ * (verified: `src/server/theming/defaults.ts` only reads `.hero.eyebrow`
+ * etc. as plain strings), so nothing depends on the narrower literal type.
  */
 export type FlagshipCopy = DeepWiden<typeof flagshipCopy>;
