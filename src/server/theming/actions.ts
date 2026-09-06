@@ -13,9 +13,10 @@ import type {
 import { platformDb } from "@/server/db/platform";
 import { scopedCreateData, scopedDb } from "@/server/db/tenant-scoped";
 import { assertCanEditStorefront } from "@/server/entitlements/assert";
+import { isPlanTier } from "@/server/entitlements/plans";
 import { merchantAction } from "@/server/merchant/action";
 
-import { assertTemplateAccess } from "./access";
+import { assertTemplateAccess, canUseTemplate } from "./access";
 import {
   flagshipDefaultDocument,
   flagshipDefaultTokens,
@@ -652,7 +653,7 @@ export const ensureStorefrontSeeded = merchantAction({
  */
 
 /**
- * Exactly five fields, and NO TENANT IDENTIFIER (T-04-04).
+ * Exactly six fields, and NO TENANT IDENTIFIER (T-04-04).
  *
  * A tenant field here is precisely the retargeting vector the whole
  * architecture exists to prevent: this action is reachable by a direct POST that
@@ -670,6 +671,11 @@ export const ensureStorefrontSeeded = merchantAction({
  * closed set lives in the registry (D-02) and this schema cannot drift from it.
  * `logoKey` is nullable because ONB-03's logo is optional — a merchant with no
  * logo file must still be able to finish onboarding.
+ *
+ * `templateKey` (05-11, TMPL-04) narrows through `isTemplateKey` the same way —
+ * the merchant's picked template, seeded and published in the same submission.
+ * Its TIER is not enforced by the schema (a `refine` here has no organization
+ * row to check against); see the tier gate inside `saveBranding` below.
  */
 const saveBrandingSchema = z.object({
   businessName: z.string().trim().min(2).max(80),
@@ -677,6 +683,7 @@ const saveBrandingSchema = z.object({
   logoKey: storageKeySchema.nullable(),
   primaryAccent: hexColorSchema,
   secondaryAccent: hexColorSchema,
+  templateKey: z.string().refine(isTemplateKey, "Not a template."),
 });
 
 /**
@@ -726,8 +733,46 @@ export async function saveBranding(
     return { ok: false, error: { form: [strings.signup.sessionExpired] } };
   }
 
-  const { businessName, industry, logoKey, primaryAccent, secondaryAccent } =
-    parsed.data;
+  const {
+    businessName,
+    industry,
+    logoKey,
+    primaryAccent,
+    secondaryAccent,
+    templateKey,
+  } = parsed.data;
+
+  /*
+   * THE TIER GATE, ENFORCED HERE TOO (D-06 / D-12) — the deliberate exception
+   * to the boolean-is-not-a-control rule `access.ts`'s header states.
+   * `saveBranding` does not run through `merchantAction`, so it has no
+   * `MerchantContext` to assert against — constructing a fake one to reuse
+   * `assertTemplateAccess` would be worse than calling `canUseTemplate`
+   * directly, because a context built by hand here is exactly the kind of
+   * object nothing asserts is real. The refusal takes the SAME field-error
+   * shape every other validation failure in this action already uses.
+   *
+   * Fails CLOSED to `starter` for a `null` or unrecognised `planTier`, the
+   * same posture `resolveEntitlements` takes (`entitlements/resolve.ts`) —
+   * an organization with no legible tier gets the narrowest template set,
+   * never the widest.
+   */
+  const organizationForGate = await platformDb.organization.findUnique({
+    where: { id: tenantId },
+    select: { planTier: true },
+  });
+  if (!organizationForGate) {
+    return { ok: false, error: { form: [strings.signup.sessionExpired] } };
+  }
+  const tier = isPlanTier(organizationForGate.planTier)
+    ? organizationForGate.planTier
+    : "starter";
+  if (!canUseTemplate(tier, templateKey)) {
+    return {
+      ok: false,
+      error: { templateKey: [strings.editor.templateTierLocked] },
+    };
+  }
 
   /*
    * ONB-02's two answers land on the tenant row itself. `Organization` is not
@@ -747,16 +792,22 @@ export async function saveBranding(
   });
 
   const now = new Date();
-  const document = flagshipDefaultDocument();
+  const document = templateDefaultDocument(templateKey);
   /*
-   * The registry defaults with the merchant's two accents laid over them. The
-   * announcement text and footer tagline stay at their defaults because this
-   * step does not ask for them — `flagshipDefaultTokens()`'s header explains why
-   * the announcement is deliberately non-empty: it is where the secondary accent
+   * The PICKED TEMPLATE's defaults with the merchant's two accents laid over
+   * them (05-11 replaces the flagship-only builders here). The announcement
+   * text and footer tagline stay at the picked template's defaults because
+   * this step does not ask for them — `flagshipDefaultTokens()`'s header (the
+   * shape every `TEMPLATE_DEFAULTS` builder follows) explains why the
+   * announcement is deliberately non-empty: it is where the secondary accent
    * is actually visible, and a colour with no visible role is a pointless
    * question to have asked.
    */
-  const tokens = { ...flagshipDefaultTokens(), primaryAccent, secondaryAccent };
+  const tokens = {
+    ...templateDefaultTokens(templateKey),
+    primaryAccent,
+    secondaryAccent,
+  };
 
   /*
    * ONB-03's LOGO KEY GOES HERE, ON `StorefrontTheme`, AND NOT ON THE
@@ -784,6 +835,13 @@ export async function saveBranding(
    * empty, because the page document is what the EDITOR owns — re-running this
    * step must never clobber a storefront the merchant has since edited.
    *
+   * BOTH `draftTemplateKey` AND `publishedTemplateKey` GO TO THE PICKED KEY,
+   * IN BOTH THE `create` AND `update` HALVES. This is the ONE place
+   * `publishedTemplateKey` is written outside `publishStorefront` — onboarding
+   * publishes immediately (ONB-04), which is why a merchant leaves onboarding
+   * with a live storefront rather than an empty draft waiting for a first
+   * publish.
+   *
    * `scopedCreateData<T>()` on both `create` halves, and `scopedDb` stamps the
    * tenant into both halves of each upsert, last.
    */
@@ -791,14 +849,16 @@ export async function saveBranding(
     await tx.storefrontTheme.upsert({
       where: { tenantId },
       create: scopedCreateData<StorefrontThemeCreateInput>({
-        draftTemplateKey: DEFAULT_TEMPLATE_KEY,
-        publishedTemplateKey: DEFAULT_TEMPLATE_KEY,
+        draftTemplateKey: templateKey,
+        publishedTemplateKey: templateKey,
         logoKey,
         draftTokens: tokens,
         publishedTokens: tokens,
         publishedAt: now,
       }),
       update: {
+        draftTemplateKey: templateKey,
+        publishedTemplateKey: templateKey,
         logoKey,
         draftTokens: tokens,
         publishedTokens: tokens,

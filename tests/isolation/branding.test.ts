@@ -208,8 +208,14 @@ type BrandingPayload = {
   logoKey: string | null;
   primaryAccent: string;
   secondaryAccent: string;
+  templateKey: string;
 };
 
+/**
+ * `"flagship-fashion"` is `starter`-tier (the lowest), so the base payload
+ * never trips the tier gate 05-11 adds to `saveBranding` — every case in
+ * this file that does not care about templates keeps working unmodified.
+ */
 function payload(overrides: Partial<BrandingPayload> = {}): BrandingPayload {
   return {
     businessName: "Confirmed Business Name",
@@ -217,6 +223,7 @@ function payload(overrides: Partial<BrandingPayload> = {}): BrandingPayload {
     logoKey: null,
     primaryAccent: FIRST_PRIMARY,
     secondaryAccent: FIRST_SECONDARY,
+    templateKey: "flagship-fashion",
     ...overrides,
   };
 }
