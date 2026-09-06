@@ -96,8 +96,34 @@ export const flagshipCopy = {
 } as const;
 
 /**
+ * `flagshipCopy` is declared `as const` so `strings.flagship` itself carries
+ * literal string types end to end (a real correctness property elsewhere in
+ * this codebase). But that same `as const` makes `typeof flagshipCopy`
+ * unusable as a shape for the other 49 templates' copy: every leaf field's
+ * type would be the flagship's own literal ("New arrivals", not `string`),
+ * so `hero.heading: "Fresh drops"` in `fashion-runway.ts` would fail to
+ * typecheck against `hero.heading: "New arrivals"`. `Partial<T>` only
+ * shallow-widens at the top level (making `hero` itself optional); it does
+ * not touch the string literal types nested inside `hero`, `trustBar`, etc.
+ *
+ * `DeepWiden` walks the object graph and replaces every string-literal leaf
+ * with `string`, preserving plain-object structure. This is the type-level
+ * fix that lets `Partial<FlagshipCopy>` (below) mean what plans 05-12
+ * through 05-17 need it to mean: "any of the flagship's fields, present or
+ * absent, populated with real prose" — while `flagshipCopy` itself keeps
+ * its own `as const` literal typing unaffected.
+ */
+type DeepWiden<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? DeepWiden<U>[]
+    : T extends object
+      ? { [K in keyof T]: DeepWiden<T[K]> }
+      : T;
+
+/**
  * The reference shape every one of the 50 templates' copy (`strings.templates
  * [key]`) is typed against — `Partial<FlagshipCopy>`, nested `Partial` at the
  * per-segment-namespace level (see `src/lib/strings/templates/*.ts`).
  */
-export type FlagshipCopy = typeof flagshipCopy;
+export type FlagshipCopy = DeepWiden<typeof flagshipCopy>;
