@@ -11,6 +11,7 @@ import {
   listStorefrontProducts as fetchProducts,
 } from "@/server/storefront/queries";
 import { getPublishedStorefront } from "@/server/theming/queries";
+import { variantsForTemplate } from "@/server/theming/registry";
 import { resolveTenantBySlug } from "@/server/tenant/resolve";
 
 import type { StorefrontRenderData } from "../sections/render-data";
@@ -196,10 +197,23 @@ export default async function StorefrontPreviewPage({
   const protocol = rootDomain.startsWith("localhost") ? "http" : "https";
   const editorOrigin = `${protocol}://${rootDomain}`;
 
+  /*
+   * Resolved from the PUBLISHED template key ONLY — never the draft column.
+   * This route is deliberately ungated (see the file header) and serves only
+   * data the storefront already serves publicly; teaching it to read the
+   * merchant's unpublished template choice would leak that decision to anyone
+   * who requests this URL directly. The draft variant map reaches the canvas
+   * instead through the existing postMessage handshake, initialised here from
+   * the published map so the pane is never blank before the first message
+   * arrives, exactly like `initialDocument`/`initialTokens` above.
+   */
+  const initialVariants = variantsForTemplate(published.publishedTemplateKey);
+
   return (
     <PreviewCanvas
       initialDocument={published.document}
       initialTokens={published.tokens}
+      initialVariants={initialVariants}
       data={data}
       editorOrigin={editorOrigin}
     />

@@ -11,6 +11,7 @@ import {
   listStorefrontProducts as fetchProducts,
 } from "@/server/storefront/queries";
 import { getPublishedStorefront } from "@/server/theming/queries";
+import { variantsForTemplate } from "@/server/theming/registry";
 import { resolveTenantBySlug } from "@/server/tenant/resolve";
 
 import type { StorefrontRenderData } from "./sections/render-data";
@@ -164,6 +165,16 @@ export default async function StorefrontPage({
     ),
   };
 
+  /*
+   * Resolved ONCE, here, from the PUBLISHED template key — never the draft —
+   * and handed to every section as plain data. This file is an RSC, so
+   * importing the `server-only` registry here is the intended pattern:
+   * resolve server-side, then pass a plain `SectionVariantMap` down to a
+   * component tree that also renders inside the client-side preview canvas
+   * and must therefore stay free of `server-only` imports itself.
+   */
+  const variants = variantsForTemplate(published.publishedTemplateKey);
+
   return (
     <main className="flex flex-1 flex-col">
       {/*
@@ -176,7 +187,12 @@ export default async function StorefrontPage({
        * it is the only place React needs it.
        */}
       {published.document.sections.map((section) => (
-        <SectionRenderer key={section.id} section={section} data={data} />
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          data={data}
+          variants={variants}
+        />
       ))}
     </main>
   );
