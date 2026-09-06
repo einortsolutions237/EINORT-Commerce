@@ -1,9 +1,13 @@
+import type { ReactElement } from "react";
+
 import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
-import type { SectionInstance } from "@/server/theming/schema";
+import type { SectionInstance, SectionVariant } from "@/server/theming/schema";
 
+import { HeroSplit } from "./hero-split";
+import { HeroStack } from "./hero-stack";
 import type { StorefrontRenderData } from "./render-data";
 
 /**
@@ -44,6 +48,21 @@ import type { StorefrontRenderData } from "./render-data";
  * consistent" with the 0.25rem transactional buttons on the cart and checkout
  * pages. A marketing CTA and a money button are different affordances and the
  * shape is how a shopper tells them apart.
+ *
+ * ---------------------------------------------------------------------------
+ * THE VARIANT CONTRACT (TMPL-03, D-02): A TEMPLATE FIXES THE VARIANT; THE
+ * MERCHANT NEVER DOES.
+ * ---------------------------------------------------------------------------
+ * `HeroSection` below is a three-arm exhaustive switch over
+ * `SectionVariant<"hero">` — `full-bleed` (this file's `HeroFullBleed`,
+ * Phase 4's design, moved verbatim), `split` (`./hero-split.tsx`), and
+ * `stack` (`./hero-stack.tsx`). Which arm renders is chosen once, when a
+ * template is picked or switched (`switchTemplate` in
+ * `src/server/theming/actions.ts` is the only write path for a variant) —
+ * never by a merchant-editable field on the section's own settings. A fourth
+ * hero variant is added to `SECTION_VARIANTS.hero` in `schema.ts` first, which
+ * makes the switch below stop being exhaustive and fail the build right here,
+ * rather than silently rendering nothing on a live storefront.
  */
 
 /**
@@ -88,7 +107,7 @@ const CASCADE =
   "animate-in fade-in slide-in-from-bottom-4 fill-mode-both " +
   "ease-[var(--motion-ease)] animation-duration-[var(--motion-hero)]";
 
-export function HeroSection({
+function HeroFullBleed({
   settings,
   data,
 }: {
@@ -219,4 +238,35 @@ export function HeroSection({
       </div>
     </section>
   );
+}
+
+/**
+ * THE three-arm exhaustive variant switch. See the file header's "THE VARIANT
+ * CONTRACT" section for why this is a `switch` with a `: ReactElement`
+ * annotation and no `default` arm, and NOT a `Record<Variant, Component>`
+ * lookup: `05-RESEARCH.md` Pattern 2's anti-pattern note records that a
+ * lookup would compile — the settings type is already narrowed by the time it
+ * reaches this function — but it reintroduces the lookup-with-a-default shape
+ * `section-renderer.tsx`'s own header bans one level up, and makes a fourth
+ * hero variant silently render nothing instead of failing the build.
+ */
+export function HeroSection({
+  settings,
+  data,
+  variant,
+}: {
+  readonly settings: Extract<SectionInstance, { type: "hero" }>["settings"];
+  readonly data: StorefrontRenderData;
+  readonly variant: SectionVariant<"hero">;
+}): ReactElement {
+  switch (variant) {
+    case "full-bleed":
+      return <HeroFullBleed settings={settings} data={data} />;
+
+    case "split":
+      return <HeroSplit settings={settings} data={data} />;
+
+    case "stack":
+      return <HeroStack settings={settings} data={data} />;
+  }
 }
