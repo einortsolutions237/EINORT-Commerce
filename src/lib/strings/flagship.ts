@@ -96,8 +96,31 @@ export const flagshipCopy = {
 } as const;
 
 /**
+ * Recursively widens every string-literal leaf `as const` produced on
+ * `flagshipCopy` (`"Welcome"`, `"New arrivals"`, ...) back to `string`, while
+ * preserving object shape.
+ *
+ * WITHOUT THIS, `Partial<FlagshipCopy>` IS UNUSABLE BY ANY OTHER TEMPLATE.
+ * `typeof flagshipCopy` alone carries the flagship's own exact literal type
+ * for every string — correct for `flagshipCopy` itself, wrong for
+ * `FlagshipCopy`, which is deliberately reused as the structural SHAPE every
+ * other template's copy (`src/lib/strings/templates/*.ts`) conforms to, not
+ * as a demand that every template repeat the flagship's own words verbatim.
+ * `Partial<typeof flagshipCopy>["hero"]`, unwidened, only type-checks against
+ * `{ eyebrow: "Welcome"; heading: "New arrivals"; ... }` — a beauty-cosmetics
+ * hero heading of anything else is a compile error, not a copy choice.
+ */
+type WidenLeaves<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? readonly WidenLeaves<U>[]
+    : T extends object
+      ? { [K in keyof T]: WidenLeaves<T[K]> }
+      : T;
+
+/**
  * The reference shape every one of the 50 templates' copy (`strings.templates
  * [key]`) is typed against — `Partial<FlagshipCopy>`, nested `Partial` at the
  * per-segment-namespace level (see `src/lib/strings/templates/*.ts`).
  */
-export type FlagshipCopy = typeof flagshipCopy;
+export type FlagshipCopy = WidenLeaves<typeof flagshipCopy>;
