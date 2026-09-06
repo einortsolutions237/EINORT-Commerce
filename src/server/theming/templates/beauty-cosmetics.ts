@@ -9,19 +9,17 @@ import "server-only";
  * `src/server/theming/defaults.ts`, unchanged — it does not get a builder
  * here.
  *
- * CONTRACT-COMPLETE, CONTENT-MINIMAL THIS PLAN (05-08). Every builder's
- * `sections` array matches its registry row's declared section types and
- * order exactly, and every settings field is present. Every copy value reads
+ * CONTENT-COMPLETE (05-14, Wave 3). Every builder's `sections` array matches
+ * its registry row's declared section types and order exactly, and every
+ * settings field is present. Every copy value reads
  * `strings.templates["<key>"]?.<path> ?? ""` — the ONE access pattern this
  * phase's six segment modules use, with optional chaining down to the leaf
- * field and a `?? ""` fallback so the expression typechecks against the
- * as-yet-empty `strings.templates` namespace 05-03 typed
- * (`Partial<Record<TemplateKey, Partial<typeof strings.flagship>>>`). The
- * `?? ""` fallback is a type-safety bridge for this wave, never a shipped
- * value: plans 05-12 through 05-17 (Wave 3) land real copy under this exact
- * namespace in this same file, and plan 05-20's generalized default-document
- * parse test is the gate that catches an empty string before it ever reaches
- * a live document.
+ * field and a `?? ""` fallback kept intentionally even now that
+ * `src/lib/strings/templates/beauty-cosmetics.ts` is fully authored: it
+ * costs nothing, and it is the same degrade-to-empty-string posture
+ * `flagshipDefaultDocument()` itself never needed because `strings.flagship`
+ * is a plain (non-`Partial`) object — this module's source namespace stays
+ * `Partial` by contract (05-03), so the fallback remains live, not vestigial.
  *
  * Three invariants inherited verbatim from the flagship's own document
  * builder (`src/server/theming/defaults.ts`):
@@ -39,22 +37,21 @@ import "server-only";
  *      literal is one careless caller away from corrupting every subsequent
  *      tenant created in the same process.
  *
- * `primaryAccent` / `secondaryAccent` reuse the same neutral defaults
- * `flagshipDefaultTokens()` ships (`DEFAULT_PRIMARY_ACCENT` /
- * `DEFAULT_SECONDARY_ACCENT`) because accent authoring is not part of
- * `strings.templates`'s copy shape — `FlagshipCopy` carries no accent field.
- * Per-template accent differentiation (the second axis of TMPL-05's
- * distinctiveness test) is Wave 3's job, landing alongside the real copy.
+ * `primaryAccent` / `secondaryAccent` are now genuinely per-template
+ * (TMPL-05's second distinctiveness axis) rather than the shared neutral
+ * defaults 05-08 shipped. Because this segment ships zero photography (D-04,
+ * `05-UI-SPEC.md` § Image Policy), the accent pair carries a disproportionate
+ * share of the work of telling these 8 pages apart — eight hues, not eight
+ * shades of one hue, and no two templates sharing a skeleton share a
+ * `primaryAccent`. Foregrounds and the focus ring are still derived, never
+ * stored — `deriveThemeCssVars` (`src/lib/theme-defaults.ts`) computes them
+ * from these two values at render time (D-11).
  */
 
 import {
   DEFAULT_ITEM_COUNT,
   DEFAULT_OVERLAY_OPACITY,
 } from "@/server/theming/defaults";
-import {
-  DEFAULT_PRIMARY_ACCENT,
-  DEFAULT_SECONDARY_ACCENT,
-} from "@/lib/theme-defaults";
 import { strings } from "@/lib/strings";
 
 import type { PageDocument, ThemeTokens } from "@/server/theming/schema";
@@ -102,10 +99,11 @@ export function beautyGlowDocument(): PageDocument {
   };
 }
 
+/** Deep rose. S8's first accent — skincare, warm and direct. */
 export function beautyGlowTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#B8447A",
+    secondaryAccent: "#F2C9DC",
     announcementText: strings.templates["beauty-glow"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-glow"]?.footerTagline ?? "",
   };
@@ -154,10 +152,11 @@ export function beautyVeilDocument(): PageDocument {
   };
 }
 
+/** Deep plum. S8's second accent — shares beauty-glow's skeleton, not its hue. */
 export function beautyVeilTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#6B2545",
+    secondaryAccent: "#D8B4C8",
     announcementText: strings.templates["beauty-veil"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-veil"]?.footerTagline ?? "",
   };
@@ -229,10 +228,11 @@ export function beautyBloomDocument(): PageDocument {
   };
 }
 
+/** Deep forest green. S9's first accent — botanical haircare. */
 export function beautyBloomTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#2F5233",
+    secondaryAccent: "#C9D9B0",
     announcementText: strings.templates["beauty-bloom"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-bloom"]?.footerTagline ?? "",
   };
@@ -304,10 +304,11 @@ export function beautySatinDocument(): PageDocument {
   };
 }
 
+/** Terracotta. S9's second accent — shares beauty-bloom's skeleton, not its hue. */
 export function beautySatinTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#B5622B",
+    secondaryAccent: "#EAC7A0",
     announcementText: strings.templates["beauty-satin"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-satin"]?.footerTagline ?? "",
   };
@@ -379,10 +380,11 @@ export function beautyRadianceDocument(): PageDocument {
   };
 }
 
+/** Deep teal. S10's first accent — skincare for the climate. */
 export function beautyRadianceTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#1F6F6B",
+    secondaryAccent: "#A9D6D2",
     announcementText: strings.templates["beauty-radiance"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-radiance"]?.footerTagline ?? "",
   };
@@ -454,10 +456,11 @@ export function beautyLuxeDocument(): PageDocument {
   };
 }
 
+/** Deep wine. S10's second accent — shares beauty-radiance's skeleton, not its hue. */
 export function beautyLuxeTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#6E1423",
+    secondaryAccent: "#D9A5A0",
     announcementText: strings.templates["beauty-luxe"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-luxe"]?.footerTagline ?? "",
   };
@@ -515,10 +518,11 @@ export function beautyAuraDocument(): PageDocument {
   };
 }
 
+/** Indigo. S11's first accent — self-care, fragrance. */
 export function beautyAuraTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#4A3B6B",
+    secondaryAccent: "#C4BEDD",
     announcementText: strings.templates["beauty-aura"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-aura"]?.footerTagline ?? "",
   };
@@ -576,10 +580,11 @@ export function beautyMuseDocument(): PageDocument {
   };
 }
 
+/** Navy ink. S11's second accent — shares beauty-aura's skeleton, not its hue. */
 export function beautyMuseTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#1D2A44",
+    secondaryAccent: "#B8C4D6",
     announcementText: strings.templates["beauty-muse"]?.announcement ?? "",
     footerTagline: strings.templates["beauty-muse"]?.footerTagline ?? "",
   };
