@@ -1,5 +1,7 @@
 import "server-only";
 
+import { EntitlementError } from "@/server/entitlements/assert";
+
 /**
  * The theming domain's one refusal, as a type rather than a string.
  *
@@ -48,5 +50,53 @@ export class StorefrontNotSeededError extends Error {
         `Call ensureStorefrontSeeded() before writing.`,
     );
     this.tenantId = tenantId;
+  }
+}
+
+/**
+ * D-06 / T-05-12: the merchant's plan tier does not include the requested
+ * template. Thrown by `assertTemplateAccess` in `src/server/theming/access.ts`
+ * — a Starter account attempting to `switchTemplate` (or `saveBranding` at
+ * onboarding) onto a Business/Professional-only template.
+ *
+ * EXTENDS `EntitlementError` ON PURPOSE, AND THE SUBCLASS RELATIONSHIP IS THE
+ * FEATURE, in the same register as `EditorLockedError`
+ * (`src/server/entitlements/assert.ts`): a template refusal *is* an
+ * entitlement refusal, so this inherits the `feature` field and, more
+ * importantly, `merchantAction`'s existing `instanceof EntitlementError` arm
+ * converts it into `{ ok: false, error: { form: [message] } }` with NO change
+ * to that file's control flow. Declaring it as a bare `Error` instead would
+ * mean the merchant sees an unhandled 500 where they should see a form-level
+ * "your plan doesn't include this template" message.
+ *
+ * `templateKey` is carried as a structured field rather than only inside the
+ * message — the `StorefrontNotSeededError.tenantId` precedent above: a caller
+ * that wants to branch or log which template was refused must not have to
+ * parse an error string to learn it.
+ *
+ * `override readonly name` rather than a constructor assignment, per this
+ * file's own convention (see the header note on `StorefrontNotSeededError`
+ * above): `override readonly name` is the canonical form for a NEW file per
+ * CLAUDE.md § Naming Patterns. `src/server/entitlements/assert.ts` assigns
+ * `this.name` in the constructor instead, and that variant is matched only
+ * when editing that file directly.
+ *
+ * `feature` is the literal string `"templates"`, passed to `EntitlementError`'s
+ * constructor so log lines name what was refused. `PlanFeature` in
+ * `src/server/entitlements/assert.ts` is NOT widened to add a `templates`
+ * member — `EntitlementError`'s constructor takes a plain `string`, not a
+ * `PlanFeature`, and `EditorLockedError` already passes `"storefrontEditor"`
+ * the same way despite that key also being absent from `PlanFeature` (see
+ * `PlanLimits.storefrontEditor`'s comment in `plans.ts`: deliberately kept out
+ * of `can()`'s reach). No constructor change to `EntitlementError` is needed.
+ */
+export class TemplateLockedError extends EntitlementError {
+  override readonly name = "TemplateLockedError";
+  /** The template key the merchant's tier does not include. */
+  readonly templateKey: string;
+
+  constructor(templateKey: string, message: string) {
+    super("templates", message);
+    this.templateKey = templateKey;
   }
 }

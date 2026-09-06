@@ -83,7 +83,7 @@ describe("registry", () => {
     }
   });
 
-  it("carries all six limit keys on every tier", () => {
+  it("carries all seven limit keys on every tier", () => {
     for (const tier of PLAN_TIERS) {
       expect(Object.keys(PLANS[tier].limits).sort()).toEqual([
         "bulkImport",
@@ -92,6 +92,7 @@ describe("registry", () => {
         "members",
         "products",
         "storefrontEditor",
+        "templates",
       ]);
     }
   });
