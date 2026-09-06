@@ -2,16 +2,47 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import type { TemplateTile } from "@/components/theming/template-picker";
 import { env } from "@/env";
 import { strings } from "@/lib/strings";
 import { auth } from "@/server/auth/auth";
 import { platformDb } from "@/server/db/platform";
+import { accessibleTemplateKeys } from "@/server/theming/access";
+import { templateDefaultTokens } from "@/server/theming/defaults";
 import {
   INDUSTRY_SEGMENTS,
   INDUSTRY_SEGMENT_ICONS,
+  TEMPLATE_KEYS,
+  TEMPLATES,
+  type TemplateKey,
 } from "@/server/theming/registry";
 
 import { BrandingForm, type SegmentTile } from "./branding-form";
+
+/**
+ * Name + segment tag for one template tile.
+ *
+ * `flagship-fashion` is deliberately ABSENT from `strings.templates` (it
+ * reads its copy from `strings.flagship` instead — see that module's own
+ * header on why it lives separately) so it is special-cased here rather than
+ * indexed like the other 49 keys. Every other key is authored in Wave 3
+ * (05-12 through 05-17); the `?? ""` fallback only guards the type (the
+ * per-segment namespaces are typed `Partial<Record<TemplateKey, …>>`), it is
+ * never expected to fire in practice.
+ */
+function templateCopy(key: TemplateKey): {
+  readonly name: string;
+  readonly segmentTag: string;
+} {
+  if (key === "flagship-fashion") {
+    return {
+      name: strings.flagship.name,
+      segmentTag: strings.flagship.segmentTag,
+    };
+  }
+  const copy = strings.templates[key];
+  return { name: copy?.name ?? "", segmentTag: copy?.segmentTag ?? "" };
+}
 
 /**
  * `/onboarding/branding` — the step between the plan pick and a live storefront
@@ -117,6 +148,37 @@ export default async function BrandingPage() {
     icon: INDUSTRY_SEGMENT_ICONS[id],
   }));
 
+  /**
+   * All 50 templates, assembled HERE as plain data — the same
+   * "`server-only`-marked registry can't reach the client island, so the RSC
+   * flattens it first" move `segments` above already makes. `locked` covers
+   * every key ABOVE the merchant's own tier; TMPL-04/D-06's onboarding upsell
+   * moment (05-UI-SPEC.md § Onboarding Template Picker) keeps them visible,
+   * dimmed, rather than hidden — the picker sorts, it never filters. Order
+   * comes from `TEMPLATE_KEYS` itself, not a second ordering to keep in sync.
+   *
+   * `organization.planTier` is already read above (the `null` case redirects
+   * to `/onboarding/plan` first) — no new query.
+   */
+  const accessibleKeys = new Set(
+    accessibleTemplateKeys(organization.planTier),
+  );
+
+  const templates: TemplateTile[] = TEMPLATE_KEYS.map((key) => {
+    const definition = TEMPLATES[key];
+    const copy = templateCopy(key);
+    return {
+      key,
+      name: copy.name,
+      segment: definition.segment,
+      segmentTag: copy.segmentTag,
+      minTier: definition.minTier,
+      sections: definition.sections,
+      primaryAccent: templateDefaultTokens(key).primaryAccent,
+      locked: !accessibleKeys.has(key),
+    };
+  });
+
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-16 sm:px-8">
       {/* Wider than create-store's max-w-md: the industry tile grid needs it. */}
@@ -140,6 +202,8 @@ export default async function BrandingPage() {
         <BrandingForm
           businessName={organization.name}
           segments={segments}
+          templates={templates}
+          industry={organization.industry}
           imageBaseUrl={env.R2_PUBLIC_BASE_URL}
         />
       </div>

@@ -24,6 +24,10 @@ import {
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import {
+  TemplatePicker,
+  type TemplateTile,
+} from "@/components/theming/template-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -206,12 +210,22 @@ function readFinalizeResult(body: unknown): { storageKey: string } | null {
  * its key is only known once an upload has finalised — so it is held as
  * component state and read at submit, the same way the product gallery hands
  * only its `ready` entries to the product form.
+ *
+ * `templateKey` follows `industry`'s own precedent (05-18, TMPL-04, D-07):
+ * a non-empty string check rather than the closed 50-key union, which lives
+ * behind the theming registry's `server-only` marker and cannot be imported
+ * here. `saveBranding`'s own `isTemplateKey` refine (its action module) is
+ * the real narrowing; this field's only job is to refuse the one failure a
+ * merchant using the picker can actually produce — submitting with no card
+ * selected — with no pre-selected default, per D-07's "a real, deliberate
+ * pick."
  */
 const brandingFormSchema = z.object({
   businessName: z.string().trim().min(2).max(80),
   industry: z.string().min(1),
   primaryAccent: hexColorSchema,
   secondaryAccent: hexColorSchema,
+  templateKey: z.string().min(1, strings.branding.templateRequired),
 });
 
 type BrandingFormValues = z.infer<typeof brandingFormSchema>;
@@ -356,10 +370,21 @@ function ColourField({
 export function BrandingForm({
   businessName,
   segments,
+  templates,
+  industry: initialIndustry,
   imageBaseUrl,
 }: {
   readonly businessName: string;
   readonly segments: readonly SegmentTile[];
+  readonly templates: readonly TemplateTile[];
+  /**
+   * The organization's persisted industry — always `null` on this page (a
+   * merchant reaching `/onboarding/branding` has a null industry BY
+   * DEFINITION, per `page.tsx`'s own redirect ladder). Seeds the form's
+   * `industry` default so a future caller of this component that DOES have
+   * one pre-filled does not need a second code path.
+   */
+  readonly industry: string | null;
   readonly imageBaseUrl: string;
 }) {
   const nameInputId = useId();
@@ -367,6 +392,8 @@ export function BrandingForm({
   const industryLabelId = useId();
   const industryHelperId = useId();
   const tilePrefix = useId();
+  const templateLabelId = useId();
+  const templateHelperId = useId();
   const logoInputId = useId();
   const contrastId = useId();
 
@@ -381,9 +408,11 @@ export function BrandingForm({
       // ONB-02 asks the merchant to CONFIRM the name captured at signup, not to
       // invent a new one.
       businessName,
-      industry: "",
+      industry: initialIndustry ?? "",
       primaryAccent: DEFAULT_PRIMARY_ACCENT,
       secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+      // D-07: no pre-selected default. A real, deliberate pick.
+      templateKey: "",
     },
   });
 
@@ -399,6 +428,7 @@ export function BrandingForm({
   const primaryAccent = useWatch({ control, name: "primaryAccent" }) ?? "";
   const secondaryAccent = useWatch({ control, name: "secondaryAccent" }) ?? "";
   const nameValue = useWatch({ control, name: "businessName" }) ?? "";
+  const templateKey = useWatch({ control, name: "templateKey" }) ?? "";
 
   const primarySample = sampleColour(primaryAccent, DEFAULT_PRIMARY_ACCENT);
   const secondarySample = sampleColour(
@@ -522,11 +552,12 @@ export function BrandingForm({
     setFormError(null);
 
     /*
-     * Five fields and NO TENANT IDENTIFIER (T-04-04). The organization this
+     * Six fields and NO TENANT IDENTIFIER (T-04-04). The organization this
      * writes to is the session's active one, resolved server-side; there is
      * deliberately nothing in this payload for a direct POST to substitute.
      * Only a `ready` upload contributes a key — an in-flight or failed one is
-     * not a logo the store has.
+     * not a logo the store has. `templateKey` is the sixth field (05-18,
+     * TMPL-04) — the same submit, no second action and no new route.
      */
     const result = await saveBranding({
       businessName: values.businessName,
@@ -534,6 +565,7 @@ export function BrandingForm({
       logoKey: logo.status === "ready" ? logo.storageKey : null,
       primaryAccent: values.primaryAccent,
       secondaryAccent: values.secondaryAccent,
+      templateKey: values.templateKey,
     });
 
     if (result.ok) {
@@ -559,7 +591,8 @@ export function BrandingForm({
         field === "businessName" ||
         field === "industry" ||
         field === "primaryAccent" ||
-        field === "secondaryAccent"
+        field === "secondaryAccent" ||
+        field === "templateKey"
       ) {
         setError(field, { type: "server", message });
       } else {
@@ -666,7 +699,35 @@ export function BrandingForm({
         </CardContent>
       </Card>
 
-      {/* --- 3. Logo (optional) ----------------------------------------- */}
+      {/* --- 3. Choose your template ------------------------------------ */}
+      <Card className="rounded-lg border border-border bg-muted ring-0 [--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <CardTitle id={templateLabelId}>
+            {strings.branding.templateCardTitle}
+          </CardTitle>
+          <CardDescription id={templateHelperId}>
+            {strings.branding.templateHelper}
+          </CardDescription>
+        </CardHeader>
+        <CardContent
+          className="flex flex-col gap-2"
+          aria-labelledby={templateLabelId}
+          aria-describedby={templateHelperId}
+        >
+          <TemplatePicker
+            tiles={templates}
+            selectedKey={templateKey === "" ? null : templateKey}
+            onChange={(key) =>
+              setValue("templateKey", key, { shouldValidate: true })
+            }
+            sortBySegment={industry === "" ? undefined : industry}
+            showAllToggle
+            error={errors.templateKey?.message}
+          />
+        </CardContent>
+      </Card>
+
+      {/* --- 4. Logo (optional) ----------------------------------------- */}
       <Card className="rounded-lg border border-border bg-muted ring-0 [--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]">
         <CardHeader>
           <CardTitle>{strings.branding.logoCardTitle}</CardTitle>
@@ -765,7 +826,7 @@ export function BrandingForm({
         </CardContent>
       </Card>
 
-      {/* --- 4. Brand colours ------------------------------------------- */}
+      {/* --- 5. Brand colours ------------------------------------------- */}
       <Card className="rounded-lg border border-border bg-muted ring-0 [--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]">
         <CardHeader>
           <CardTitle>{strings.branding.coloursCardTitle}</CardTitle>
