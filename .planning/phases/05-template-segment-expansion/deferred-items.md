@@ -48,3 +48,53 @@ plan modified.
 before merging Wave 1, to distinguish "flaky under load" from "a real regression that
 happens to also reproduce here." Neither was investigated further by this session because
 neither file, nor anything it imports, was touched by 05-02.
+
+## From 05-11 Task 3 (2026-09-06)
+
+### 1. `ensureStorefrontSeeded`'s transaction — transient Neon contention
+
+`tests/isolation/storefront-editor.test.ts` and `tests/isolation/branding.test.ts` each
+pass in full isolation (9/9 and 8/8 respectively, run individually). Run together in one
+`vitest` invocation as an extra check against this plan's own top-level `<verification>`
+block, one storefront-editor.test.ts case failed:
+
+```
+ensureStorefrontSeeded > is idempotent and never clobbers an edited draft
+PrismaClientKnownRequestError: Transaction API error: Unable to start a
+transaction in the given time.
+  at src/server/theming/actions.ts:583 (ensureStorefrontSeeded's $transaction)
+```
+
+This is the same named flake class `merchant-context.test.ts`'s own header documents and
+the 05-02 entry above reproduces: two session-bearing isolation files run back-to-back both
+call `seedTwoTenants()` in `beforeAll`, contending for a transaction slot against the shared
+remote Neon test branch. The failing call is inside `ensureStorefrontSeeded`, which 05-11
+explicitly does not modify (its `<action>` says so in as many words: "Do NOT modify
+`ensureStorefrontSeeded`"). Not fixed — out of scope for 05-11, unrelated to any of
+`switchTemplate`/`publishStorefront`/`discardDraft`/`saveBranding`'s changes, and each file
+is proven green on its own.
+
+### 2. Five isolation fixtures now under-supply `saveBranding`'s new required field
+
+05-11 adds a sixth required field, `templateKey`, to `saveBrandingSchema`. Two fixtures in
+this plan's own verification scope were updated (`branding.test.ts`'s `payload()` builder,
+`storefront-editor.test.ts`'s `signUpChooseAndCarrySession`). Five more isolation files call
+`saveBranding({...})` directly with a literal object missing `templateKey` and are outside
+this plan's `files_modified` (`src/server/theming/actions.ts` only) and outside its
+`<verify>` scope:
+
+- `tests/isolation/catalog.test.ts`
+- `tests/isolation/claims.test.ts`
+- `tests/isolation/merchant-context.test.ts`
+- `tests/isolation/order-actions.test.ts`
+- `tests/isolation/read-only.test.ts`
+- `tests/isolation/trial.test.ts`
+
+Each of these will now fail their own fixture setup (`saveBranding` returns `{ ok: false }`
+for a missing required field, and each fixture throws on that). Not fixed — `access.ts`'s
+own header names `05-21` as the plan that "pins" the tier-gate isolation behaviour this
+phase introduces, which is the natural home for updating these six shared fixtures in one
+pass rather than each Wave 3 plan touching files outside its own `files_modified` list.
+**Recommendation:** whichever plan runs next and touches `tests/isolation/**` broadly (05-21
+per `access.ts`) should add `templateKey: "flagship-fashion"` to each of the six call sites
+above before the next full `test:full` run.

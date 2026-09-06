@@ -13,17 +13,25 @@ import type {
 import { platformDb } from "@/server/db/platform";
 import { scopedCreateData, scopedDb } from "@/server/db/tenant-scoped";
 import { assertCanEditStorefront } from "@/server/entitlements/assert";
+import { isPlanTier } from "@/server/entitlements/plans";
 import { merchantAction } from "@/server/merchant/action";
 
-import { flagshipDefaultDocument, flagshipDefaultTokens } from "./defaults";
+import { assertTemplateAccess, canUseTemplate } from "./access";
+import {
+  flagshipDefaultDocument,
+  flagshipDefaultTokens,
+  templateDefaultDocument,
+  templateDefaultTokens,
+} from "./defaults";
 import { StorefrontNotSeededError } from "./errors";
-import { isIndustrySegment } from "./registry";
+import { isIndustrySegment, isTemplateKey, variantsForTemplate } from "./registry";
 import {
   hexColorSchema,
   pageDocumentSchema,
   storageKeySchema,
   themeTokensSchema,
   type PageDocument,
+  type SectionVariantMap,
   type ThemeTokens,
 } from "./schema";
 
@@ -223,7 +231,7 @@ export const publishStorefront = merchantAction<
         }),
         tx.storefrontTheme.findUnique({
           where: { tenantId: ctx.tenantId },
-          select: { id: true, draftTokens: true },
+          select: { id: true, draftTokens: true, draftTemplateKey: true },
         }),
       ]);
       if (!page || !theme) throw new StorefrontNotSeededError(ctx.tenantId);
@@ -250,13 +258,22 @@ export const publishStorefront = merchantAction<
 
       // Two rows, one statement each, one transaction. See the file header for
       // why the data model was chosen to make this expressible without raw SQL.
+      //
+      // `publishedTemplateKey` promotes alongside the document and the
+      // tokens, IN THE SAME TRANSACTION — a partial promotion would leave a
+      // live store rendering the old document under new variants, or the
+      // reverse (05-RESEARCH.md Pitfall 5).
       await tx.storefrontPage.update({
         where: { id: page.id },
         data: { published: document, publishedAt },
       });
       await tx.storefrontTheme.update({
         where: { tenantId: ctx.tenantId },
-        data: { publishedTokens: tokens, publishedAt },
+        data: {
+          publishedTokens: tokens,
+          publishedTemplateKey: theme.draftTemplateKey,
+          publishedAt,
+        },
       });
     });
 
@@ -287,6 +304,14 @@ type DiscardDraftData = {
    */
   document: PageDocument;
   tokens: ThemeTokens;
+  /**
+   * The reverted template key, plus the variant map that goes with it — the
+   * same reason `document`/`tokens` ride along above. A discard reverts the
+   * template choice too (Pitfall 5), so the open editor must repaint under
+   * the RIGHT variants without a reload.
+   */
+  templateKey: string;
+  variants: SectionVariantMap;
 };
 
 export const discardDraft = merchantAction<
@@ -314,7 +339,7 @@ export const discardDraft = merchantAction<
         }),
         tx.storefrontTheme.findUnique({
           where: { tenantId: ctx.tenantId },
-          select: { id: true, publishedTokens: true },
+          select: { id: true, publishedTokens: true, publishedTemplateKey: true },
         }),
       ]);
       if (!page || !theme) throw new StorefrontNotSeededError(ctx.tenantId);
@@ -335,6 +360,12 @@ export const discardDraft = merchantAction<
        * refusal. That is the same document a brand-new store gets, which is the
        * honest meaning of "undo everything I did".
        *
+       * THE FALLBACK IS THE TENANT'S OWN `publishedTemplateKey`, NEVER THE
+       * FLAGSHIP'S (05-RESEARCH.md Pitfall 5). Falling back to the flagship
+       * for a non-flagship tenant would yield the OLD document rendering
+       * under the NEW (flagship) variants — structurally incoherent, and
+       * worse than the refusal it replaces.
+       *
        * A safeParse-with-default rather than a strict parse: this reads the same
        * column the public path reads, so an unparseable `published` must not
        * strand the merchant with a draft they cannot revert.
@@ -343,10 +374,10 @@ export const discardDraft = merchantAction<
       const parsedTokens = themeTokensSchema.safeParse(theme.publishedTokens);
       const document = parsedDocument.success
         ? parsedDocument.data
-        : flagshipDefaultDocument();
+        : templateDefaultDocument(theme.publishedTemplateKey);
       const tokens = parsedTokens.success
         ? parsedTokens.data
-        : flagshipDefaultTokens();
+        : templateDefaultTokens(theme.publishedTemplateKey);
 
       await tx.storefrontPage.update({
         where: { id: page.id },
@@ -358,15 +389,150 @@ export const discardDraft = merchantAction<
       });
       await tx.storefrontTheme.update({
         where: { tenantId: ctx.tenantId },
-        data: { draftTokens: tokens },
+        // The template key reverts too, in the same transaction as the
+        // document and tokens above — Pitfall 5's "revert three things, not
+        // two" is what makes this row structurally coherent again.
+        data: { draftTokens: tokens, draftTemplateKey: theme.publishedTemplateKey },
       });
 
-      return { document, tokens };
+      return {
+        document,
+        tokens,
+        templateKey: theme.publishedTemplateKey,
+        variants: variantsForTemplate(theme.publishedTemplateKey),
+      };
     });
 
     revalidatePath("/dashboard/storefront-editor");
 
     return { ok: true as const, ...reverted };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// switchTemplate — TMPL-04, D-08 / D-09 / D-11 / D-12
+// ---------------------------------------------------------------------------
+
+/**
+ * Exactly one field, and NO TENANT IDENTIFIER (T-05-42 / T-04-04): this
+ * action is reachable by a direct POST that never rendered the picker, so
+ * the schema IS the trust boundary and the target is `ctx.tenantId` and
+ * nothing else. Narrows through the registry predicate `isTemplateKey`
+ * rather than a `z.enum` restating 50 keys — the `isIndustrySegment`
+ * precedent above — so the closed set lives in one place and this schema
+ * cannot drift from it.
+ */
+const switchTemplateSchema = z.object({
+  templateKey: z.string().refine(isTemplateKey, "Not a template."),
+});
+
+/**
+ * The `discardDraft` precedent: the editor holds its state in the browser
+ * (D-07), so without this payload a switch would leave the open editor
+ * showing the design it just replaced until a full reload. `variants` rides
+ * along too, so the editor can post the new map to its preview iframe.
+ */
+type SwitchTemplateData = {
+  document: PageDocument;
+  tokens: ThemeTokens;
+  variants: SectionVariantMap;
+  templateKey: string;
+  /** ISO, same reason `SaveDraftData.draftUpdatedAt` is. */
+  draftUpdatedAt: string;
+};
+
+export const switchTemplate = merchantAction<
+  typeof switchTemplateSchema,
+  SwitchTemplateData
+>({
+  mode: "write",
+  schema: switchTemplateSchema,
+  handler: async (ctx, { templateKey }) => {
+    // EDIT-03 / D-13 / D-15, unchanged behaviour — before any database call.
+    assertCanEditStorefront(ctx, strings.editor.starterViewOnly);
+    /*
+     * D-06 / D-12. THIS IS THE CONTROL; THE PICKER HIDING A CARD IS NOT.
+     * Reads `ctx.plan.tier` directly (see `access.ts`'s header for why an
+     * active trial must never elevate it) — a Starter account posting a
+     * Professional key directly is refused here, before any row is touched,
+     * trial or no trial.
+     */
+    assertTemplateAccess(ctx, templateKey, strings.editor.templateTierLocked);
+
+    const db = scopedDb(ctx.tenantId);
+    const draftUpdatedAt = new Date();
+    const document = templateDefaultDocument(templateKey);
+
+    const { tokens } = await db.$transaction(async (tx) => {
+      const [page, theme] = await Promise.all([
+        tx.storefrontPage.findUnique({
+          where: {
+            tenantId_pageType: {
+              tenantId: ctx.tenantId,
+              pageType: HOME_PAGE_TYPE,
+            },
+          },
+          select: { id: true },
+        }),
+        tx.storefrontTheme.findUnique({
+          where: { tenantId: ctx.tenantId },
+          select: { id: true, draftTokens: true },
+        }),
+      ]);
+      if (!page || !theme) throw new StorefrontNotSeededError(ctx.tenantId);
+
+      /*
+       * D-11: PRESERVE THE MERCHANT'S BRAND, RESET THE TEMPLATE'S COPY.
+       * `primaryAccent`/`secondaryAccent` survive from the tenant's current
+       * draft tokens; `announcementText`/`footerTagline` come from the NEW
+       * template's defaults. `logoKey` lives on its own column and is simply
+       * not written here, so it survives untouched. Same composition shape
+       * `saveBranding` establishes below — D-09 discards the DOCUMENT, not
+       * the brand: resetting an identity the merchant chose at onboarding
+       * because they changed layout would read as data loss, not as a
+       * template change.
+       */
+      const currentTokens = themeTokensSchema.parse(theme.draftTokens);
+      const templateTokens = templateDefaultTokens(templateKey);
+      const tokens: ThemeTokens = {
+        ...templateTokens,
+        primaryAccent: currentTokens.primaryAccent,
+        secondaryAccent: currentTokens.secondaryAccent,
+      };
+
+      /*
+       * `published`, `publishedTokens` AND `publishedTemplateKey` ARE LEFT
+       * BYTE-IDENTICAL. Writing `publishedTemplateKey` here would be a
+       * SILENT PUBLISH, and it is the single most important thing this
+       * action must not do — `switchTemplate` re-seeds the DRAFT only
+       * (D-08/D-09); publishing it is a separate, explicit action the
+       * merchant must still take.
+       */
+      await tx.storefrontPage.update({
+        where: { id: page.id },
+        data: { draft: document, draftUpdatedAt },
+      });
+      await tx.storefrontTheme.update({
+        where: { tenantId: ctx.tenantId },
+        data: { draftTokens: tokens, draftTemplateKey: templateKey },
+      });
+
+      return { tokens };
+    });
+
+    // Same reason `publishStorefront`/`discardDraft` revalidate: the publish
+    // bar and the editor's own preview state must not go stale until a hard
+    // reload.
+    revalidatePath("/dashboard/storefront-editor");
+
+    return {
+      ok: true as const,
+      document,
+      tokens,
+      variants: variantsForTemplate(templateKey),
+      templateKey,
+      draftUpdatedAt: draftUpdatedAt.toISOString(),
+    };
   },
 });
 
@@ -487,7 +653,7 @@ export const ensureStorefrontSeeded = merchantAction({
  */
 
 /**
- * Exactly five fields, and NO TENANT IDENTIFIER (T-04-04).
+ * Exactly six fields, and NO TENANT IDENTIFIER (T-04-04).
  *
  * A tenant field here is precisely the retargeting vector the whole
  * architecture exists to prevent: this action is reachable by a direct POST that
@@ -505,6 +671,11 @@ export const ensureStorefrontSeeded = merchantAction({
  * closed set lives in the registry (D-02) and this schema cannot drift from it.
  * `logoKey` is nullable because ONB-03's logo is optional — a merchant with no
  * logo file must still be able to finish onboarding.
+ *
+ * `templateKey` (05-11, TMPL-04) narrows through `isTemplateKey` the same way —
+ * the merchant's picked template, seeded and published in the same submission.
+ * Its TIER is not enforced by the schema (a `refine` here has no organization
+ * row to check against); see the tier gate inside `saveBranding` below.
  */
 const saveBrandingSchema = z.object({
   businessName: z.string().trim().min(2).max(80),
@@ -512,6 +683,7 @@ const saveBrandingSchema = z.object({
   logoKey: storageKeySchema.nullable(),
   primaryAccent: hexColorSchema,
   secondaryAccent: hexColorSchema,
+  templateKey: z.string().refine(isTemplateKey, "Not a template."),
 });
 
 /**
@@ -561,8 +733,46 @@ export async function saveBranding(
     return { ok: false, error: { form: [strings.signup.sessionExpired] } };
   }
 
-  const { businessName, industry, logoKey, primaryAccent, secondaryAccent } =
-    parsed.data;
+  const {
+    businessName,
+    industry,
+    logoKey,
+    primaryAccent,
+    secondaryAccent,
+    templateKey,
+  } = parsed.data;
+
+  /*
+   * THE TIER GATE, ENFORCED HERE TOO (D-06 / D-12) — the deliberate exception
+   * to the boolean-is-not-a-control rule `access.ts`'s header states.
+   * `saveBranding` does not run through `merchantAction`, so it has no
+   * `MerchantContext` to assert against — constructing a fake one to reuse
+   * `assertTemplateAccess` would be worse than calling `canUseTemplate`
+   * directly, because a context built by hand here is exactly the kind of
+   * object nothing asserts is real. The refusal takes the SAME field-error
+   * shape every other validation failure in this action already uses.
+   *
+   * Fails CLOSED to `starter` for a `null` or unrecognised `planTier`, the
+   * same posture `resolveEntitlements` takes (`entitlements/resolve.ts`) —
+   * an organization with no legible tier gets the narrowest template set,
+   * never the widest.
+   */
+  const organizationForGate = await platformDb.organization.findUnique({
+    where: { id: tenantId },
+    select: { planTier: true },
+  });
+  if (!organizationForGate) {
+    return { ok: false, error: { form: [strings.signup.sessionExpired] } };
+  }
+  const tier = isPlanTier(organizationForGate.planTier)
+    ? organizationForGate.planTier
+    : "starter";
+  if (!canUseTemplate(tier, templateKey)) {
+    return {
+      ok: false,
+      error: { templateKey: [strings.editor.templateTierLocked] },
+    };
+  }
 
   /*
    * ONB-02's two answers land on the tenant row itself. `Organization` is not
@@ -582,16 +792,22 @@ export async function saveBranding(
   });
 
   const now = new Date();
-  const document = flagshipDefaultDocument();
+  const document = templateDefaultDocument(templateKey);
   /*
-   * The registry defaults with the merchant's two accents laid over them. The
-   * announcement text and footer tagline stay at their defaults because this
-   * step does not ask for them — `flagshipDefaultTokens()`'s header explains why
-   * the announcement is deliberately non-empty: it is where the secondary accent
+   * The PICKED TEMPLATE's defaults with the merchant's two accents laid over
+   * them (05-11 replaces the flagship-only builders here). The announcement
+   * text and footer tagline stay at the picked template's defaults because
+   * this step does not ask for them — `flagshipDefaultTokens()`'s header (the
+   * shape every `TEMPLATE_DEFAULTS` builder follows) explains why the
+   * announcement is deliberately non-empty: it is where the secondary accent
    * is actually visible, and a colour with no visible role is a pointless
    * question to have asked.
    */
-  const tokens = { ...flagshipDefaultTokens(), primaryAccent, secondaryAccent };
+  const tokens = {
+    ...templateDefaultTokens(templateKey),
+    primaryAccent,
+    secondaryAccent,
+  };
 
   /*
    * ONB-03's LOGO KEY GOES HERE, ON `StorefrontTheme`, AND NOT ON THE
@@ -619,6 +835,13 @@ export async function saveBranding(
    * empty, because the page document is what the EDITOR owns — re-running this
    * step must never clobber a storefront the merchant has since edited.
    *
+   * BOTH `draftTemplateKey` AND `publishedTemplateKey` GO TO THE PICKED KEY,
+   * IN BOTH THE `create` AND `update` HALVES. This is the ONE place
+   * `publishedTemplateKey` is written outside `publishStorefront` — onboarding
+   * publishes immediately (ONB-04), which is why a merchant leaves onboarding
+   * with a live storefront rather than an empty draft waiting for a first
+   * publish.
+   *
    * `scopedCreateData<T>()` on both `create` halves, and `scopedDb` stamps the
    * tenant into both halves of each upsert, last.
    */
@@ -626,14 +849,16 @@ export async function saveBranding(
     await tx.storefrontTheme.upsert({
       where: { tenantId },
       create: scopedCreateData<StorefrontThemeCreateInput>({
-        draftTemplateKey: DEFAULT_TEMPLATE_KEY,
-        publishedTemplateKey: DEFAULT_TEMPLATE_KEY,
+        draftTemplateKey: templateKey,
+        publishedTemplateKey: templateKey,
         logoKey,
         draftTokens: tokens,
         publishedTokens: tokens,
         publishedAt: now,
       }),
       update: {
+        draftTemplateKey: templateKey,
+        publishedTemplateKey: templateKey,
         logoKey,
         draftTokens: tokens,
         publishedTokens: tokens,
