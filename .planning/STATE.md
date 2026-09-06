@@ -3,14 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 Wave 2 (05-04..09) merged; typecheck has one known, expected cross-wave gap closed by Wave 3's 05-10; Wave 3 next
-last_updated: "2026-09-04T14:15:00.000Z"
-last_activity: 2026-09-04 -- Phase 5 Wave 2 merged: tier gate (05-04), hero variants split/stack (05-05), trust-bar:strip + contact:card (05-06), product-grid:dense/showcase + editorial-split:banner (05-07), all 50 TEMPLATES rows + 25 skeletons + 49 builder pairs (05-08), template thumbnail + shared picker grid (05-09). lint/test:unit (571/571) green. `npm run typecheck`/`build` show exactly ONE expected error -- section-renderer.tsx doesn't yet pass `variant` to the section dispatchers, which is plan 05-10's (Wave 3) job; multiple independent Wave 2 executors confirmed this is the only gap and it is by design (each new section-variant file lives in its own plan; the renderer wiring is centralized in 05-10). Flagged by 05-08's own SUMMARY: the 49 non-flagship templates currently share the flagship's neutral accent colors -- per-template accent authoring for TMPL-05's distinctiveness gate needs to land somewhere in Wave 3 (05-12..17) or be called out explicitly if deferred.
+stopped_at: Phase 5 Wave 3 (05-10..17) merged; typecheck/build fully clean; Wave 4 next
+last_updated: "2026-09-06T06:15:00.000Z"
+last_activity: 2026-09-06 -- Phase 5 Wave 3 merged (all 8 plans): section-renderer now threads the real variant map through both storefront routes and the preview canvas (05-10, closing Wave 2's known gap -- `npm run build` is fully clean again, all 23 routes); `switchTemplate` server action plus template-aware `publishStorefront`/`discardDraft`/`saveBranding` (05-11); real per-template copy + accent/token builders authored for all 6 segments -- fashion-apparel (05-12), electronics (05-13), beauty-cosmetics (05-14), grocery-food (05-15), furniture-home (05-16), general-retail (05-17), completing all 49 non-flagship templates' content (closing the accent-sharing gap flagged by 05-08). lint/typecheck/test:unit (571/571)/build all green post-merge.
+
+Merge note: all six segment-copy plans (05-12..17) independently discovered and fixed the same pre-existing `FlagshipCopy` literal-type bug in `src/lib/strings/flagship.ts` (`as const` pinned every leaf to the flagship's own literal string, so `Partial<FlagshipCopy>` couldn't typecheck any other template's real prose) -- five different patches across the six branches (two named type-widening helpers under different names, plus bare `as const` removals). Reconciled during merge to the single correct fix (drop `as const`, no helper type needed) via three rounds of conflict resolution; verified no caller narrows on the flagship's literal values before dropping it.
+
+Also logged in `deferred-items.md` during Wave 3, not yet fixed, out of scope for this merge: (a) five isolation fixtures (`catalog`, `claims`, `merchant-context`, `order-actions`, `read-only`, `trial` .test.ts) still call `saveBranding` without the new required `templateKey` field -- flagged for 05-21; (b) a module-resolution gap for `@/assets/brand/einort-logo.png` surfaced in some worktrees (pre-existing, unrelated to Phase 5, not reproduced on master's own typecheck).
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 68
-  completed_plans: 53
+  completed_plans: 61
   percent: 33
 ---
 
@@ -25,13 +29,13 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 
 ## Current Position
 
-Phase: 05 (template-segment-expansion) — PLANNED, EXECUTION STARTING
-22 plans across 6 waves, plan-checker PASSED (one non-blocking warning found and fixed pre-execution: a copy-namespace typing gap between plans 05-03/05-08, `e21fe3e`). UI-SPEC approved 6/6 after two revision cycles (a spacing violation, then a stray 2px margin) plus one deliberate content update incorporating a user-supplied Shopify theme-editor reference into the template-picker/switcher design.
+Phase: 05 (template-segment-expansion) — EXECUTING, WAVE 3 OF 6 MERGED
+22 plans across 6 waves, plan-checker PASSED (one non-blocking warning found and fixed pre-execution: a copy-namespace typing gap between plans 05-03/05-08, `e21fe3e`). UI-SPEC approved 6/6 after two revision cycles (a spacing violation, then a stray 2px margin) plus one deliberate content update incorporating a user-supplied Shopify theme-editor reference into the template-picker/switcher design. Wave 1 (05-01..03), Wave 2 (05-04..09), and Wave 3 (05-10..17) all merged to master; lint/typecheck/test:unit/build all clean. Remaining: Wave 4 (05-18 onboarding picker, 05-19 editor "Change template" action, 05-20 distinctiveness metric), Wave 5 (05-21, which also owns fixing the 5 isolation fixtures deferred by 05-11), Wave 6 (05-22, the final gate with 2 blocking human-verify checkpoints).
 Phase 04 (theme-section-block-system-flagship-template) remains genuinely incomplete, deliberately, by the user's own choice (2026-09-03), mirroring the Phase 3 precedent below: all 16 plans (Waves 1-6) are merged and gate-verified, and Wave 7's Task 1 (the fully-automated gate: lint/typecheck/test:unit/build plus all six token-hygiene greps) is confirmed clean -- a real regression (04-11's industry-null redirect breaking 7 pre-Phase-4 isolation test fixtures, 36 tests) was found and fixed (`b9295d2`), then `test:full` came back 0/882 failing on a clean retry. But Wave 7's Tasks 2-3 -- the live-preview device pass and the Design-Distinctiveness stranger test, both blocking `checkpoint:human-verify` tasks requiring the user's direct involvement (and, for Task 3, a real third-party bystander) -- have NOT been run. The phase's own closing gates (Requirements Coverage Gate, Decision Coverage Gate, verifier + code-review + `phase.complete`) have also not run. `04-16-PLAN.md` is not ticked complete in ROADMAP.md. Once the user resumes this, finish Wave 7's Tasks 2-3, then run Phase 4's completion gate.
 Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete for the same kind of reason: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on rather than complete it first (2026-09-01); it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
-Last activity: 2026-09-03 -- Phase 4 Wave 7 Task 1 confirmed clean; user explicitly directed deferring Wave 7's remaining checkpoints and starting Phase 5's discuss/research/plan pipeline.
+Last activity: 2026-09-06 -- Phase 5 Wave 3 (05-10..17) merged; all 4 gates (lint/typecheck/test:unit/build) clean.
 
-Progress: [███░░░░░░░] 33% phases (2/6 complete) · 65% plans (44/68 complete — Phase 3's 03-16, Phase 4's 04-16, and Phase 5's 22 new plans still to execute)
+Progress: [███░░░░░░░] 33% phases (2/6 complete) · 90% plans (61/68 complete — Phase 3's 03-16, Phase 4's 04-16, and Phase 5's remaining 5 plans (Waves 4-6) still to execute)
 
 ## Performance Metrics
 

@@ -241,14 +241,14 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-10-PLAN.md — Render path: the variants prop by literal key, both storefront routes, and the fourth validated postMessage field
-- [ ] 05-11-PLAN.md — switchTemplate plus template-aware publish, discard and saveBranding
-- [ ] 05-12-PLAN.md — fashion-apparel: 8 templates, 4 skeletons (flagship frozen)
-- [ ] 05-13-PLAN.md — electronics: 9 templates, 4 skeletons
-- [ ] 05-14-PLAN.md — beauty-cosmetics: 8 templates, 4 skeletons
-- [ ] 05-15-PLAN.md — grocery-food: 8 templates, 4 skeletons
-- [ ] 05-16-PLAN.md — furniture-home: 8 templates, 4 skeletons
-- [ ] 05-17-PLAN.md — general-retail: 9 templates, 5 skeletons
+- [x] 05-10-PLAN.md — Render path: the variants prop by literal key, both storefront routes, and the fourth validated postMessage field
+- [x] 05-11-PLAN.md — switchTemplate plus template-aware publish, discard and saveBranding
+- [x] 05-12-PLAN.md — fashion-apparel: 8 templates, 4 skeletons (flagship frozen)
+- [x] 05-13-PLAN.md — electronics: 9 templates, 4 skeletons
+- [x] 05-14-PLAN.md — beauty-cosmetics: 8 templates, 4 skeletons
+- [x] 05-15-PLAN.md — grocery-food: 8 templates, 4 skeletons
+- [x] 05-16-PLAN.md — furniture-home: 8 templates, 4 skeletons
+- [x] 05-17-PLAN.md — general-retail: 9 templates, 5 skeletons
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
