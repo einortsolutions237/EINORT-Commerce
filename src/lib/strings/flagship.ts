@@ -93,11 +93,22 @@ export const flagshipCopy = {
   },
 
   footerTagline: "Thanks for shopping with us.",
-} as const;
+};
 
 /**
  * The reference shape every one of the 50 templates' copy (`strings.templates
  * [key]`) is typed against — `Partial<FlagshipCopy>`, nested `Partial` at the
  * per-segment-namespace level (see `src/lib/strings/templates/*.ts`).
+ *
+ * DELIBERATELY NOT DERIVED FROM AN `as const` OBJECT. `flagshipCopy` above is
+ * a plain literal (widened to `string` on every leaf) rather than `as const`
+ * (which would pin every leaf to its own string-literal type, e.g.
+ * `heading: "New arrivals"` rather than `heading: string`). `FlagshipCopy` is
+ * a SHAPE contract for the other 49 templates' copy, not a value-equality
+ * contract — `as const` here would make it a compile error for
+ * `furniture-loom`'s `hero.heading` to read anything other than the exact
+ * string `"New arrivals"`. Discovered as a Rule 1 bug in plan 05-16: the first
+ * Wave 3 plan to author real, distinct per-template copy failed to typecheck
+ * against the `as const` version for exactly this reason.
  */
 export type FlagshipCopy = typeof flagshipCopy;
