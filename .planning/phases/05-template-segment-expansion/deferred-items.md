@@ -116,3 +116,19 @@ introduced by it (confirmed via `git diff --stat HEAD`, which shows only
 
 `npm run lint` and `npm run test:unit` both exit 0 (571/571 unit tests pass). Not fixed —
 out of scope for 05-15; none of these three files were read or written by this plan.
+
+## From 05-20 (Layer-1 distinctiveness metric + registry drift guard generalization)
+
+`npm run typecheck` reports 11 pre-existing errors, all `error TS2304: Cannot find name
+'LayoutProps'.` / `'PageProps'.` across route/layout files this plan never touched
+(`src/app/layout.tsx`, `src/app/(dashboard)/layout.tsx`, `src/app/s/[slug]/layout.tsx`,
+`src/app/s/[slug]/page.tsx`, `.../cart/page.tsx`, `.../checkout/page.tsx`,
+`.../order/[token]/page.tsx`, `.../p/[productSlug]/page.tsx` (×2), `.../preview/page.tsx`).
+These are Next.js 16's typed-route global ambient types (`LayoutProps`/`PageProps`),
+normally generated into `.next/types` by a `next build`/`next dev` run — not something this
+plan's two test files (`tests/unit/theming-registry.test.ts`,
+`tests/unit/template-distinctiveness.test.ts`) reference or can affect. Confirmed via
+`git diff --diff-filter=D --name-only` and `git diff --stat HEAD` showing only the two test
+files changed. `npm run lint` exits 0 (zero warnings) and `npm run test:unit` passes 588/588
+across all 34 unit test files. Not fixed — out of scope for 05-20; the fix (if one is ever
+needed outside a build step) is a `next build`/`.next/types` regeneration, not a source edit.
