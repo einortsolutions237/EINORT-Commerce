@@ -416,7 +416,70 @@ export const THEME_NON_TOKEN_FIELD = "logoKey";
 // Templates
 // ---------------------------------------------------------------------------
 
-export const TEMPLATE_KEYS = ["flagship-fashion"] as const;
+/**
+ * The full 50-row allocation (TMPL-03, TMPL-04). Declared in `INDUSTRY_SEGMENTS`
+ * order (fashion-apparel, electronics, beauty-cosmetics, grocery-food,
+ * furniture-home, general-retail), `flagship-fashion` first within its
+ * segment and unchanged in position from Phase 4.
+ *
+ * The full key -> segment -> minTier -> skeleton allocation this array and
+ * `TEMPLATES` below implement is recorded as a table in
+ * `05-08-SUMMARY.md` — plans 05-12 through 05-17 (Wave 3, the six segment
+ * copy-authoring plans) read their assignment from that table, not from
+ * re-deriving it here.
+ */
+export const TEMPLATE_KEYS = [
+  "flagship-fashion",
+  "fashion-classic",
+  "fashion-edit",
+  "fashion-muse",
+  "fashion-studio",
+  "fashion-house",
+  "fashion-runway",
+  "fashion-loft",
+  "electronics-circuit",
+  "electronics-signal",
+  "electronics-grid",
+  "electronics-current",
+  "electronics-pulse",
+  "electronics-volt",
+  "electronics-module",
+  "electronics-frame",
+  "electronics-byte",
+  "beauty-glow",
+  "beauty-veil",
+  "beauty-bloom",
+  "beauty-satin",
+  "beauty-radiance",
+  "beauty-luxe",
+  "beauty-aura",
+  "beauty-muse",
+  "grocery-market",
+  "grocery-harvest",
+  "grocery-pantry",
+  "grocery-fresh",
+  "grocery-orchard",
+  "grocery-grove",
+  "grocery-cellar",
+  "grocery-larder",
+  "furniture-loom",
+  "furniture-grain",
+  "furniture-oak",
+  "furniture-hearth",
+  "furniture-timber",
+  "furniture-haven",
+  "furniture-nook",
+  "furniture-loft",
+  "retail-corner",
+  "retail-emporium",
+  "retail-bazaar",
+  "retail-mercantile",
+  "retail-general",
+  "retail-provisions",
+  "retail-market",
+  "retail-trading",
+  "retail-district",
+] as const;
 
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
@@ -452,7 +515,8 @@ export interface TemplateDefinition {
 }
 
 /**
- * The template table. Exactly one row this phase (TMPL-01).
+ * The template table. Fifty rows across all six merchant segments (TMPL-03,
+ * TMPL-04) — grown from the single `flagship-fashion` row Phase 4 shipped.
  *
  * ---------------------------------------------------------------------------
  * D-03: A `templateKey` IS DELIBERATELY INDEPENDENT OF `Organization.industry`.
@@ -469,6 +533,13 @@ export interface TemplateDefinition {
  *     template, every merchant already on `flagship-fashion` stays on it until
  *     they choose otherwise. A backfill that "upgrades" live storefronts is a
  *     mass unannounced redesign of other people's businesses.
+ *
+ * Phase 5 is the phase that added the other 49 rows below, and — consistent
+ * with the rule directly above — no existing tenant was migrated onto any of
+ * them: every `storefront_theme` row already in the database keeps whatever
+ * key it already held (`flagship-fashion` for every tenant created before this
+ * phase), and picking one of the new 49 is something only a merchant's own
+ * later action can do.
  *
  * D-01 is the same rule from the other side: the industry segment is CAPTURED
  * this phase and READ by Phase 5. Nothing in this phase's renderer consults it.
@@ -490,8 +561,14 @@ export const TEMPLATES: Readonly<Record<TemplateKey, TemplateDefinition>> = {
      *
      * Every variant below is the FIRST entry of that section type's
      * `SECTION_VARIANTS` list — i.e. exactly Phase 4's design, unchanged by
-     * this plan. `TEMPLATE_KEYS` stays a single row this plan; 05-08 grows it
-     * to 50.
+     * this plan.
+     *
+     * THIS RULE GENERALISES TO EVERY ROW BELOW, NOT JUST THIS ONE: each row's
+     * `sections` order is locked against its own builder in
+     * `src/server/theming/templates/*.ts` (or, for this key alone, against
+     * `flagshipDefaultDocument()` in `defaults.ts`) — the pairing is asserted
+     * by the generalized drift test (05-20), never left to the two staying in
+     * sync by convention.
      */
     sections: [
       { type: "hero", variant: "full-bleed" },
@@ -499,6 +576,585 @@ export const TEMPLATES: Readonly<Record<TemplateKey, TemplateDefinition>> = {
       { type: "product-grid", variant: "grid" },
       { type: "editorial-split", variant: "split" },
       { type: "contact", variant: "band" },
+    ],
+  },
+
+  "fashion-classic": {
+    key: "fashion-classic",
+    segment: "fashion-apparel",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "grid" },
+      { type: "editorial-split", variant: "split" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "fashion-edit": {
+    key: "fashion-edit",
+    segment: "fashion-apparel",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "showcase" },
+    ],
+  },
+
+  "fashion-muse": {
+    key: "fashion-muse",
+    segment: "fashion-apparel",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "showcase" },
+    ],
+  },
+
+  "fashion-studio": {
+    key: "fashion-studio",
+    segment: "fashion-apparel",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "product-grid", variant: "dense" },
+    ],
+  },
+
+  "fashion-house": {
+    key: "fashion-house",
+    segment: "fashion-apparel",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "product-grid", variant: "dense" },
+    ],
+  },
+
+  "fashion-runway": {
+    key: "fashion-runway",
+    segment: "fashion-apparel",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "grid" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "fashion-loft": {
+    key: "fashion-loft",
+    segment: "fashion-apparel",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "grid" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "electronics-circuit": {
+    key: "electronics-circuit",
+    segment: "electronics",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "dense" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "electronics-signal": {
+    key: "electronics-signal",
+    segment: "electronics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "dense" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "electronics-grid": {
+    key: "electronics-grid",
+    segment: "electronics",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "showcase" },
+    ],
+  },
+
+  "electronics-current": {
+    key: "electronics-current",
+    segment: "electronics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "showcase" },
+    ],
+  },
+
+  "electronics-pulse": {
+    key: "electronics-pulse",
+    segment: "electronics",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "product-grid", variant: "dense" },
+    ],
+  },
+
+  "electronics-volt": {
+    key: "electronics-volt",
+    segment: "electronics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "product-grid", variant: "dense" },
+    ],
+  },
+
+  "electronics-module": {
+    key: "electronics-module",
+    segment: "electronics",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "grid" },
+    ],
+  },
+
+  "electronics-frame": {
+    key: "electronics-frame",
+    segment: "electronics",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "grid" },
+    ],
+  },
+
+  "electronics-byte": {
+    key: "electronics-byte",
+    segment: "electronics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "grid" },
+    ],
+  },
+
+  "beauty-glow": {
+    key: "beauty-glow",
+    segment: "beauty-cosmetics",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "editorial-split", variant: "split" },
+    ],
+  },
+
+  "beauty-veil": {
+    key: "beauty-veil",
+    segment: "beauty-cosmetics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "editorial-split", variant: "split" },
+    ],
+  },
+
+  "beauty-bloom": {
+    key: "beauty-bloom",
+    segment: "beauty-cosmetics",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "dense" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "beauty-satin": {
+    key: "beauty-satin",
+    segment: "beauty-cosmetics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "dense" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "beauty-radiance": {
+    key: "beauty-radiance",
+    segment: "beauty-cosmetics",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "grid" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "beauty-luxe": {
+    key: "beauty-luxe",
+    segment: "beauty-cosmetics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "grid" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "beauty-aura": {
+    key: "beauty-aura",
+    segment: "beauty-cosmetics",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "beauty-muse": {
+    key: "beauty-muse",
+    segment: "beauty-cosmetics",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "grocery-market": {
+    key: "grocery-market",
+    segment: "grocery-food",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "dense" },
+      { type: "trust-bar", variant: "band" },
+      { type: "editorial-split", variant: "split" },
+    ],
+  },
+
+  "grocery-harvest": {
+    key: "grocery-harvest",
+    segment: "grocery-food",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "dense" },
+      { type: "trust-bar", variant: "band" },
+      { type: "editorial-split", variant: "split" },
+    ],
+  },
+
+  "grocery-pantry": {
+    key: "grocery-pantry",
+    segment: "grocery-food",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "grid" },
+    ],
+  },
+
+  "grocery-fresh": {
+    key: "grocery-fresh",
+    segment: "grocery-food",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "grid" },
+    ],
+  },
+
+  "grocery-orchard": {
+    key: "grocery-orchard",
+    segment: "grocery-food",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "dense" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "grocery-grove": {
+    key: "grocery-grove",
+    segment: "grocery-food",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "dense" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "grocery-cellar": {
+    key: "grocery-cellar",
+    segment: "grocery-food",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "contact", variant: "card" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "editorial-split", variant: "banner" },
+    ],
+  },
+
+  "grocery-larder": {
+    key: "grocery-larder",
+    segment: "grocery-food",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "contact", variant: "card" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "editorial-split", variant: "banner" },
+    ],
+  },
+
+  "furniture-loom": {
+    key: "furniture-loom",
+    segment: "furniture-home",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "contact", variant: "card" },
+      { type: "trust-bar", variant: "strip" },
+    ],
+  },
+
+  "furniture-grain": {
+    key: "furniture-grain",
+    segment: "furniture-home",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "contact", variant: "card" },
+      { type: "trust-bar", variant: "strip" },
+    ],
+  },
+
+  "furniture-oak": {
+    key: "furniture-oak",
+    segment: "furniture-home",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "grid" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "furniture-hearth": {
+    key: "furniture-hearth",
+    segment: "furniture-home",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "grid" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "furniture-timber": {
+    key: "furniture-timber",
+    segment: "furniture-home",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "dense" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "furniture-haven": {
+    key: "furniture-haven",
+    segment: "furniture-home",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "dense" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "furniture-nook": {
+    key: "furniture-nook",
+    segment: "furniture-home",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "editorial-split", variant: "split" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "furniture-loft": {
+    key: "furniture-loft",
+    segment: "furniture-home",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "editorial-split", variant: "split" },
+      { type: "trust-bar", variant: "band" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "retail-corner": {
+    key: "retail-corner",
+    segment: "general-retail",
+    minTier: "starter",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "dense" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "retail-emporium": {
+    key: "retail-emporium",
+    segment: "general-retail",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "dense" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "retail-bazaar": {
+    key: "retail-bazaar",
+    segment: "general-retail",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "editorial-split", variant: "split" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "retail-mercantile": {
+    key: "retail-mercantile",
+    segment: "general-retail",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "split" },
+      { type: "product-grid", variant: "showcase" },
+      { type: "editorial-split", variant: "split" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "retail-general": {
+    key: "retail-general",
+    segment: "general-retail",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "grid" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "retail-provisions": {
+    key: "retail-provisions",
+    segment: "general-retail",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "stack" },
+      { type: "trust-bar", variant: "strip" },
+      { type: "product-grid", variant: "grid" },
+      { type: "editorial-split", variant: "banner" },
+      { type: "contact", variant: "band" },
+    ],
+  },
+
+  "retail-market": {
+    key: "retail-market",
+    segment: "general-retail",
+    minTier: "business",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "editorial-split", variant: "split" },
+      { type: "product-grid", variant: "dense" },
+      { type: "trust-bar", variant: "band" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "retail-trading": {
+    key: "retail-trading",
+    segment: "general-retail",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "editorial-split", variant: "split" },
+      { type: "product-grid", variant: "dense" },
+      { type: "trust-bar", variant: "band" },
+      { type: "contact", variant: "card" },
+    ],
+  },
+
+  "retail-district": {
+    key: "retail-district",
+    segment: "general-retail",
+    minTier: "professional",
+    sections: [
+      { type: "hero", variant: "full-bleed" },
+      { type: "product-grid", variant: "grid" },
     ],
   },
 };
