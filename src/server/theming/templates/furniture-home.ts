@@ -9,19 +9,26 @@ import "server-only";
  * `src/server/theming/defaults.ts`, unchanged — it does not get a builder
  * here.
  *
- * CONTRACT-COMPLETE, CONTENT-MINIMAL THIS PLAN (05-08). Every builder's
- * `sections` array matches its registry row's declared section types and
- * order exactly, and every settings field is present. Every copy value reads
- * `strings.templates["<key>"]?.<path> ?? ""` — the ONE access pattern this
- * phase's six segment modules use, with optional chaining down to the leaf
- * field and a `?? ""` fallback so the expression typechecks against the
- * as-yet-empty `strings.templates` namespace 05-03 typed
- * (`Partial<Record<TemplateKey, Partial<typeof strings.flagship>>>`). The
- * `?? ""` fallback is a type-safety bridge for this wave, never a shipped
- * value: plans 05-12 through 05-17 (Wave 3) land real copy under this exact
- * namespace in this same file, and plan 05-20's generalized default-document
- * parse test is the gate that catches an empty string before it ever reaches
- * a live document.
+ * CONTENT-COMPLETE (05-16, Wave 3). Plan 05-08 (Wave 2) shipped this file
+ * contract-complete but content-minimal: every builder's `sections` matched
+ * its registry row and every settings field was present, but every copy
+ * value resolved to `""` and every token pair reused the flagship's neutral
+ * `DEFAULT_PRIMARY_ACCENT`/`DEFAULT_SECONDARY_ACCENT`. This plan (05-16)
+ * lands the real content on both axes: every copy value now reads Task 1's
+ * real strings under `src/lib/strings/templates/furniture-home.ts`, and
+ * every token pair carries a real, per-template accent so no two templates
+ * sharing a skeleton render with the same primary accent.
+ *
+ * The `?? ""` fallback on every copy read survives this plan and is not a
+ * placeholder anymore — it is a type-safety bridge, not a content bridge.
+ * `strings.templates` is typed `Partial<Record<TemplateKey,
+ * Partial<FlagshipCopy>>>` (05-03), so TypeScript cannot statically know that
+ * `strings.templates["furniture-loom"]` is populated even though it always
+ * is at runtime after Task 1 — the same reason every other segment module in
+ * this phase keeps the identical `?? ""` shape after its own Wave 3 plan
+ * lands. Removing it here would not be a cleanup; it would make this file
+ * the only one that disagrees with the other five on how the namespace is
+ * read.
  *
  * Three invariants inherited verbatim from the flagship's own document
  * builder (`src/server/theming/defaults.ts`):
@@ -39,25 +46,97 @@ import "server-only";
  *      literal is one careless caller away from corrupting every subsequent
  *      tenant created in the same process.
  *
- * `primaryAccent` / `secondaryAccent` reuse the same neutral defaults
- * `flagshipDefaultTokens()` ships (`DEFAULT_PRIMARY_ACCENT` /
- * `DEFAULT_SECONDARY_ACCENT`) because accent authoring is not part of
- * `strings.templates`'s copy shape — `FlagshipCopy` carries no accent field.
- * Per-template accent differentiation (the second axis of TMPL-05's
- * distinctiveness test) is Wave 3's job, landing alongside the real copy.
+ * ---------------------------------------------------------------------------
+ * ITEM COUNT IS CHOSEN PER PRODUCT-GRID VARIANT, NOT LEFT AT THE DEFAULT.
+ * ---------------------------------------------------------------------------
+ * `product-grid:showcase` renders two large tiles per row
+ * (`product-grid-showcase.tsx`'s `sm:grid-cols-2`), so `DEFAULT_ITEM_COUNT`
+ * (8) is a four-row scroll before the next section — wrong for "fewer,
+ * larger, more considered items", the whole reason this segment leans on the
+ * showcase variant (see this plan's objective). The two showcase-bearing
+ * skeletons here (S16: `furniture-loom`/`furniture-grain`; S19:
+ * `furniture-nook`/`furniture-loft`) use the schema's lowest literal, `4` —
+ * two rows of two. `product-grid:dense` (S18: `furniture-timber`/
+ * `furniture-haven`) is the opposite instinct — a fuller, more practical
+ * catalogue — and uses the schema's highest literal, `12`. `product-grid:grid`
+ * (S17: `furniture-oak`/`furniture-hearth`) keeps `DEFAULT_ITEM_COUNT` (8),
+ * the same neutral count the flagship itself uses for its own `grid` variant.
+ *
+ * ---------------------------------------------------------------------------
+ * ACCENTS: EACH SIBLING PAIR IS DISTINCT; NONE REUSE THE FLAGSHIP DEFAULTS.
+ * ---------------------------------------------------------------------------
+ * `DEFAULT_PRIMARY_ACCENT`/`DEFAULT_SECONDARY_ACCENT` (zinc-900/zinc-500) are
+ * the flagship's own neutral palette and Wave 2's placeholder for every
+ * non-flagship template. This plan replaces both for all 8 furniture-home
+ * templates with warm, material-led tones (walnut, oak, terracotta, timber
+ * charcoal, sage, bronze) that read as a furniture/homeware storefront rather
+ * than the flagship's ink-and-zinc fashion palette. Each hex constant below
+ * is named for the template it belongs to and is a plain module-scope
+ * string — not a document literal, so the "never hoist a builder's literal"
+ * rule above does not apply to it; only the `PageDocument`/`ThemeTokens`
+ * object built and returned inside each function body is fresh-per-call.
+ * `accentForeground`/the focus ring are derived by
+ * `src/lib/theme-defaults.ts`'s `deriveThemeCssVars` and are never stored
+ * here, so an accent choice below cannot produce an unreadable pair (D-11).
  */
 
 import {
   DEFAULT_ITEM_COUNT,
   DEFAULT_OVERLAY_OPACITY,
 } from "@/server/theming/defaults";
-import {
-  DEFAULT_PRIMARY_ACCENT,
-  DEFAULT_SECONDARY_ACCENT,
-} from "@/lib/theme-defaults";
 import { strings } from "@/lib/strings";
 
 import type { PageDocument, ThemeTokens } from "@/server/theming/schema";
+
+/**
+ * `product-grid:showcase`'s reduced tile count (see the file header).
+ * Named separately from `DEFAULT_ITEM_COUNT` so a reader sees at the call
+ * site that the reduction is deliberate, not a typo of the default.
+ */
+const SHOWCASE_ITEM_COUNT = 4;
+
+/** `product-grid:dense`'s increased tile count (see the file header). */
+const DENSE_ITEM_COUNT = 12;
+
+// ---------------------------------------------------------------------------
+// Accents — one pair of hex constants per template, S16/S17/S18/S19 grouped.
+// ---------------------------------------------------------------------------
+
+/** S16 (starter). Deep walnut — the segment's strongest voice per Task 1. */
+const LOOM_PRIMARY_ACCENT = "#4A3728";
+const LOOM_SECONDARY_ACCENT = "#C9A66B";
+
+/** S16 (professional). Oak amber — distinct from `furniture-loom`'s walnut. */
+const GRAIN_PRIMARY_ACCENT = "#8B5E34";
+const GRAIN_SECONDARY_ACCENT = "#3F3F3F";
+
+/** S17 (starter). Oak brown — the segment's other strongest voice. */
+const OAK_PRIMARY_ACCENT = "#6B4423";
+const OAK_SECONDARY_ACCENT = "#D8C4A0";
+
+/** S17 (professional). Terracotta — distinct from `furniture-oak`'s oak. */
+const HEARTH_PRIMARY_ACCENT = "#B5623A";
+const HEARTH_SECONDARY_ACCENT = "#EDE4D3";
+
+/** S18 (business). Graphite charcoal — practical, built-to-last framing. */
+const TIMBER_PRIMARY_ACCENT = "#4B4B4B";
+const TIMBER_SECONDARY_ACCENT = "#C7A15A";
+
+/** S18 (professional). Warm mocha — distinct from `furniture-timber`'s charcoal. */
+const HAVEN_PRIMARY_ACCENT = "#8C6A56";
+const HAVEN_SECONDARY_ACCENT = "#E8DCC8";
+
+/** S19 (business). Sage — a calmer tone for the small-space angle. */
+const NOOK_PRIMARY_ACCENT = "#5B7065";
+const NOOK_SECONDARY_ACCENT = "#D9CBB8";
+
+/** S19 (professional). Near-black bronze pairing — distinct from `furniture-nook`'s sage. */
+const LOFT_PRIMARY_ACCENT = "#2F2F2F";
+const LOFT_SECONDARY_ACCENT = "#A88B6A";
+
+// ---------------------------------------------------------------------------
+// S16: hero:stack | product-grid:showcase | contact:card | trust-bar:strip
+// ---------------------------------------------------------------------------
 
 export function furnitureLoomDocument(): PageDocument {
   return {
@@ -83,7 +162,8 @@ export function furnitureLoomDocument(): PageDocument {
           heading: strings.templates["furniture-loom"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["furniture-loom"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["furniture-loom"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // Showcase variant — two large tiles per row; see file header.
+          itemCount: SHOWCASE_ITEM_COUNT,
         },
       },
       {
@@ -108,13 +188,15 @@ export function furnitureLoomDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // Lead time on made-to-order work.
+              icon: "clock",
               heading: strings.templates["furniture-loom"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-loom"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              // WhatsApp dimension check before ordering.
+              icon: "message-circle",
               heading: strings.templates["furniture-loom"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-loom"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -127,12 +209,15 @@ export function furnitureLoomDocument(): PageDocument {
 
 export function furnitureLoomTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: LOOM_PRIMARY_ACCENT,
+    secondaryAccent: LOOM_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-loom"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-loom"]?.footerTagline ?? "",
   };
 }
+
+// S16, shared with `furniture-loom` above — same sections/order, different
+// tier and accent (see the accent constants above).
 
 export function furnitureGrainDocument(): PageDocument {
   return {
@@ -158,7 +243,8 @@ export function furnitureGrainDocument(): PageDocument {
           heading: strings.templates["furniture-grain"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["furniture-grain"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["furniture-grain"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // Showcase variant — two large tiles per row; see file header.
+          itemCount: SHOWCASE_ITEM_COUNT,
         },
       },
       {
@@ -183,12 +269,14 @@ export function furnitureGrainDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // Lead time on made-to-order work.
+              icon: "clock",
               heading: strings.templates["furniture-grain"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-grain"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
+              // Material/quality assurance ("solid wood, always").
               icon: "shield-check",
               heading: strings.templates["furniture-grain"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-grain"]?.trustBar?.itemThree?.body ?? "",
@@ -202,12 +290,17 @@ export function furnitureGrainDocument(): PageDocument {
 
 export function furnitureGrainTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: GRAIN_PRIMARY_ACCENT,
+    secondaryAccent: GRAIN_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-grain"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-grain"]?.footerTagline ?? "",
   };
 }
+
+// ---------------------------------------------------------------------------
+// S17: hero:full-bleed | trust-bar:band | product-grid:grid |
+// editorial-split:banner | contact:card
+// ---------------------------------------------------------------------------
 
 export function furnitureOakDocument(): PageDocument {
   return {
@@ -239,13 +332,15 @@ export function furnitureOakDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // Lead time stated upfront.
+              icon: "clock",
               heading: strings.templates["furniture-oak"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-oak"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              // WhatsApp measurement check before buying.
+              icon: "message-circle",
               heading: strings.templates["furniture-oak"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-oak"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -289,12 +384,15 @@ export function furnitureOakDocument(): PageDocument {
 
 export function furnitureOakTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: OAK_PRIMARY_ACCENT,
+    secondaryAccent: OAK_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-oak"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-oak"]?.footerTagline ?? "",
   };
 }
+
+// S17, shared with `furniture-oak` above — same sections/order, different
+// tier and accent (see the accent constants above).
 
 export function furnitureHearthDocument(): PageDocument {
   return {
@@ -326,13 +424,15 @@ export function furnitureHearthDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // Material quality the merchant will show on request.
+              icon: "shield-check",
               heading: strings.templates["furniture-hearth"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-hearth"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              // WhatsApp conversation before ordering.
+              icon: "message-circle",
               heading: strings.templates["furniture-hearth"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-hearth"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -376,12 +476,17 @@ export function furnitureHearthDocument(): PageDocument {
 
 export function furnitureHearthTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: HEARTH_PRIMARY_ACCENT,
+    secondaryAccent: HEARTH_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-hearth"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-hearth"]?.footerTagline ?? "",
   };
 }
+
+// ---------------------------------------------------------------------------
+// S18: hero:split | trust-bar:strip | product-grid:dense |
+// editorial-split:banner | contact:band
+// ---------------------------------------------------------------------------
 
 export function furnitureTimberDocument(): PageDocument {
   return {
@@ -413,12 +518,14 @@ export function furnitureTimberDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // In-stock vs. made-to-order timing.
+              icon: "clock",
               heading: strings.templates["furniture-timber"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-timber"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
+              // Build-quality assurance ("built to last").
               icon: "shield-check",
               heading: strings.templates["furniture-timber"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-timber"]?.trustBar?.itemThree?.body ?? "",
@@ -433,7 +540,8 @@ export function furnitureTimberDocument(): PageDocument {
           heading: strings.templates["furniture-timber"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["furniture-timber"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["furniture-timber"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // Dense variant — a fuller, practical catalogue; see file header.
+          itemCount: DENSE_ITEM_COUNT,
         },
       },
       {
@@ -463,12 +571,15 @@ export function furnitureTimberDocument(): PageDocument {
 
 export function furnitureTimberTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: TIMBER_PRIMARY_ACCENT,
+    secondaryAccent: TIMBER_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-timber"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-timber"]?.footerTagline ?? "",
   };
 }
+
+// S18, shared with `furniture-timber` above — same sections/order, different
+// tier and accent (see the accent constants above).
 
 export function furnitureHavenDocument(): PageDocument {
   return {
@@ -500,13 +611,15 @@ export function furnitureHavenDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // Custom-piece timeline confirmed upfront.
+              icon: "clock",
               heading: strings.templates["furniture-haven"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-haven"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              // WhatsApp room-size check before ordering.
+              icon: "message-circle",
               heading: strings.templates["furniture-haven"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-haven"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -520,7 +633,8 @@ export function furnitureHavenDocument(): PageDocument {
           heading: strings.templates["furniture-haven"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["furniture-haven"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["furniture-haven"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // Dense variant — a fuller, practical catalogue; see file header.
+          itemCount: DENSE_ITEM_COUNT,
         },
       },
       {
@@ -550,12 +664,17 @@ export function furnitureHavenDocument(): PageDocument {
 
 export function furnitureHavenTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: HAVEN_PRIMARY_ACCENT,
+    secondaryAccent: HAVEN_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-haven"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-haven"]?.footerTagline ?? "",
   };
 }
+
+// ---------------------------------------------------------------------------
+// S19: hero:stack | editorial-split:split | trust-bar:band |
+// product-grid:showcase | contact:card
+// ---------------------------------------------------------------------------
 
 export function furnitureNookDocument(): PageDocument {
   return {
@@ -599,13 +718,15 @@ export function furnitureNookDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // Made-to-order timeline confirmed before building.
+              icon: "clock",
               heading: strings.templates["furniture-nook"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-nook"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              // WhatsApp measurements before ordering.
+              icon: "message-circle",
               heading: strings.templates["furniture-nook"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-nook"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -619,7 +740,8 @@ export function furnitureNookDocument(): PageDocument {
           heading: strings.templates["furniture-nook"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["furniture-nook"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["furniture-nook"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // Showcase variant — two large tiles per row; see file header.
+          itemCount: SHOWCASE_ITEM_COUNT,
         },
       },
       {
@@ -637,12 +759,15 @@ export function furnitureNookDocument(): PageDocument {
 
 export function furnitureNookTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: NOOK_PRIMARY_ACCENT,
+    secondaryAccent: NOOK_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-nook"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-nook"]?.footerTagline ?? "",
   };
 }
+
+// S19, shared with `furniture-nook` above — same sections/order, different
+// tier and accent (see the accent constants above).
 
 export function furnitureLoftDocument(): PageDocument {
   return {
@@ -686,13 +811,15 @@ export function furnitureLoftDocument(): PageDocument {
             },
             {
               type: "trust-item",
-              icon: "message-circle",
+              // Real-materials quality assurance.
+              icon: "shield-check",
               heading: strings.templates["furniture-loft"]?.trustBar?.itemTwo?.heading ?? "",
               body: strings.templates["furniture-loft"]?.trustBar?.itemTwo?.body ?? "",
             },
             {
               type: "trust-item",
-              icon: "shield-check",
+              // WhatsApp planning conversation before ordering.
+              icon: "message-circle",
               heading: strings.templates["furniture-loft"]?.trustBar?.itemThree?.heading ?? "",
               body: strings.templates["furniture-loft"]?.trustBar?.itemThree?.body ?? "",
             },
@@ -706,7 +833,8 @@ export function furnitureLoftDocument(): PageDocument {
           heading: strings.templates["furniture-loft"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["furniture-loft"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["furniture-loft"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // Showcase variant — two large tiles per row; see file header.
+          itemCount: SHOWCASE_ITEM_COUNT,
         },
       },
       {
@@ -724,8 +852,8 @@ export function furnitureLoftDocument(): PageDocument {
 
 export function furnitureLoftTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: LOFT_PRIMARY_ACCENT,
+    secondaryAccent: LOFT_SECONDARY_ACCENT,
     announcementText: strings.templates["furniture-loft"]?.announcement ?? "",
     footerTagline: strings.templates["furniture-loft"]?.footerTagline ?? "",
   };
