@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   Columns2,
+  LayoutTemplate,
   MessageCircle,
   Package,
   Palette,
@@ -119,6 +120,13 @@ export interface SectionListProps {
   /** True while the `Brand & logo` panel is open, so its row reads as current. */
   readonly themeSelected: boolean;
   readonly onSelectTheme: () => void;
+  /**
+   * True while the `Change template` panel is open (TMPL-04, D-08) — the same
+   * "which panel is showing" role `themeSelected` already plays for
+   * `Brand & logo`.
+   */
+  readonly changeTemplateSelected: boolean;
+  readonly onSelectChangeTemplate: () => void;
   readonly onSelect: (sectionId: string) => void;
   readonly onMove: (sectionId: string, direction: "up" | "down") => void;
 }
@@ -190,6 +198,8 @@ export function SectionList({
   selectedSectionId,
   themeSelected,
   onSelectTheme,
+  changeTemplateSelected,
+  onSelectChangeTemplate,
   onSelect,
   onMove,
 }: SectionListProps) {
@@ -242,6 +252,25 @@ export function SectionList({
         >
           <Palette aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">{strings.editor.railThemeEntry}</span>
+        </button>
+      </div>
+
+      {/*
+       * `Change template` — TMPL-04, D-08. Same row shell, same button
+       * classes, same `aria-current` handling as `Brand & logo` above; only
+       * the icon, label, handler and selected flag differ.
+       */}
+      <div className={rowShellClass(changeTemplateSelected)}>
+        <button
+          type="button"
+          onClick={onSelectChangeTemplate}
+          aria-current={changeTemplateSelected ? "true" : undefined}
+          className="flex min-h-14 flex-1 items-center gap-3 px-4 text-left text-sm font-semibold focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          <LayoutTemplate aria-hidden="true" className="size-4 shrink-0" />
+          <span className="truncate">
+            {strings.editor.railChangeTemplateEntry}
+          </span>
         </button>
       </div>
 
