@@ -9,19 +9,17 @@ import "server-only";
  * `src/server/theming/defaults.ts`, unchanged — it does not get a builder
  * here.
  *
- * CONTRACT-COMPLETE, CONTENT-MINIMAL THIS PLAN (05-08). Every builder's
- * `sections` array matches its registry row's declared section types and
- * order exactly, and every settings field is present. Every copy value reads
- * `strings.templates["<key>"]?.<path> ?? ""` — the ONE access pattern this
- * phase's six segment modules use, with optional chaining down to the leaf
- * field and a `?? ""` fallback so the expression typechecks against the
- * as-yet-empty `strings.templates` namespace 05-03 typed
- * (`Partial<Record<TemplateKey, Partial<typeof strings.flagship>>>`). The
- * `?? ""` fallback is a type-safety bridge for this wave, never a shipped
- * value: plans 05-12 through 05-17 (Wave 3) land real copy under this exact
- * namespace in this same file, and plan 05-20's generalized default-document
- * parse test is the gate that catches an empty string before it ever reaches
- * a live document.
+ * CONTENT-COMPLETE (plan 05-15, Wave 3). Every builder's `sections` array
+ * matches its registry row's declared section types and order exactly, and
+ * every settings field is present. Every copy value reads
+ * `strings.templates["<key>"]?.<path> ?? ""` — the ONE access pattern every
+ * segment module uses, with optional chaining down to the leaf field and a
+ * `?? ""` fallback that is now unreachable dead code for a fully-authored
+ * key (Task 1 of this same plan populates every leaf `strings.templates
+ * ["grocery-*"]` reads), kept only so a future edit that drops a field from
+ * `src/lib/strings/templates/grocery-food.ts` degrades to an empty string
+ * rather than a crash. Plan 05-20's generalized default-document parse test
+ * is the gate that would catch that regression.
  *
  * Three invariants inherited verbatim from the flagship's own document
  * builder (`src/server/theming/defaults.ts`):
@@ -39,22 +37,27 @@ import "server-only";
  *      literal is one careless caller away from corrupting every subsequent
  *      tenant created in the same process.
  *
- * `primaryAccent` / `secondaryAccent` reuse the same neutral defaults
- * `flagshipDefaultTokens()` ships (`DEFAULT_PRIMARY_ACCENT` /
- * `DEFAULT_SECONDARY_ACCENT`) because accent authoring is not part of
- * `strings.templates`'s copy shape — `FlagshipCopy` carries no accent field.
- * Per-template accent differentiation (the second axis of TMPL-05's
- * distinctiveness test) is Wave 3's job, landing alongside the real copy.
+ * ACCENTS (TMPL-05's second distinctiveness axis). Each of the 4 shared
+ * skeletons in this segment (full-bleed/dense/band/split;
+ * stack/banner/strip/grid; split/band/dense/card; full-bleed/card/showcase/
+ * banner) is used by exactly two templates, and the two never share a
+ * `primaryAccent` — see the per-tokens-function comment for the palette
+ * reasoning. Foregrounds and the focus ring are always derived
+ * (`deriveThemeCssVars` / `accentForeground` in `src/lib/theme-defaults.ts`),
+ * never stored here.
+ *
+ * ITEM COUNT. `grocery-market`, `grocery-harvest`, `grocery-orchard` and
+ * `grocery-grove` use the `dense` product-grid variant and bump `itemCount`
+ * to 12 (documented per-builder below): a grocery/food catalogue — dozens of
+ * SKUs across produce, drinks, staples — reads as sparse at the fashion-tuned
+ * default of 8. The `grid` and `showcase` variants (pantry/fresh,
+ * cellar/larder) keep `DEFAULT_ITEM_COUNT`.
  */
 
 import {
   DEFAULT_ITEM_COUNT,
   DEFAULT_OVERLAY_OPACITY,
 } from "@/server/theming/defaults";
-import {
-  DEFAULT_PRIMARY_ACCENT,
-  DEFAULT_SECONDARY_ACCENT,
-} from "@/lib/theme-defaults";
 import { strings } from "@/lib/strings";
 
 import type { PageDocument, ThemeTokens } from "@/server/theming/schema";
@@ -83,7 +86,9 @@ export function groceryMarketDocument(): PageDocument {
           heading: strings.templates["grocery-market"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["grocery-market"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["grocery-market"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // `dense` variant + a general-provisions catalogue: bumped above
+          // DEFAULT_ITEM_COUNT (see file header, "ITEM COUNT").
+          itemCount: 12,
         },
       },
       {
@@ -128,10 +133,15 @@ export function groceryMarketDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-market` shares its skeleton with `grocery-harvest`; the two must
+ * not share a `primaryAccent`. Terracotta/rust — a warm, general-provisions
+ * identity distinct from `grocery-harvest`'s produce green.
+ */
 export function groceryMarketTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#C2410C",
+    secondaryAccent: "#FDE68A",
     announcementText: strings.templates["grocery-market"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-market"]?.footerTagline ?? "",
   };
@@ -161,7 +171,9 @@ export function groceryHarvestDocument(): PageDocument {
           heading: strings.templates["grocery-harvest"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["grocery-harvest"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["grocery-harvest"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // `dense` variant + a wide produce catalogue: bumped above
+          // DEFAULT_ITEM_COUNT (see file header, "ITEM COUNT").
+          itemCount: 12,
         },
       },
       {
@@ -206,10 +218,15 @@ export function groceryHarvestDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-harvest` shares its skeleton with `grocery-market`; the two must
+ * not share a `primaryAccent`. Produce green, distinct from `grocery-market`'s
+ * terracotta.
+ */
 export function groceryHarvestTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#15803D",
+    secondaryAccent: "#BBF7D0",
     announcementText: strings.templates["grocery-harvest"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-harvest"]?.footerTagline ?? "",
   };
@@ -284,10 +301,15 @@ export function groceryPantryDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-pantry` shares its skeleton with `grocery-fresh`; the two must not
+ * share a `primaryAccent`. Deep grain-sack brown, distinct from
+ * `grocery-fresh`'s butchery red.
+ */
 export function groceryPantryTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#78350F",
+    secondaryAccent: "#FEF3C7",
     announcementText: strings.templates["grocery-pantry"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-pantry"]?.footerTagline ?? "",
   };
@@ -362,10 +384,15 @@ export function groceryFreshDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-fresh` shares its skeleton with `grocery-pantry`; the two must not
+ * share a `primaryAccent`. Butchery red, distinct from `grocery-pantry`'s
+ * grain-sack brown.
+ */
 export function groceryFreshTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#991B1B",
+    secondaryAccent: "#FECACA",
     announcementText: strings.templates["grocery-fresh"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-fresh"]?.footerTagline ?? "",
   };
@@ -421,7 +448,9 @@ export function groceryOrchardDocument(): PageDocument {
           heading: strings.templates["grocery-orchard"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["grocery-orchard"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["grocery-orchard"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // `dense` variant + a wide fruit catalogue: bumped above
+          // DEFAULT_ITEM_COUNT (see file header, "ITEM COUNT").
+          itemCount: 12,
         },
       },
       {
@@ -437,10 +466,15 @@ export function groceryOrchardDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-orchard` shares its skeleton with `grocery-grove`; the two must
+ * not share a `primaryAccent`. Citrus orange (whole fruit), distinct from
+ * `grocery-grove`'s pressed-juice lime.
+ */
 export function groceryOrchardTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#EA580C",
+    secondaryAccent: "#FED7AA",
     announcementText: strings.templates["grocery-orchard"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-orchard"]?.footerTagline ?? "",
   };
@@ -496,7 +530,9 @@ export function groceryGroveDocument(): PageDocument {
           heading: strings.templates["grocery-grove"]?.productGrid?.heading ?? "",
           viewAllLabel: strings.templates["grocery-grove"]?.productGrid?.viewAllLabel ?? "",
           viewAllHref: strings.templates["grocery-grove"]?.productGrid?.viewAllHref ?? "",
-          itemCount: DEFAULT_ITEM_COUNT,
+          // `dense` variant + a wide flavor catalogue: bumped above
+          // DEFAULT_ITEM_COUNT (see file header, "ITEM COUNT").
+          itemCount: 12,
         },
       },
       {
@@ -512,10 +548,15 @@ export function groceryGroveDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-grove` shares its skeleton with `grocery-orchard`; the two must
+ * not share a `primaryAccent`. Pressed-juice lime, distinct from
+ * `grocery-orchard`'s whole-fruit citrus orange.
+ */
 export function groceryGroveTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#65A30D",
+    secondaryAccent: "#D9F99D",
     announcementText: strings.templates["grocery-grove"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-grove"]?.footerTagline ?? "",
   };
@@ -573,10 +614,15 @@ export function groceryCellarDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-cellar` shares its skeleton with `grocery-larder`; the two must
+ * not share a `primaryAccent`. Cold-drinks teal, distinct from
+ * `grocery-larder`'s warm bakery gold.
+ */
 export function groceryCellarTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#0E7490",
+    secondaryAccent: "#A5F3FC",
     announcementText: strings.templates["grocery-cellar"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-cellar"]?.footerTagline ?? "",
   };
@@ -634,10 +680,15 @@ export function groceryLarderDocument(): PageDocument {
   };
 }
 
+/**
+ * `grocery-larder` shares its skeleton with `grocery-cellar`; the two must
+ * not share a `primaryAccent`. Warm bakery gold, distinct from
+ * `grocery-cellar`'s cold-drinks teal.
+ */
 export function groceryLarderTokens(): ThemeTokens {
   return {
-    primaryAccent: DEFAULT_PRIMARY_ACCENT,
-    secondaryAccent: DEFAULT_SECONDARY_ACCENT,
+    primaryAccent: "#A16207",
+    secondaryAccent: "#FEF08A",
     announcementText: strings.templates["grocery-larder"]?.announcement ?? "",
     footerTagline: strings.templates["grocery-larder"]?.footerTagline ?? "",
   };

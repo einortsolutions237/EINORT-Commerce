@@ -98,3 +98,21 @@ pass rather than each Wave 3 plan touching files outside its own `files_modified
 **Recommendation:** whichever plan runs next and touches `tests/isolation/**` broadly (05-21
 per `access.ts`) should add `templateKey: "flagship-fashion"` to each of the six call sites
 above before the next full `test:full` run.
+## From 05-15 (grocery-food segment authoring)
+
+`npm run typecheck` reports four pre-existing errors, none touched by this plan and none
+introduced by it (confirmed via `git diff --stat HEAD`, which shows only
+`src/lib/strings/flagship.ts` and `src/lib/strings/templates/grocery-food.ts` changed):
+
+1. `src/app/login/page.tsx(5,24)`, `src/app/signup/page.tsx(5,24)`,
+   `src/components/app-sidebar.tsx(28,24)` — `Cannot find module
+   '@/assets/brand/einort-logo.png'`. The file exists on disk
+   (`src/assets/brand/einort-logo.png`) but TypeScript cannot resolve the `.png` import —
+   a module-declaration/asset-typing gap from commit `3e94aec` ("render the platform logo
+   in the sidebar, login and signup headers"), unrelated to Phase 5 template work.
+2. `src/app/s/[slug]/sections/section-renderer.tsx(96,15)` — `Property 'variant' is
+   missing`. This is the known, expected gap called out explicitly for this plan: sibling
+   plan 05-10's job, not 05-15's.
+
+`npm run lint` and `npm run test:unit` both exit 0 (571/571 unit tests pass). Not fixed —
+out of scope for 05-15; none of these three files were read or written by this plan.
