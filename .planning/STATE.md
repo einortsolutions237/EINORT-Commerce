@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 Wave 1 (05-01/02/03) merged and gate-verified; Wave 2 next
-last_updated: "2026-09-04T13:50:00.000Z"
-last_activity: 2026-09-04 -- Phase 5 Wave 1 merged: rendering-variant vocabulary + template contract (05-01), StorefrontTheme templateKey split into draft/published columns via hand-edited migration applied to both dev and test Neon branches with a migration-safety test (05-02), strings.ts split into strings/ directory with six per-segment copy namespaces (05-03). Gates green (lint/typecheck/test:unit 571/571/build); test:full retried once due to Neon transaction-timeout contention (documented pattern, unrelated to the merge -- StorefrontTheme itself confirmed passing in an independent run).
+stopped_at: Phase 5 Wave 2 (05-04..09) merged; typecheck has one known, expected cross-wave gap closed by Wave 3's 05-10; Wave 3 next
+last_updated: "2026-09-04T14:15:00.000Z"
+last_activity: 2026-09-04 -- Phase 5 Wave 2 merged: tier gate (05-04), hero variants split/stack (05-05), trust-bar:strip + contact:card (05-06), product-grid:dense/showcase + editorial-split:banner (05-07), all 50 TEMPLATES rows + 25 skeletons + 49 builder pairs (05-08), template thumbnail + shared picker grid (05-09). lint/test:unit (571/571) green. `npm run typecheck`/`build` show exactly ONE expected error -- section-renderer.tsx doesn't yet pass `variant` to the section dispatchers, which is plan 05-10's (Wave 3) job; multiple independent Wave 2 executors confirmed this is the only gap and it is by design (each new section-variant file lives in its own plan; the renderer wiring is centralized in 05-10). Flagged by 05-08's own SUMMARY: the 49 non-flagship templates currently share the flagship's neutral accent colors -- per-template accent authoring for TMPL-05's distinctiveness gate needs to land somewhere in Wave 3 (05-12..17) or be called out explicitly if deferred.
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 68
-  completed_plans: 47
+  completed_plans: 53
   percent: 33
 ---
 

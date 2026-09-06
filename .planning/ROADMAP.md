@@ -232,12 +232,12 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-04-PLAN.md — The tier gate: PLAN_TIER_RANK, PlanLimits.templates, TemplateLockedError, and the boolean/throw access pair (D-12, not trial-elevated)
-- [ ] 05-05-PLAN.md — Hero variants: the three-arm switch plus split and stack (no image slot)
-- [ ] 05-06-PLAN.md — trust-bar:strip and contact:card variants
-- [ ] 05-07-PLAN.md — product-grid:dense, product-grid:showcase and editorial-split:banner variants
-- [ ] 05-08-PLAN.md — The 50 registry rows, 25 skeletons, tier allocation, and the TEMPLATE_DEFAULTS builder dispatch
-- [ ] 05-09-PLAN.md — The zero-byte geometric template thumbnail and the shared picker grid
+- [x] 05-04-PLAN.md — The tier gate: PLAN_TIER_RANK, PlanLimits.templates, TemplateLockedError, and the boolean/throw access pair (D-12, not trial-elevated)
+- [x] 05-05-PLAN.md — Hero variants: the three-arm switch plus split and stack (no image slot)
+- [x] 05-06-PLAN.md — trust-bar:strip and contact:card variants
+- [x] 05-07-PLAN.md — product-grid:dense, product-grid:showcase and editorial-split:banner variants
+- [x] 05-08-PLAN.md — The 50 registry rows, 25 skeletons, tier allocation, and the TEMPLATE_DEFAULTS builder dispatch
+- [x] 05-09-PLAN.md — The zero-byte geometric template thumbnail and the shared picker grid
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -296,5 +296,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 15/16 | In Progress|  |
-| 5. Template Segment Expansion | 3/22 | In Progress|  |
+| 5. Template Segment Expansion | 9/22 | In Progress|  |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
