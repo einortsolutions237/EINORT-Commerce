@@ -1,16 +1,23 @@
 import type { Metadata } from "next";
 
+import type { TemplateTile } from "@/components/theming/template-picker";
 import { env } from "@/env";
 import { strings } from "@/lib/strings";
 import { activeProductCount } from "@/server/catalog/queries";
 import { requireMerchantContext } from "@/server/merchant/context";
 import { getPaymentSettings } from "@/server/payments/settings";
+import { accessibleTemplateKeys } from "@/server/theming/access";
 import { ensureStorefrontSeeded } from "@/server/theming/actions";
+import { templateDefaultTokens } from "@/server/theming/defaults";
 import { getEditorStorefront } from "@/server/theming/queries";
 import {
+  isTemplateKey,
   SECTION_TYPES,
+  TEMPLATES,
   THEME_FIELDS,
   THEME_NON_TOKEN_FIELD,
+  variantsForTemplate,
+  type TemplateKey,
 } from "@/server/theming/registry";
 import {
   sectionFieldMaxima,
@@ -136,6 +143,52 @@ const SECTION_TYPE_DATA = Object.fromEntries(
 
 const THEME_MAXIMA = themeFieldMaxima();
 
+/**
+ * The editor's own `TemplateTile[]`, tier-scoped rather than segment-sorted.
+ *
+ * D-08/TMPL-04 (05-UI-SPEC.md § Editor "Change Template" Action). Unlike the
+ * onboarding grid, the editor's picker shows ONLY the merchant's current-tier
+ * accessible set as ordinary selectable cards — no locked upsell cards repeat
+ * here, because a working surface is not a conversion moment. The one
+ * exception is `currentKey`: it must always render, even when a downgrade has
+ * since put it above the merchant's tier, marked `locked: true` so
+ * `<TemplatePicker>`'s own inert-current-card treatment (`isRetainedAboveTier`)
+ * takes over — see that component's header for why the rendering split lives
+ * there and not here.
+ *
+ * `primaryAccent` on every tile is the TEMPLATE's own default accent
+ * (`templateDefaultTokens(key).primaryAccent`), never the merchant's actual
+ * saved colour (05-UI-SPEC.md § Template Thumbnail Component) — the thumbnail
+ * is a generic preview of the template's own design, not a live rendering of
+ * this merchant's brand.
+ */
+function editorTemplateTiles(
+  tier: string,
+  currentKey: string,
+): TemplateTile[] {
+  const accessible = accessibleTemplateKeys(tier);
+  const currentIsAccessible =
+    isTemplateKey(currentKey) && accessible.includes(currentKey);
+  const keys: readonly TemplateKey[] =
+    currentIsAccessible || !isTemplateKey(currentKey)
+      ? accessible
+      : [...accessible, currentKey];
+
+  return keys.map((key) => {
+    const template = TEMPLATES[key];
+    return {
+      key,
+      name: strings.templates[key]?.name ?? key,
+      segment: template.segment,
+      segmentTag: strings.branding.segments[template.segment],
+      minTier: template.minTier,
+      sections: template.sections,
+      primaryAccent: templateDefaultTokens(key).primaryAccent,
+      locked: !accessible.includes(key),
+    };
+  });
+}
+
 export default async function StorefrontEditorPage() {
   const ctx = await requireMerchantContext();
 
@@ -179,6 +232,14 @@ export default async function StorefrontEditorPage() {
       <EditorShell
         initialDocument={editor.document}
         initialTokens={editor.tokens}
+        /*
+         * The draft template's variant map, resolved HERE because
+         * `variantsForTemplate` lives in the `server-only` registry — the
+         * shell's "use client" bundle cannot reach it. TMPL-04 / D-08.
+         */
+        initialVariants={variantsForTemplate(editor.templateKey)}
+        templates={editorTemplateTiles(ctx.plan.tier, editor.templateKey)}
+        currentTemplateKey={editor.templateKey}
         sectionTypes={SECTION_TYPE_DATA}
         themeFields={EDITABLE_THEME_FIELDS}
         themeMaxima={THEME_MAXIMA}

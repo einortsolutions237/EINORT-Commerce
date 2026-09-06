@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { TemplateTile } from "@/components/theming/template-picker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { editorReducer, type EditorState } from "@/lib/editor/reducer";
 import { strings } from "@/lib/strings";
@@ -24,9 +25,14 @@ import {
   type PageDocument,
   type SectionInstance,
   type SectionType,
+  type SectionVariantMap,
   type ThemeTokens,
 } from "@/server/theming/schema";
 
+import {
+  ChangeTemplatePanel,
+  type TemplateSwitchedState,
+} from "./change-template-panel";
 import { PublishBar } from "./publish-bar";
 import { SectionList, type SectionListEntry } from "./section-list";
 import { REPEATABLE_KEY_SEPARATOR, SettingsPanel } from "./settings-panel";
@@ -136,7 +142,7 @@ type Pane = "edit" | "preview";
 type Viewport = "desktop" | "mobile";
 
 /** Which entry the rail's settings panel is showing, when one is open. */
-type RailTarget = "theme" | "section";
+type RailTarget = "theme" | "section" | "changeTemplate";
 
 /**
  * One section type's editor entry, resolved from the `server-only` registry by
@@ -158,6 +164,12 @@ export interface EditorSectionType {
 export interface EditorShellProps {
   readonly initialDocument: PageDocument;
   readonly initialTokens: ThemeTokens;
+  /** The draft template's variant map, resolved server-side (TMPL-04). */
+  readonly initialVariants: SectionVariantMap;
+  /** The editor-scoped `TemplateTile[]` the RSC assembled — tier-accessible set plus the retained current template, if any. */
+  readonly templates: readonly TemplateTile[];
+  /** The draft template key, i.e. `EditorStorefront.templateKey`. */
+  readonly currentTemplateKey: string;
   readonly sectionTypes: Readonly<Record<SectionType, EditorSectionType>>;
   /**
    * `THEME_FIELDS` with the one non-token descriptor already removed by the
@@ -247,6 +259,9 @@ function isTokenKey(key: string): key is keyof ThemeTokens {
 export function EditorShell({
   initialDocument,
   initialTokens,
+  initialVariants,
+  templates,
+  currentTemplateKey,
   sectionTypes,
   themeFields,
   themeMaxima,
@@ -265,6 +280,8 @@ export function EditorShell({
     tokens: initialTokens,
     selectedSectionId: null,
     dirty: false,
+    variants: initialVariants,
+    templateKey: currentTemplateKey,
   };
 
   const [state, dispatch] = useReducer(editorReducer, initialState);
@@ -357,10 +374,18 @@ export function EditorShell({
         type: PREVIEW_DOC_MESSAGE,
         document: state.document,
         tokens: state.tokens,
+        /*
+         * The fourth field (TMPL-04, 05-19). A template switch replaces
+         * `state.variants` in the same `reset` dispatch as `document` and
+         * `tokens`, so this effect re-runs and repaints the canvas under the
+         * new variants with no page reload — the same mechanism that already
+         * repaints it for a section edit or a discard.
+         */
+        variants: state.variants,
       },
       previewOrigin,
     );
-  }, [phase, state.document, state.tokens, previewOrigin]);
+  }, [phase, state.document, state.tokens, state.variants, previewOrigin]);
 
   /** Selection sync. Dropped silently before the handshake, like every send. */
   function postSelect(sectionId: string) {
@@ -483,6 +508,57 @@ export function EditorShell({
     if (!isTokenKey(key)) return;
     if (typeof value !== "string") return;
     dispatch({ kind: "set-token", key, value });
+  }
+
+  /**
+   * `switchTemplate`'s completed write, applied in one state update (TMPL-04,
+   * D-08/D-09/D-11 — 05-19).
+   *
+   * `reset` is the right action for this, not a new one: a template switch is
+   * a persisted server write, exactly as a save or a discard is, so "the
+   * server's copy is now the truth" is the same fact in all three cases.
+   * `selectedSectionId` is forced to `null` rather than carried over from
+   * `state` — the new template can declare an entirely different section
+   * list (TMPL-03), and a stale selection would point the settings panel at a
+   * section id the new document does not have.
+   *
+   * The rail returns to its list view here (`setPanelOpen(false)`), the same
+   * closing behaviour every panel's own `onBack` already performs — the
+   * `Current` badge then follows `templateKey` into the picker on the next
+   * render, since `templates` and `currentTemplateKey` are RSC props the
+   * server recomputes on the `revalidatePath` this action already triggers.
+   *
+   * `setSavedAgainstPublishedAt(publishedAt)` — the SAME call `onSaved` makes
+   * below, not the `null` `onDiscarded` uses — is deliberate: `null` means "no
+   * local save since page load, fall back to comparing the (possibly stale)
+   * `draftUpdatedAt` prop against `publishedAt`", which is the correct answer
+   * after a DISCARD (draft now matches what was published) but the WRONG one
+   * here. `switchTemplate` just persisted a NEW draft write; the RSC's
+   * `draftUpdatedAt` prop has not refreshed yet, so falling back to it could
+   * under-report "already unpublished" as false when the store had nothing
+   * pending before the switch. Matching `publishedAt` against itself is what
+   * forces `hasUnpublishedChanges` to `true` immediately, exactly the
+   * saved-but-unpublished branch D-09/TMPL-04 requires.
+   */
+  function handleTemplateSwitched({
+    document,
+    tokens,
+    variants,
+    templateKey,
+  }: TemplateSwitchedState) {
+    setSavedAgainstPublishedAt(publishedAt);
+    dispatch({
+      kind: "reset",
+      state: {
+        document,
+        tokens,
+        selectedSectionId: null,
+        dirty: false,
+        variants,
+        templateKey,
+      },
+    });
+    setPanelOpen(false);
   }
 
   /* --- derived render data ------------------------------------------------ */
@@ -625,6 +701,14 @@ export function EditorShell({
               onBack={() => setPanelOpen(false)}
               onChange={handleThemeChange}
             />
+          ) : panelOpen && railTarget === "changeTemplate" ? (
+            <ChangeTemplatePanel
+              tiles={templates}
+              currentTemplateKey={state.templateKey}
+              canEditStorefront={canEditStorefront}
+              onBack={() => setPanelOpen(false)}
+              onSwitched={handleTemplateSwitched}
+            />
           ) : panelOpen &&
             railTarget === "section" &&
             selectedSection !== null ? (
@@ -650,6 +734,11 @@ export function EditorShell({
               themeSelected={railTarget === "theme"}
               onSelectTheme={() => {
                 setRailTarget("theme");
+                setPanelOpen(true);
+              }}
+              changeTemplateSelected={railTarget === "changeTemplate"}
+              onSelectChangeTemplate={() => {
+                setRailTarget("changeTemplate");
                 setPanelOpen(true);
               }}
               onSelect={handleSelect}

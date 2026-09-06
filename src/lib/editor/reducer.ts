@@ -1,6 +1,7 @@
 import type {
   PageDocument,
   SectionInstance,
+  SectionVariantMap,
   ThemeTokens,
 } from "@/server/theming/schema";
 
@@ -48,12 +49,26 @@ import type {
  * THE ARRAY INDEX IS THE ORDER. There is no separate ordering field on a
  * section, here or in the stored document — two representations of one ordering
  * is how they drift apart.
+ *
+ * `variants` AND `templateKey` JOINED THIS STATE IN PLAN 05-19 (TMPL-04, D-08).
+ * A template switch changes FOUR things — document, tokens, variants and the
+ * template key — in one persisted write (`switchTemplate`,
+ * `src/server/theming/actions.ts`), and `editor-shell.tsx`'s own header
+ * insists on ONE state mechanism, not a second `useState` living beside this
+ * reducer. Both ride the existing `reset` action below rather than a new
+ * action kind: a completed switch is "the server's copy is now the truth",
+ * which is exactly what `reset` already means for a save or a discard.
+ * `variants` is never touched by any OTHER action — no reducer path derives a
+ * rendering variant from a document edit, because a variant is a property of
+ * the TEMPLATE (D-02), never of the merchant's content.
  */
 export type EditorState = {
   document: PageDocument;
   tokens: ThemeTokens;
   selectedSectionId: string | null;
   dirty: boolean;
+  variants: SectionVariantMap;
+  templateKey: string;
 };
 
 /**
