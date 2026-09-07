@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Bell, ShieldCheck } from "lucide-react";
+import { Bell } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { strings } from "@/lib/strings";
@@ -8,9 +7,9 @@ import { ThemeToggle } from "./theme-toggle";
 
 /**
  * Quick task 260906-egn — the dashboard header's right-side control cluster:
- * the theme toggle, a decorative notification bell, and the Super Admin Panel
- * stub. Composed here rather than inlined in `(dashboard)/layout.tsx` so the
- * layout's header stays a plain row of controls, not a control factory.
+ * the theme toggle and a decorative notification bell. Composed here rather
+ * than inlined in `(dashboard)/layout.tsx` so the layout's header stays a
+ * plain row of controls, not a control factory.
  *
  * ---------------------------------------------------------------------------
  * THE BELL IS DECORATIVE. THERE IS NO NOTIFICATION DATA MODEL YET.
@@ -22,16 +21,14 @@ import { ThemeToggle } from "./theme-toggle";
  * secretly does nothing.
  *
  * ---------------------------------------------------------------------------
- * SUPER ADMIN PANEL IS A HEADER BUTTON, DELIBERATELY NOT A RAIL ITEM.
+ * A SUPER ADMIN PANEL ENTRY POINT WAS DELIBERATELY REMOVED HERE.
  * ---------------------------------------------------------------------------
- * `/admin` does not exist yet — it is a Phase 6+ surface — and
- * `tests/unit/dashboard-nav.test.ts`'s reachability contract exists precisely
- * to stop a rail entry from pointing at a route nobody built. Putting the link
- * in the header instead keeps it reachable for review without teaching the
- * rail's own contract to tolerate a 404. Rendered unconditionally: there is no
- * role check available on this session shape today, and gating it is Phase 6+
- * scope (T-egn-07 in this plan's threat model — a visible link to a
- * non-existent route grants no privilege by itself).
+ * Quick task 260906-egn shipped an unconditional `/admin` link (a route that
+ * does not exist) because this session shape carries no role concept. Quick
+ * task 260907-a2v deletes it: an always-404 link that implies an admin
+ * capability every merchant sees but none has is worse than no link at all.
+ * It returns in Phase 6, gated on a real `User.platformRole` check — not
+ * un-commented from here.
  *
  * Every control here carries `min-h-11` — the same 44px touch-target floor
  * `app-sidebar.tsx` inherits from this market's hardware.
@@ -48,16 +45,6 @@ export function DashboardHeaderControls() {
         aria-label={strings.dashboard.header.notificationsLabel}
       >
         <Bell aria-hidden="true" />
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="min-h-11"
-        render={<Link href="/admin" />}
-      >
-        <ShieldCheck aria-hidden="true" />
-        {strings.dashboard.header.superAdminPanel}
       </Button>
     </div>
   );
