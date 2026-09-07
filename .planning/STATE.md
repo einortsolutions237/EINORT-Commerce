@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05.1 Wave 1 (05.1-01..04) merged and gated -- playwright installed, image pipeline + preview manifest, scratch-tenant guard, placeholder photos + containment test
-last_updated: "2026-09-07T17:55:00.000Z"
-last_activity: 2026-09-07 -- Phase 05.1 Wave 1 complete. Both blocking human-verify checkpoints (playwright package legitimacy, CC0 placeholder photo licensing) independently re-verified and approved by the user. lint/typecheck/test:unit (637/637)/build all clean.
+stopped_at: Phase 05.1 Wave 1 (05.1-01..04) merged and gated; Phase 05.2 (marketing landing page) just inserted, not yet planned
+last_updated: "2026-09-07T18:05:00.000Z"
+last_activity: 2026-09-07 -- Phase 05.1 Wave 1 complete (playwright installed, image pipeline + preview manifest, scratch-tenant guard, placeholder photos + containment test; both blocking checkpoints independently re-verified and approved). Phase 05.2 (Marketing Landing Page Redesign) inserted per the user's request after reviewing Shopify's marketing site, not yet planned.
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 2
-  total_plans: 68
-  completed_plans: 64
-  percent: 29
+  total_plans: 77
+  completed_plans: 68
+  percent: 25
 ---
 
 # Project State
@@ -21,19 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 05.1 — template-preview-rendering-picker-redesign (INSERTED, urgent, blocks Phase 5 Wave 6; see below) — fully planned, ready to execute
+**Current focus:** Phase 05.1 Wave 2 next (template-preview-rendering-picker-redesign); Phase 05.2 (marketing-landing-page-redesign) awaiting discuss-phase, running in parallel
 
 ## Current Position
 
-Phase: 05.1 (template-preview-rendering-picker-redesign) — PLANNED, EXECUTION NOT YET STARTED
-Urgent decimal-phase insertion after Phase 5 Waves 1-5 (all merged) and before Phase 5's Wave 6 (05-22), triggered by the user reviewing the live "Change template" panel against Shopify's Discover Themes reference. Full pipeline completed 2026-09-07: discuss-phase (6 decisions D-01–D-06, including D-06 added mid-pipeline after research surfaced the zero-stock-imagery gap — generic per-segment placeholder photography for preview screenshots only, never touching real template defaults, confirmed by the user), research (RESEARCH.md — corrected a false "R2 credentials missing" self-report inline, chose Playwright over Puppeteer on supply-chain grounds, chose a generated manifest over a registry field for preview storage, found and documented the picker's real container-query grid bug), UI-SPEC (approved 6/6, live-viewed the Shopify Theme Store and Awwwards Sites of the Month pages directly as additional visual references, 3 consequential UI decisions — U-07 segment grouping, U-08 show-all-toggle removal, U-09 onboarding container widening to max-w-5xl — explicitly confirmed by the user), pattern-mapper (22 files classified, 21/22 with analogs), planner (9 plans across 5 waves, MVP mode with 2 documented interface-first exceptions), plan-checker (PASSED, one non-blocking formatting warning fixed). TMPL-06 added to REQUIREMENTS.md for this phase. Next: `/gsd:execute-phase 05.1`. Wave 1 has 4 plans (05.1-01 through 04), two carrying blocking `checkpoint:human-verify` gates (playwright package-legitimacy, placeholder-photo licensing) that will need the user's sign-off during execution, mirroring the `next-themes` precedent from quick task 260906-egn.
+Phase: 05.1 (template-preview-rendering-picker-redesign) — EXECUTING, WAVE 1 OF 5 MERGED
+Urgent decimal-phase insertion after Phase 5 Waves 1-5 (all merged) and before Phase 5's Wave 6 (05-22), triggered by the user reviewing the live "Change template" panel against Shopify's Discover Themes reference. Full planning pipeline completed 2026-09-07: discuss-phase (6 decisions D-01–D-06), research (chose Playwright over Puppeteer, a generated manifest over a registry field, found the picker's real container-query grid bug), UI-SPEC (approved 6/6, 3 consequential decisions confirmed by the user), pattern-mapper, planner (9 plans across 5 waves), plan-checker (PASSED). TMPL-06 added to REQUIREMENTS.md. Wave 1 (05.1-01 playwright install, 05.1-02 image pipeline/manifest, 05.1-03 scratch-tenant guard, 05.1-04 placeholder photos + containment test) all merged to master 2026-09-07; lint/typecheck/test:unit (637/637)/build all clean. Both Wave 1 blocking `checkpoint:human-verify` gates (playwright package legitimacy, CC0 placeholder-photo licensing) were independently re-verified by the orchestrator (npm registry packument checks; live StockSnap.io license-page and photo-page checks) before the user's approval. Remaining: Wave 2 (05.1-05, 05.1-07), Wave 3 (05.1-06), Wave 4 (05.1-08, crop-framing checkpoint), Wave 5 (05.1-09, full 50-template run + blocking review). Next: `/gsd:execute-phase 05.1` to continue Wave 2.
+
+Phase: 05.2 (marketing-landing-page-redesign) — INSERTED, NOT YET PLANNED
+Urgent decimal-phase insertion after Phase 5 (lands at 05.2 since 05.1 already exists), triggered by the user supplying a screenshot of Shopify's actual marketing/landing page (shopify.com "Start an online store for free" — hero, email capture, "Powering millions of businesses worldwide" + real client logos) and asking for EINORT's root page to reach the same professional quality. The current root page (`src/app/page.tsx`) is a deliberate placeholder — its own header comment already says "This is deliberately NOT a marketing site — that is future scope with its own phase," confirming this was always intended, not scope creep. Explicitly scoped to the root `/` page only (not signup/onboarding/dashboard). Known open questions for discuss-phase: honest trust-signal strategy (EINORT has no real merchant base yet, so Shopify's "millions of businesses" + client-logo pattern cannot be honestly replicated — needs a non-fabricated alternative), visual asset strategy (real template screenshot via Phase 05.1's new preview pipeline vs. illustration), primary language (French-first vs. English-first for the Cameroon market), section structure, and whether to extend the existing merchant-platform blue/gold/slate design reference or use a distinct treatment. Runs in parallel with Phase 05.1 — zero file overlap. Next: `/gsd:discuss-phase 05.2`.
 
 Phase 05 (template-segment-expansion) itself: 22 plans across 6 waves, plan-checker PASSED (one non-blocking warning found and fixed pre-execution: a copy-namespace typing gap between plans 05-03/05-08, `e21fe3e`). UI-SPEC approved 6/6 after two revision cycles (a spacing violation, then a stray 2px margin) plus one deliberate content update incorporating a user-supplied Shopify theme-editor reference into the template-picker/switcher design. Waves 1-5 (05-01 through 05-21) all merged to master; lint/typecheck/test:unit/build all clean, and the full isolation suite (including 05-21's fix for the 6 fixtures deferred by 05-11) is green. Remaining in Phase 05 itself: Wave 6 (05-22, the final gate with 2 blocking human-verify checkpoints) — now blocked on Phase 05.1 completing first.
 Phase 04 (theme-section-block-system-flagship-template) remains genuinely incomplete, deliberately, by the user's own choice (2026-09-03), mirroring the Phase 3 precedent below: all 16 plans (Waves 1-6) are merged and gate-verified, and Wave 7's Task 1 (the fully-automated gate: lint/typecheck/test:unit/build plus all six token-hygiene greps) is confirmed clean -- a real regression (04-11's industry-null redirect breaking 7 pre-Phase-4 isolation test fixtures, 36 tests) was found and fixed (`b9295d2`), then `test:full` came back 0/882 failing on a clean retry. But Wave 7's Tasks 2-3 -- the live-preview device pass and the Design-Distinctiveness stranger test, both blocking `checkpoint:human-verify` tasks requiring the user's direct involvement (and, for Task 3, a real third-party bystander) -- have NOT been run. The phase's own closing gates (Requirements Coverage Gate, Decision Coverage Gate, verifier + code-review + `phase.complete`) have also not run. `04-16-PLAN.md` is not ticked complete in ROADMAP.md. Once the user resumes this, finish Wave 7's Tasks 2-3, then run Phase 4's completion gate.
 Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete for the same kind of reason: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on rather than complete it first (2026-09-01); it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
 Last activity: 2026-09-07 -- Quick task 260907-a2v (remove Super Admin Panel header stub) merged and gated; quick task 260906-egn (dashboard shell rebuild + real Overview page) and Phase 5 Wave 4 (05-18..20) also merged and gated.
 
-Progress: [███░░░░░░░] 29% phases (2/7 complete) · 94% plans (64/68 complete — Phase 3's 03-16, Phase 4's 04-16, and Phase 5's Wave 6 (05-22, blocked on Phase 05.1) still to execute; Phase 05.1's own plan count TBD after planning)
+Progress: [██░░░░░░░░] 25% phases (2/8 complete) · 88% plans (68/77 complete — Phase 3's 03-16, Phase 4's 04-16, Phase 5's Wave 6 (05-22, blocked on 05.1), Phase 05.1's Waves 2-5 (5 plans), and Phase 05.2's plan count TBD after planning, still to execute)
 
 ## Performance Metrics
 
@@ -78,6 +81,7 @@ Progress: [███░░░░░░░] 29% phases (2/7 complete) · 94% plan
 ### Roadmap Evolution
 
 - Phase 05.1 inserted after Phase 5: Template Preview Rendering & Picker Redesign: replace zero-byte CSS-wireframe template thumbnails with real rendered screenshot previews for all 50 templates, and redesign the shared TemplatePicker/TemplateTile grid to Shopify-Discover-Themes-quality layout. Must land before Phase 5's Wave 6 (05-22), which builds a 50-thumbnail contact sheet using this same component for the design-distinctiveness stranger test. (URGENT)
+- Phase 05.2 inserted after Phase 5: Marketing Landing Page Redesign: replace the bare-bones root page (src/app/page.tsx, previously documented as deliberately deferred marketing-site scope) with a real, professional public landing page for EINORT-Commerce, modeled on Shopify's own marketing site quality bar -- deep research, real copywriting, honest (non-fabricated) trust signals, and a full UI-SPEC. Runs in parallel with Phase 05.1's remaining execution -- zero file overlap. (URGENT)
 
 ### Decisions
 

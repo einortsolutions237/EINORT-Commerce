@@ -292,6 +292,16 @@ Plans:
 - [ ] 05.1-08-PLAN.md — Calibration run over four varied templates + blocking crop-framing checkpoint (Wave 4)
 - [ ] 05.1-09-PLAN.md — Full 50-template generation, manifest completeness gate, 05-22 reconciliation, blocking 50-preview review (Wave 5)
 
+### Phase 05.2: Marketing Landing Page Redesign (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 05.2 to break down)
+
 ### Phase 6: Merchant Dashboard & Platform Admin
 
 **Goal**: A merchant can run their business day-to-day from a dashboard that surfaces what needs attention, and the platform owner can operate and support the pilot fleet of stores from a pilot-scoped Super Admin surface — including a direct messaging channel to every merchant and the ability to verify their subscription payments through it.
