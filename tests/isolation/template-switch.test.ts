@@ -229,13 +229,13 @@ type Failed = { ok: false; error: Record<string, string[]> };
 
 async function expectOk<T extends { ok: boolean }>(
   call: Promise<T>,
-): Promise<T> {
+): Promise<Extract<T, { ok: true }>> {
   const result = await call;
   expect(
     result.ok,
     `the action failed but this fixture needed it to succeed: ${JSON.stringify(result)}`,
   ).toBe(true);
-  return result;
+  return result as Extract<T, { ok: true }>;
 }
 
 async function expectRefused<T extends { ok: boolean }>(
@@ -306,18 +306,6 @@ function documentWithMarker(marker: string): PageDocument {
   });
   return { ...document, sections };
 }
-
-/**
- * A document THE CURRENT REGISTRY CANNOT PARSE — the same STALE_DRAFT idiom
- * `storefront-editor.test.ts` uses, applied to `published` instead of
- * `draft`. Written straight through `scopedDb`, never through an action.
- */
-const STALE_PUBLISHED = {
-  version: 1,
-  sections: [
-    { id: "newsletter", type: "newsletter", settings: { heading: "Sign up", body: "" } },
-  ],
-};
 
 /** Tokens the schema cannot parse — required fields missing entirely. */
 const MALFORMED_TOKENS = { notARealTokenShape: true };
