@@ -515,22 +515,109 @@ export const strings = {
       plan: "Plan",
       paymentSettings: "Payment settings",
       openNavigation: "Open navigation",
+
+      /**
+       * Quick task 260906-egn — CONTEXT.md's locked nav-grouping decision.
+       * `app-sidebar.tsx` renders `NAV_GROUPS` (three `SidebarGroup`s) rather
+       * than a flat `NAV_ITEMS` list; these three labels are each group's
+       * `SidebarGroupLabel`. Order matches the rail: General holds Overview
+       * alone, Commerce holds Products/Storefront/Orders/Claims, Configuration
+       * holds Plan/Payment settings.
+       */
+      groupGeneral: "General",
+      groupCommerce: "Commerce",
+      groupConfiguration: "Configuration",
     },
 
     /**
-     * Quick task 260903-ugl. VISUAL PLACEHOLDER ONLY, per CONTEXT.md's
-     * locked decision #3: no search Server Action or query is wired to this
-     * copy anywhere in the codebase. Real cross-entity search across
-     * products/orders/customers is a deliberately separate future task —
-     * these strings existing is not a sign the feature is live.
+     * Quick task 260906-egn — the dashboard header's right-side controls
+     * (`dashboard-header-controls.tsx`): the 3-way theme toggle, a decorative
+     * notification bell, and the Super Admin Panel stub. None of this reuses
+     * `nav` — a header control is not a rail destination.
+     */
+    header: {
+      /** Accessible name on the theme-toggle trigger button. */
+      themeToggleLabel: "Toggle theme",
+      themeLight: "Light",
+      themeSystem: "System",
+      themeDark: "Dark",
+
+      /**
+       * The bell is decorative — there is no notification data model yet, so
+       * it carries no badge and opens nothing. The accessible name still says
+       * what it is, not that it does nothing.
+       */
+      notificationsLabel: "Notifications",
+
+      /**
+       * Links to `/admin`, a Phase 6+ stub that 404s today (T-egn-07 in this
+       * plan's threat model: no privilege is granted by the link existing).
+       * A header button, deliberately not a `NAV_GROUPS` entry — see
+       * `dashboard-header-controls.tsx` for why.
+       */
+      superAdminPanel: "Super Admin Panel",
+    },
+
+    /**
+     * Quick task 260903-ugl shipped this namespace as a VISUAL PLACEHOLDER
+     * ONLY — no search Server Action or query was wired to it, and
+     * `searchShortcutHint` was decorative with no keydown listener anywhere.
      *
-     * `searchShortcutHint` in particular is decorative only; no keydown
-     * listener is registered anywhere in this task.
+     * Quick task 260906-egn REPLACES that placeholder with a real Cmd/Ctrl+K
+     * search modal over the merchant's own Products and Orders
+     * (`dashboard-topbar-search.tsx`, `@/server/search/*`). Both halves of
+     * that earlier sentence are now false, which is why this whole block is
+     * rewritten rather than appended to. The single `searchShortcutHint`
+     * string is now two platform-specific hints: the collapsed trigger
+     * server-renders the Windows/Linux glyph by default (this market's
+     * hardware, per CLAUDE.md) and swaps to the Mac glyph post-mount via
+     * `usePlatformIsMac()` — never guessed on the server, never Meta-only.
      */
     topbar: {
       searchPlaceholder: "Search",
       searchAriaLabel: "Search",
-      searchShortcutHint: "⌘K",
+      searchShortcutHintWindows: "Ctrl K",
+      searchShortcutHintMac: "⌘K",
+
+      modalTitle: "Search your store",
+      modalPlaceholder: "Search products and orders",
+      modalEmpty: "No results",
+      groupProducts: "Products",
+      groupOrders: "Orders",
+      rateLimited: "Too many searches. Try again in a minute.",
+    },
+
+    /**
+     * Quick task 260906-egn, Task 4 — the real Overview: four metric cards,
+     * the 7-day revenue chart, and the recent-orders list. Replaces the
+     * Phase-2 empty state below, which this task's page.tsx no longer
+     * renders (kept here rather than deleted — see `emptyHeading` below).
+     *
+     * `sublabelActiveOrders` is deliberately its own string, not a reuse of
+     * `sublabelLast7Days`: decision A-01 makes the Active orders card
+     * UNWINDOWED (the merchant's whole current backlog, not a 7-day slice),
+     * and the sublabel is what makes that asymmetry visible on screen rather
+     * than buried in a code comment. `metricNewCustomers`'s label is load-
+     * bearing in the other direction — see `@/server/dashboard/queries.ts`'s
+     * header for why a raw distinct-phone count would have to be relabelled
+     * "Customers who ordered" instead.
+     */
+    overview: {
+      metricRevenue: "Revenue",
+      metricActiveOrders: "Active orders",
+      metricUnitsSold: "Units sold",
+      metricNewCustomers: "New customers",
+      sublabelLast7Days: "Last 7 days",
+      sublabelActiveOrders: "All time",
+
+      chartHeading: "Revenue",
+      /** `{total}` is the 7-day revenue total, already formatted as XAF. */
+      chartAriaLabel: "Bar chart of daily revenue for the last 7 days, totaling {total}.",
+
+      recentOrdersHeading: "Recent orders",
+      recentOrdersEmptyHeading: "No orders yet",
+      recentOrdersEmptyBody:
+        "Orders will show up here the moment your first customer checks out.",
     },
 
     emptyHeading: "Your store is live",

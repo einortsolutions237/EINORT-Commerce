@@ -285,6 +285,39 @@ export const uploadPresignLimiter: RateLimiter = createLimiter({
 });
 
 /**
+ * Dashboard search typeahead (`searchMerchantSurface`, quick task 260906-egn).
+ *
+ * ---------------------------------------------------------------------------
+ * THE FIRST AUTHENTICATED LIMITER IN THIS FILE — KEYED BY TENANT, NOT IP.
+ * ---------------------------------------------------------------------------
+ * Every limiter above this one protects an UNAUTHENTICATED surface and is
+ * keyed by caller IP, because there is no other identity to key on before
+ * signup or login succeeds. The search modal is different: it is reachable
+ * only from inside the dashboard, behind `merchantAction({ mode: "read" })`,
+ * so `ctx.tenantId` is already a verified, session-derived identity by the
+ * time this limiter runs (T-egn-03 in this plan's threat model). Keying on it
+ * rather than on IP is deliberately correct here, for two reasons: it is the
+ * right blast-radius unit for an authenticated surface (one tenant's flood
+ * cannot spend another tenant's budget, regardless of how many merchants
+ * share a NAT or a corporate proxy), and it avoids a `headers()` read inside
+ * the Server Action purely to compute a value the session already provides.
+ *
+ * 30/minute, the same figure `slugCheckLimiter` above uses for the same
+ * reason: sized for a debounced human typeahead (a merchant typing a query
+ * issues a handful of calls per minute) and useless for scripted enumeration
+ * of the tenant's own catalog — which is a strange thing to enumerate, since
+ * the caller already has full read access to it, but the limiter still caps
+ * how much database work one compromised or scripted session can generate
+ * per minute.
+ */
+export const searchLimiter: RateLimiter = createLimiter({
+  prefix: "rl:search",
+  tokens: 30,
+  window: "1 m",
+  surface: "dashboard search typeahead",
+});
+
+/**
  * A single rate-limit record as Better Auth's storage contract shapes it:
  * the key it was stored under, how many requests have landed in the current
  * window, and when the most recent one was recorded.

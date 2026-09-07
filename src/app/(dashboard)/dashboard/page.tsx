@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { strings } from "@/lib/strings";
+import { overviewMetrics, recentOrders } from "@/server/dashboard/queries";
 import { requireMerchantContext } from "@/server/merchant/context";
+
+import { OverviewMetrics } from "./overview-metrics";
+import { RecentOrders } from "./recent-orders";
+import { RevenueBars } from "./revenue-bars";
 
 /**
  * `/dashboard` — the merchant's own store (TEN-04).
@@ -19,10 +23,22 @@ import { requireMerchantContext } from "@/server/merchant/context";
  * gate. `React.cache()` means the two together still cost one `getSession` and
  * one organization read.
  *
- * Phase 2 has no lists, so this renders the empty state and links to the
- * storefront. It deliberately links to NOTHING ELSE: no "Add your first
- * product", no orders, no settings. Phase 3 owns products, and a CTA that opens
- * a 404 is a worse first impression than an honest, quiet page.
+ * ---------------------------------------------------------------------------
+ * QUICK TASK 260906-egn REPLACED THE PHASE-2 EMPTY STATE WITH THE REAL
+ * OVERVIEW.
+ * ---------------------------------------------------------------------------
+ * Phase 2 had no lists at all, so this page rendered a single empty-state
+ * card linking only to the storefront. Phase 3 and 4 gave the dashboard real
+ * products, orders and revenue; this task is what finally makes `/dashboard`
+ * show them: four metric cards, a 7-day revenue chart and a recent-orders
+ * list, all real and tenant-scoped (`@/server/dashboard/queries`). A
+ * brand-new merchant with zero orders sees zeroes and empty states here, not
+ * a crash — `overviewMetrics` and `bucketByDay` are both written to make that
+ * the easy path rather than a special case.
+ *
+ * The storefront address line and "view store" link survive unchanged from
+ * Phase 2: they remain the merchant's fastest path to their own shop, and
+ * nothing about this task's scope touches them.
  */
 
 export const metadata: Metadata = {
@@ -55,17 +71,28 @@ function storeHref(slug: string): string {
   return `${protocol}://${slug}.${ROOT_DOMAIN}`;
 }
 
+const OVERVIEW_WINDOW_DAYS = 7;
+
 export default async function DashboardPage() {
   const ctx = await requireMerchantContext();
+
+  const now = new Date();
+  const since = new Date(now.getTime() - OVERVIEW_WINDOW_DAYS * 86_400_000);
+  const [metrics, orders] = await Promise.all([
+    overviewMetrics(ctx.tenantId, since),
+    recentOrders(ctx.tenantId),
+  ]);
 
   return (
     /*
      * The content column is the PAGE's, not the layout's, since Phase 3 moved
-     * this page inside the sidebar shell. `max-w-3xl` is the form/settings
-     * width from 03-UI-SPEC.md § Spacing Scale and is the same column this page
-     * read at in Phase 2 — only its owner changed.
+     * this page inside the sidebar shell. `max-w-6xl` — wider than the
+     * `max-w-5xl` list-page width from 03-UI-SPEC.md § Spacing Scale — because
+     * this page is a 4-column metric grid plus a chart plus a table, not a
+     * single list; `max-w-3xl` (the old Phase-2 form width) has been too
+     * narrow for this content since Task 4 replaced the empty state.
      */
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         {/* Heading role: 24px / 600 / 1.2 */}
         <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
@@ -78,37 +105,27 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/*
-       * The empty state. Same --muted fill and --border hairline construction
-       * as /signup and /onboarding/create-store — the shadcn Card defaults are
-       * overridden rather than re-authored so the component stays upgradable.
-       */}
-      <Card className="rounded-lg border border-border bg-muted ring-0 [--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]">
-        <CardContent className="flex flex-col items-start gap-2">
-          <h2 className="font-heading text-base leading-normal font-semibold text-foreground">
-            {strings.dashboard.emptyHeading}
-          </h2>
-          <p className="text-base leading-normal font-normal text-muted-foreground">
-            {strings.dashboard.emptyBody}
-          </p>
+      <a
+        href={storeHref(ctx.storeSlug)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex min-h-11 w-fit items-center gap-1.5 text-base leading-normal font-medium text-foreground underline underline-offset-3"
+      >
+        {strings.dashboard.viewStore}
+        <ExternalLink aria-hidden="true" className="size-4" />
+        <span className="sr-only">{strings.dashboard.viewStoreLabel}</span>
+      </a>
 
-          {/*
-           * A different origin, so a plain anchor in a new tab rather than a
-           * client-router push. `rel="noopener noreferrer"` because the target
-           * is a merchant-controlled host inside the wildcard.
-           */}
-          <a
-            href={storeHref(ctx.storeSlug)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-base leading-normal font-medium text-foreground underline underline-offset-3"
-          >
-            {strings.dashboard.viewStore}
-            <ExternalLink aria-hidden="true" className="size-4" />
-            <span className="sr-only">{strings.dashboard.viewStoreLabel}</span>
-          </a>
-        </CardContent>
-      </Card>
+      <OverviewMetrics
+        revenueXaf={metrics.revenueXaf}
+        openOrders={metrics.openOrders}
+        unitsSold={metrics.unitsSold}
+        newCustomers={metrics.newCustomers}
+      />
+
+      <RevenueBars buckets={metrics.revenueByDay} totalXaf={metrics.revenueXaf} />
+
+      <RecentOrders orders={orders} />
     </div>
   );
 }
