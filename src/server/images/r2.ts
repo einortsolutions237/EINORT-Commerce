@@ -8,6 +8,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { env } from "@/env";
+import { isTemplateKey } from "@/server/theming/registry";
 
 /**
  * The R2 transport layer — CAT-02 / D-07, and the storage half of tenant
@@ -132,6 +133,32 @@ export function derivativePrefixFor(originalKey: string): string {
     throw new Error("Not an original object key");
   }
   return originalKey.slice(0, -suffix.length);
+}
+
+/**
+ * The prefix a template's rendered preview derivatives live under (TMPL-06).
+ *
+ * `templates/` is a SIBLING namespace to `tenants/`, never nested inside one:
+ * a preview is platform content, identical for every merchant, and putting it
+ * under a tenant prefix would imply an ownership that does not exist.
+ *
+ * Throws rather than sanitising, exactly like `objectKeyFor` above. The input
+ * is always a member of the closed `TEMPLATE_KEYS` tuple and never client
+ * data, so this is defence in depth: the whole point is that there is no such
+ * thing as close enough to a tenant boundary, even when the caller is trusted
+ * today.
+ *
+ * The derivative basename comes from the `templatePreview` preset's own
+ * `labels` entry (`src/server/images/pipeline.ts`), so the full key is
+ * `templates/{key}/card.webp`. Renaming that label orphans stored objects
+ * rather than moving them — kept here, beside `derivativePrefixFor`, so this
+ * third half of the key layout cannot drift apart in a separate file.
+ */
+export function templatePreviewPrefixFor(templateKey: string): string {
+  if (!isTemplateKey(templateKey)) {
+    throw new Error("Invalid template key for preview object key");
+  }
+  return `templates/${templateKey}`;
 }
 
 /**
