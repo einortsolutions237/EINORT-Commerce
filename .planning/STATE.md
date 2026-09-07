@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 Wave 4 (05-18..20) merged
-last_updated: "2026-09-07T01:15:19.632Z"
-last_activity: "2026-09-06 -- Phase 5 Wave 3 (05-10..17) merged; all 4 gates (lint/typecheck/test:unit/build) clean."
+last_updated: "2026-09-07T07:45:48.198Z"
+last_activity: 2026-09-07 -- Quick task 260907-a2v (remove Super Admin Panel header stub) merged and gated; quick task 260906-egn (dashboard shell rebuild + real Overview page) and Phase 5 Wave 4 (05-18..20) also merged and gated.
 progress:
-  total_phases: 6
-  completed_phases: 2
+  total_phases: 7
+  completed_phases: 3
   total_plans: 68
-  completed_plans: 64
-  percent: 33
+  completed_plans: 66
+  percent: 43
 ---
 
 # Project State
@@ -21,12 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 05 — template-segment-expansion (Phase 04 gate deferred, see below)
+**Current focus:** Phase 05.1 — template-preview-rendering-picker-redesign (INSERTED, urgent, blocks Phase 5 Wave 6; see below)
 
 ## Current Position
 
-Phase: 05 (template-segment-expansion) — EXECUTING, WAVE 3 OF 6 MERGED
-22 plans across 6 waves, plan-checker PASSED (one non-blocking warning found and fixed pre-execution: a copy-namespace typing gap between plans 05-03/05-08, `e21fe3e`). UI-SPEC approved 6/6 after two revision cycles (a spacing violation, then a stray 2px margin) plus one deliberate content update incorporating a user-supplied Shopify theme-editor reference into the template-picker/switcher design. Wave 1 (05-01..03), Wave 2 (05-04..09), and Wave 3 (05-10..17) all merged to master; lint/typecheck/test:unit/build all clean. Remaining: Wave 4 (05-18 onboarding picker, 05-19 editor "Change template" action, 05-20 distinctiveness metric), Wave 5 (05-21, which also owns fixing the 5 isolation fixtures deferred by 05-11), Wave 6 (05-22, the final gate with 2 blocking human-verify checkpoints).
+Phase: 05.1 (template-preview-rendering-picker-redesign) — INSERTED, NOT YET PLANNED
+Urgent decimal-phase insertion after Phase 5 Waves 1-5 (all merged) and before Phase 5's Wave 6 (05-22). The user reviewed the live "Change template" panel and asked for the template picker to match Shopify's "Discover themes" quality: real rendered screenshot previews per template (not the current zero-byte CSS-wireframe thumbnails from 05-09) and a much larger, more polished grid layout in both the onboarding flow and the storefront editor's "Change template" panel (shared `TemplatePicker`/`TemplateTile` component). Deliberately sequenced before Wave 6 because 05-22 builds a 50-thumbnail "contact sheet" for the design-distinctiveness stranger test using this exact same component — the redesigned, real-screenshot version should be what that test exercises. Next: `/gsd:plan-phase 05.1` (full discuss → research → UI-spec → plan pipeline, matching every other phase in this project). Known open questions for discuss-phase: rendering approach (no headless-browser/screenshot library is a current dependency — Puppeteer/Playwright would need the same package-legitimacy human-verify gate used for `next-themes`), where/when generation happens (one-time build script vs. on-demand, given `TEMPLATE_DEFAULTS` is deterministic), storage (new R2 asset category + a `previewImageKey`-style field vs. a manifest), regeneration/invalidation strategy, and per-surface grid density (onboarding's full width vs. the editor's narrower side panel).
+
+Phase 05 (template-segment-expansion) itself: 22 plans across 6 waves, plan-checker PASSED (one non-blocking warning found and fixed pre-execution: a copy-namespace typing gap between plans 05-03/05-08, `e21fe3e`). UI-SPEC approved 6/6 after two revision cycles (a spacing violation, then a stray 2px margin) plus one deliberate content update incorporating a user-supplied Shopify theme-editor reference into the template-picker/switcher design. Waves 1-5 (05-01 through 05-21) all merged to master; lint/typecheck/test:unit/build all clean, and the full isolation suite (including 05-21's fix for the 6 fixtures deferred by 05-11) is green. Remaining in Phase 05 itself: Wave 6 (05-22, the final gate with 2 blocking human-verify checkpoints) — now blocked on Phase 05.1 completing first.
 Phase 04 (theme-section-block-system-flagship-template) remains genuinely incomplete, deliberately, by the user's own choice (2026-09-03), mirroring the Phase 3 precedent below: all 16 plans (Waves 1-6) are merged and gate-verified, and Wave 7's Task 1 (the fully-automated gate: lint/typecheck/test:unit/build plus all six token-hygiene greps) is confirmed clean -- a real regression (04-11's industry-null redirect breaking 7 pre-Phase-4 isolation test fixtures, 36 tests) was found and fixed (`b9295d2`), then `test:full` came back 0/882 failing on a clean retry. But Wave 7's Tasks 2-3 -- the live-preview device pass and the Design-Distinctiveness stranger test, both blocking `checkpoint:human-verify` tasks requiring the user's direct involvement (and, for Task 3, a real third-party bystander) -- have NOT been run. The phase's own closing gates (Requirements Coverage Gate, Decision Coverage Gate, verifier + code-review + `phase.complete`) have also not run. `04-16-PLAN.md` is not ticked complete in ROADMAP.md. Once the user resumes this, finish Wave 7's Tasks 2-3, then run Phase 4's completion gate.
 Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete for the same kind of reason: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on rather than complete it first (2026-09-01); it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
 Last activity: 2026-09-07 -- Quick task 260907-a2v (remove Super Admin Panel header stub) merged and gated; quick task 260906-egn (dashboard shell rebuild + real Overview page) and Phase 5 Wave 4 (05-18..20) also merged and gated.
@@ -72,6 +74,10 @@ Progress: [███░░░░░░░] 33% phases (2/6 complete) · 90% plan
 | Phase 02 P06 | 13min | 3 tasks | 3 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 05.1 inserted after Phase 5: Template Preview Rendering & Picker Redesign: replace zero-byte CSS-wireframe template thumbnails with real rendered screenshot previews for all 50 templates, and redesign the shared TemplatePicker/TemplateTile grid to Shopify-Discover-Themes-quality layout. Must land before Phase 5's Wave 6 (05-22), which builds a 50-thumbnail contact sheet using this same component for the design-distinctiveness stranger test. (URGENT)
 
 ### Decisions
 

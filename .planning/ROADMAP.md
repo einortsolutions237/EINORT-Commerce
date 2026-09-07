@@ -258,13 +258,23 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 05-21-PLAN.md — Isolation suites: the non-elevated tier gate, draft-only switch, discard revert and onboarding seed
+- [x] 05-21-PLAN.md — Isolation suites: the non-elevated tier gate, draft-only switch, discard revert and onboarding seed
 
-**Wave 6** *(blocked on Wave 5 completion)*
+**Wave 6** *(blocked on Wave 5 completion AND Phase 05.1 completion — the 50-template contact sheet below must use 05.1's redesigned real-screenshot thumbnails, not the 05-09 CSS-wireframe placeholders)*
 
 - [ ] 05-22-PLAN.md — Phase gate: full automated suite, the 50-template contact sheet, and the six adversarial-pair stranger tests (closes Phase 4's D-14 check)
 
 **UI hint**: yes
+
+### Phase 05.1: Template Preview Rendering & Picker Redesign (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 05.1 to break down)
 
 ### Phase 6: Merchant Dashboard & Platform Admin
 
