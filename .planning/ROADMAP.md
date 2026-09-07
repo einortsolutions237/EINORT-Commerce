@@ -282,10 +282,10 @@ Plans:
 **Canonical refs:** `.planning/phases/05.1-template-preview-rendering-picker-redesign/` — `05.1-CONTEXT.md`, `05.1-RESEARCH.md`, `05.1-PATTERNS.md`, `05.1-UI-SPEC.md`, `05.1-VALIDATION.md`
 
 Plans:
-- [ ] 05.1-01-PLAN.md — Package legitimacy gate (blocking human-verify) + playwright devDependency install (Wave 1)
-- [ ] 05.1-02-PLAN.md — Preview asset contracts: IMAGE_PRESETS lossless decoupling + templatePreview row, templatePreviewPrefixFor, generated manifest + drift guard (Wave 1)
-- [ ] 05.1-03-PLAN.md — Fail-closed scratch-tenant target guard + refusal tests + .env.example entry (Wave 1)
-- [ ] 05.1-04-PLAN.md — D-06 placeholder segment photography, licence checkpoint, and the source-scanning containment test (Wave 1)
+- [x] 05.1-01-PLAN.md — Package legitimacy gate (blocking human-verify) + playwright devDependency install (Wave 1)
+- [x] 05.1-02-PLAN.md — Preview asset contracts: IMAGE_PRESETS lossless decoupling + templatePreview row, templatePreviewPrefixFor, generated manifest + drift guard (Wave 1)
+- [x] 05.1-03-PLAN.md — Fail-closed scratch-tenant target guard + refusal tests + .env.example entry (Wave 1)
+- [x] 05.1-04-PLAN.md — D-06 placeholder segment photography, licence checkpoint, and the source-scanning containment test (Wave 1)
 - [ ] 05.1-05-PLAN.md — TemplateTile gains previewUrl/segmentLabel, show-all toggle deleted, both call sites segment-ordered, onboarding widened to max-w-5xl (Wave 2)
 - [ ] 05.1-06-PLAN.md — Picker visual redesign: container-query grid, segment grouping, 16:10 full-bleed card, D-05 fallback, contract test (Wave 3)
 - [ ] 05.1-07-PLAN.md — scripts/generate-template-previews.ts: guarded reseed, Playwright capture, Sharp + R2, manifest emit, documented command (Wave 2)
