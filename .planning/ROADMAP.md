@@ -294,10 +294,18 @@ Plans:
 
 ### Phase 05.2: Marketing Landing Page Redesign (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 5
-**Plans:** 0 plans
+**Goal**: A prospective merchant landing on einort.com's root page understands, within seconds, what EINORT does and why it fits their business, and is compelled toward signup by honest, specific claims about real Cameroon-first payment methods, real template quality, and genuine speed-to-launch — not the current bare wordmark-plus-button placeholder.
+**Mode:** mvp
+**Depends on**: nothing technically (isolated public route); Phase 05.1 for the hero visual specifically (see D-02 sequencing note)
+**Requirements**: MKTG-01
+**Success Criteria** (what must be TRUE):
+
+  1. The root page (`/`) is a real, professionally designed landing page — hero, 3 differentiator sections (payment methods / template quality / speed-to-launch), a simple how-it-works section, and one final CTA — replacing the current placeholder.
+  2. Every claim on the page is honest and verifiable against the actual shipped product — no fabricated merchant counts, logos, or testimonials.
+  3. The page visually extends the existing merchant-platform blue/gold/slate design system rather than introducing a new one.
+
+**Plans**: TBD (run `/gsd:plan-phase 05.2` to break down)
+**Canonical refs:** `.planning/phases/05.2-marketing-landing-page-redesign/` — `05.2-CONTEXT.md`, `05.2-DISCUSSION-LOG.md`
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 05.2 to break down)
