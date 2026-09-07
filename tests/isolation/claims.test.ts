@@ -172,6 +172,9 @@ async function signUpAndCarrySession(
     logoKey: null,
     primaryAccent: "#18181B",
     secondaryAccent: "#71717A",
+    // `starter`-tier (05-11), so this fixture never trips saveBranding's
+    // tier gate regardless of which plan tier the test signs up with.
+    templateKey: "flagship-fashion",
   });
   if (!branded.ok) {
     throw new Error(`fixture branding failed: ${JSON.stringify(branded.error)}`);
