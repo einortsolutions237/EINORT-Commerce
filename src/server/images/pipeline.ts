@@ -43,13 +43,23 @@ import sharp from "sharp";
  * objects rather than moving them.
  *
  * `enhance` says whether the photographic finishing chain (`.normalise()`,
- * `.modulate()`, `.sharpen()`) runs, and it also selects the WebP mode: lossy at
- * `WEBP_QUALITY` when true, lossless when false. It is stated per row for the
- * same reason everything else here is — the row is the whole specification, so
+ * `.modulate()`, `.sharpen()`) runs. It is stated per row for the same reason
+ * everything else here is — the row is the whole specification, so
  * `processImage` reads this flag and NEVER branches on the preset's name.
  * Comparing the preset argument against a name literal would put the
  * specification in two places, and the second place is where a future preset
  * silently inherits the wrong treatment.
+ *
+ * `lossless` independently selects the WebP encode mode: lossless when true,
+ * lossy at `WEBP_QUALITY` when false. TMPL-06 / 05.1 split this out of
+ * `enhance` — until then the two axes happened to always agree (`enhance:
+ * true` meant lossy, `enhance: false` meant lossless), which made one flag
+ * look sufficient. The `templatePreview` row below is the first case where
+ * they genuinely diverge: no photographic finishing (`enhance: false`) but
+ * still a lossy encode (`lossless: false`), because a 2x-DPR UI screenshot's
+ * dense antialiased text compresses poorly as lossless WebP. Stating both
+ * per row, rather than deriving one from the other, is what makes that
+ * divergence expressible at all.
  */
 export const IMAGE_PRESETS = {
   product: {
@@ -59,6 +69,7 @@ export const IMAGE_PRESETS = {
     ratio: 1,
     format: "webp",
     enhance: true,
+    lossless: false,
   },
   claim: {
     sizes: [1200],
@@ -67,6 +78,7 @@ export const IMAGE_PRESETS = {
     ratio: null,
     format: "webp",
     enhance: true,
+    lossless: false,
   },
   /**
    * The D-07 Phase-4 slot (ONB-03). Unused in Phase 3 — do NOT delete it as
@@ -94,6 +106,33 @@ export const IMAGE_PRESETS = {
     format: "webp",
     background: { r: 0, g: 0, b: 0, alpha: 0 },
     enhance: false,
+    lossless: true,
+  },
+  /**
+   * TMPL-06 / 05.1 D-01. A rendered template preview for the picker grid.
+   *
+   * `enhance: false` for the same reason the `logo` row sets it — the input is
+   * already flat, correctly exposed UI output whose colours ARE the template's
+   * own declared accent; `.normalise()` would shift them and `.sharpen()` would
+   * halo the type.
+   *
+   * `lossless: false` is NOT inconsistent with that. A 2x-DPR screenshot is
+   * dense antialiased text, which lossless WebP encodes badly. This is the one
+   * place the two axes genuinely diverge, which is why they are now two fields.
+   *
+   * `fit: "inside"` + `ratio: null` means 800 is the LONG edge and the 16:10
+   * aspect produced by the script's Playwright `clip` is preserved (800×500).
+   * The crop decision (D-01) lives in the script's `clip`, never here — Sharp
+   * only downscales and re-encodes.
+   */
+  templatePreview: {
+    sizes: [800],
+    labels: ["card"],
+    fit: "inside",
+    ratio: null,
+    format: "webp",
+    enhance: false,
+    lossless: false,
   },
 } as const;
 
@@ -146,12 +185,12 @@ const WEBP_QUALITY = 82;
  *      says `enhance`.
  *   `.modulate(...)`, `.sharpen()`  gentle, default-parameter finishing, under
  *      the same flag.
- *   `.webp(...)`    the re-encode, lossy for an enhanced row and lossless for an
- *      unenhanced one. This is also the security control: the object this
- *      platform serves is Sharp's output, never the bytes that were uploaded, so
- *      a polyglot or a script-carrying payload in the original cannot survive
- *      into anything public (T-03-24) — and that holds in both modes, because
- *      lossless still means re-encoded.
+ *   `.webp(...)`    the re-encode, per the row's own `lossless` flag — lossless
+ *      when true, lossy at `WEBP_QUALITY` otherwise. This is also the security
+ *      control: the object this platform serves is Sharp's output, never the
+ *      bytes that were uploaded, so a polyglot or a script-carrying payload in
+ *      the original cannot survive into anything public (T-03-24) — and that
+ *      holds in both modes, because lossless still means re-encoded.
  *
  * Only the finishing steps are conditional. `.rotate()` is FIRST AND
  * UNCONDITIONAL for every preset, present and future: a logo is unlikely to
@@ -207,16 +246,19 @@ export async function processImage(
     }
 
     /*
-     * Lossless is not a quality preference, it is the other half of an
-     * unenhanced row: a lossy encode fringes the semi-transparent pixels
+     * `lossless` is its own field, not derived from `enhance` (TMPL-06 / 05.1).
+     * For `logo`, lossless is not a quality preference, it is the other half of
+     * an unenhanced row: a lossy encode fringes the semi-transparent pixels
      * around a wordmark and dithers a flat fill, which would undo the fidelity
-     * the skipped finishing steps just preserved. A logo is two small
+     * the skipped finishing steps just preserved — and a logo is two small
      * derivatives of a mostly-flat image, so lossless WebP is also SMALLER here
-     * than the lossy encode would be — there is nothing being traded.
+     * than the lossy encode would be. `templatePreview` is the row that proves
+     * the two axes are independent: also unenhanced, but lossy, because dense
+     * antialiased screenshot text compresses poorly as lossless WebP.
      */
-    const { data, info } = await (spec.enhance
-      ? pipeline.webp({ quality: WEBP_QUALITY })
-      : pipeline.webp({ lossless: true })
+    const { data, info } = await (spec.lossless
+      ? pipeline.webp({ lossless: true })
+      : pipeline.webp({ quality: WEBP_QUALITY })
     ).toBuffer({ resolveWithObject: true });
 
     derived.push({

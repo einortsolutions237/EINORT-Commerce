@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
@@ -409,6 +410,127 @@ describe("processImage — logo preset (D-07)", () => {
     expect((await pixelAt(small!.body, 126, 64)).a).toBe(0);
     expect((await pixelAt(small!.body, 64, 1)).a).toBeGreaterThan(0);
     expect((await pixelAt(small!.body, 64, 126)).a).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE TEMPLATE-PREVIEW FIXTURE, AND WHY IT IS DENSE PER-PIXEL NOISE (TMPL-06).
+ * ---------------------------------------------------------------------------
+ * The `templatePreview` preset's whole reason for existing as a SEPARATE
+ * `lossless: false` row — even though it shares `enhance: false` with `logo`
+ * — is that a 2x-DPR UI screenshot is dense antialiased text, and dense
+ * antialiased text compresses far worse as lossless WebP than as lossy WebP.
+ * Both are examples of the same underlying property: lots of independent,
+ * non-repeating detail that a predictive lossless codec cannot compress well
+ * but a lossy codec can quantise away. Uniform random noise is the sharpest,
+ * most reliable way to produce that property deterministically in a unit
+ * test — a sparse-text-on-a-flat-background fixture risks a background so
+ * uniform that lossless (which is very good at flat regions, exactly why the
+ * `logo` row above uses it) wins anyway, which would make the measured
+ * comparison below flaky rather than diagnostic.
+ *
+ * 1600x1000 is exactly the 16:10 aspect Pattern 2 / D-01 describes, so a
+ * `fit: "inside"` resize to an 800 box lands at 800x500 — the numbers cited in
+ * the preset's own header comment.
+ */
+async function templatePreviewScreenshotFixture(): Promise<Buffer> {
+  const width = 1600;
+  const height = 1000;
+  const channels = 3;
+  const noise = randomBytes(width * height * channels);
+  return sharp(noise, { raw: { width, height, channels } }).png().toBuffer();
+}
+
+describe("the templatePreview preset (TMPL-06)", () => {
+  it("states its own row: 800 long edge, aspect preserved, no finishing, lossy", () => {
+    expect(IMAGE_PRESETS.templatePreview).toStrictEqual({
+      sizes: [800],
+      labels: ["card"],
+      fit: "inside",
+      ratio: null,
+      format: "webp",
+      enhance: false,
+      lossless: false,
+    });
+  });
+
+  it("produces exactly one derivative labelled card", async () => {
+    const derived = await processImage(
+      await templatePreviewScreenshotFixture(),
+      "templatePreview",
+    );
+    expect(derived).toHaveLength(1);
+    expect(derived[0]!.label).toBe("card");
+  });
+
+  it("scales the long edge to 800 and preserves the input's 16:10 aspect within 1px", async () => {
+    const input = await templatePreviewScreenshotFixture();
+    const inputMeta = await sharp(input).metadata();
+    const inputRatio = inputMeta.width! / inputMeta.height!;
+
+    const [card] = await processImage(input, "templatePreview");
+    expect(card).toBeDefined();
+
+    // fit: "inside" + ratio: null means 800 is the LONG edge, not a square box
+    // side — proving the row did not silently square-crop a 16:10 input.
+    expect(Math.max(card!.width, card!.height)).toBe(800);
+    expect(card!.width / card!.height).toBeCloseTo(inputRatio, 2);
+
+    const expectedShortEdge = Math.round(800 / inputRatio);
+    expect(Math.abs(card!.height - expectedShortEdge)).toBeLessThanOrEqual(1);
+  });
+
+  it("encodes lossy — materially smaller than the same content encoded losslessly at the same size", async () => {
+    const input = await templatePreviewScreenshotFixture();
+    const [card] = await processImage(input, "templatePreview");
+    expect(card).toBeDefined();
+
+    // The measured comparison: same resize, same content, only the WebP mode
+    // differs. This proves `lossless: false` on the row, not a magic byte
+    // count, is what makes the derivative small.
+    const losslessAtSameSize = await sharp(input)
+      .resize(800, 800, { fit: "inside" })
+      .webp({ lossless: true })
+      .toBuffer();
+
+    expect(card!.body.byteLength).toBeLessThan(
+      losslessAtSameSize.byteLength * 0.9,
+    );
+  });
+
+  it("applies no photographic finishing — enhance and lossless are independently false", () => {
+    // The two axes could have agreed by coincidence, as they always had before
+    // this preset existed. This assertion is the one place they provably do
+    // not, which is the entire justification for splitting them into two
+    // fields (see the row's own header comment).
+    expect(IMAGE_PRESETS.templatePreview.enhance).toBe(false);
+    expect(IMAGE_PRESETS.templatePreview.lossless).toBe(false);
+  });
+
+  it("re-encodes to WebP rather than passing the PNG screenshot through", async () => {
+    const [card] = await processImage(
+      await templatePreviewScreenshotFixture(),
+      "templatePreview",
+    );
+    expect(card).toBeDefined();
+    expect(card!.contentType).toBe("image/webp");
+    expect(isWebp(card!.body)).toBe(true);
+  });
+});
+
+describe("IMAGE_PRESETS — lossless is a column, not derived from enhance", () => {
+  it("every preset row carries an explicit boolean lossless field", () => {
+    // A structural guard: a future row that omits `lossless` would previously
+    // have silently inherited it from `enhance`. Now it is a required field,
+    // so an omission is a type error, not a silent behaviour choice.
+    expect(IMAGE_PRESETS.product.lossless).toBe(false);
+    expect(IMAGE_PRESETS.claim.lossless).toBe(false);
+    expect(IMAGE_PRESETS.logo.lossless).toBe(true);
+    expect(IMAGE_PRESETS.templatePreview.lossless).toBe(false);
+    for (const name of Object.keys(IMAGE_PRESETS) as ImagePresetName[]) {
+      expect(typeof IMAGE_PRESETS[name].lossless).toBe("boolean");
+    }
   });
 });
 
