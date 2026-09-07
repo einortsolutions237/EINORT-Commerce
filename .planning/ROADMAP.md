@@ -252,9 +252,9 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 05-18-PLAN.md — The onboarding template picker as Card 3, submitted with saveBranding
-- [ ] 05-19-PLAN.md — The editor's Change template rail row, picker panel, destructive confirm and preview repaint
-- [ ] 05-20-PLAN.md — The eight-rule distinctiveness metric and the drift guard generalized to 50
+- [x] 05-18-PLAN.md — The onboarding template picker as Card 3, submitted with saveBranding
+- [x] 05-19-PLAN.md — The editor's Change template rail row, picker panel, destructive confirm and preview repaint
+- [x] 05-20-PLAN.md — The eight-rule distinctiveness metric and the drift guard generalized to 50
 
 **Wave 5** *(blocked on Wave 4 completion)*
 

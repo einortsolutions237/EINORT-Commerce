@@ -3,18 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 Wave 3 (05-10..17) merged; typecheck/build fully clean; Wave 4 next
-last_updated: "2026-09-06T06:15:00.000Z"
-last_activity: 2026-09-06 -- Phase 5 Wave 3 merged (all 8 plans): section-renderer now threads the real variant map through both storefront routes and the preview canvas (05-10, closing Wave 2's known gap -- `npm run build` is fully clean again, all 23 routes); `switchTemplate` server action plus template-aware `publishStorefront`/`discardDraft`/`saveBranding` (05-11); real per-template copy + accent/token builders authored for all 6 segments -- fashion-apparel (05-12), electronics (05-13), beauty-cosmetics (05-14), grocery-food (05-15), furniture-home (05-16), general-retail (05-17), completing all 49 non-flagship templates' content (closing the accent-sharing gap flagged by 05-08). lint/typecheck/test:unit (571/571)/build all green post-merge.
-
-Merge note: all six segment-copy plans (05-12..17) independently discovered and fixed the same pre-existing `FlagshipCopy` literal-type bug in `src/lib/strings/flagship.ts` (`as const` pinned every leaf to the flagship's own literal string, so `Partial<FlagshipCopy>` couldn't typecheck any other template's real prose) -- five different patches across the six branches (two named type-widening helpers under different names, plus bare `as const` removals). Reconciled during merge to the single correct fix (drop `as const`, no helper type needed) via three rounds of conflict resolution; verified no caller narrows on the flagship's literal values before dropping it.
-
-Also logged in `deferred-items.md` during Wave 3, not yet fixed, out of scope for this merge: (a) five isolation fixtures (`catalog`, `claims`, `merchant-context`, `order-actions`, `read-only`, `trial` .test.ts) still call `saveBranding` without the new required `templateKey` field -- flagged for 05-21; (b) a module-resolution gap for `@/assets/brand/einort-logo.png` surfaced in some worktrees (pre-existing, unrelated to Phase 5, not reproduced on master's own typecheck).
+stopped_at: Phase 5 Wave 4 (05-18..20) merged
+last_updated: "2026-09-07T01:15:19.632Z"
+last_activity: "2026-09-06 -- Phase 5 Wave 3 (05-10..17) merged; all 4 gates (lint/typecheck/test:unit/build) clean."
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 68
-  completed_plans: 61
+  completed_plans: 64
   percent: 33
 ---
 
@@ -106,6 +102,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-04T07:30:24.919Z
-Stopped at: Phase 5 planned (22 plans, 6 waves), plan-checker passed
-Resume file: .planning/phases/05-template-segment-expansion/05-01-PLAN.md
+Last session: 2026-09-07T01:15:19.625Z
+Stopped at: Phase 5 Wave 4 (05-18..20) merged
+Resume file: .planning/phases/05-template-segment-expansion/05-21-PLAN.md
