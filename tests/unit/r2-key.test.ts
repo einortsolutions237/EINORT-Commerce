@@ -8,8 +8,11 @@ import {
   derivativePrefixFor,
   isAllowedContentType,
   objectKeyFor,
+  publicUrlFor,
+  templatePreviewPrefixFor,
   type UploadKind,
 } from "@/server/images/r2";
+import { TEMPLATE_KEYS } from "@/server/theming/registry";
 
 /**
  * CAT-02 / T-03-23 — the object key IS the tenant boundary in storage.
@@ -194,6 +197,66 @@ describe("the logos namespace (ONB-03)", () => {
     // `publicUrlFor` refuses an `/original` key, and the schema must refuse it
     // too: an original is attacker-uploaded bytes and is never served.
     expect(objectKeyFor("tenant-a", "logos", REAL_UUID)).not.toMatch(STORAGE_KEY_PATTERN);
+  });
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * TMPL-06 — THE TEMPLATES NAMESPACE, A SIBLING OF tenants/, NEVER NESTED.
+ * ---------------------------------------------------------------------------
+ * `templatePreviewPrefixFor` composes `templates/{templateKey}`, the storage
+ * path a generated preview screenshot lives at. Unlike `objectKeyFor`, the
+ * input here is never client data — it is always a member of the closed
+ * `TEMPLATE_KEYS` tuple — but the function still throws rather than
+ * sanitising, for the same reason `objectKeyFor` does: there is no such thing
+ * as close enough to a tenant boundary, even for a trusted caller today.
+ *
+ * The two properties this block proves, exhaustively rather than by spot
+ * check:
+ *   1. Every real `TemplateKey` produces `templates/{key}`, with no exceptions.
+ *   2. No key this function can produce for a real `TemplateKey` ever starts
+ *      with `tenants/` — so the two namespaces provably cannot collide.
+ */
+describe("the templates namespace (TMPL-06)", () => {
+  it("builds the documented layout for a known template key", () => {
+    expect(templatePreviewPrefixFor("flagship-fashion")).toBe(
+      "templates/flagship-fashion",
+    );
+  });
+
+  it("produces templates/{key} for every member of TEMPLATE_KEYS", () => {
+    // The whole tuple, not a hardcoded subset — a key added to the registry
+    // without a matching case here would otherwise go untested silently.
+    expect(TEMPLATE_KEYS.length).toBe(50);
+    for (const key of TEMPLATE_KEYS) {
+      expect(templatePreviewPrefixFor(key)).toBe(`templates/${key}`);
+    }
+  });
+
+  it("throws for a string that is not a real template key", () => {
+    expect(() => templatePreviewPrefixFor("not-a-template")).toThrow();
+  });
+
+  it("refuses traversal-shaped input rather than sanitising it", () => {
+    // The guard says no to shape, not just to unknown names — a traversal
+    // string is never a member of TEMPLATE_KEYS either way, but this pins the
+    // throw-don't-sanitise posture explicitly rather than leaving it implied.
+    for (const bad of ["", "../tenants/x", "flagship-fashion/../.."]) {
+      expect(() => templatePreviewPrefixFor(bad)).toThrow();
+    }
+  });
+
+  it("never produces a key that starts with tenants/, for any real template key", () => {
+    for (const key of TEMPLATE_KEYS) {
+      expect(templatePreviewPrefixFor(key).startsWith("tenants/")).toBe(false);
+    }
+  });
+
+  it("round-trips through publicUrlFor without tripping the /original refusal", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const url = publicUrlFor(`${templatePreviewPrefixFor(key)}/card.webp`);
+      expect(url).toContain(`templates/${key}/card.webp`);
+    }
   });
 });
 
