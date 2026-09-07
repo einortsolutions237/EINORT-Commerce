@@ -208,7 +208,6 @@ export function ChangeTemplatePanel({
             tiles={tiles}
             selectedKey={pendingKey}
             currentKey={currentTemplateKey}
-            showAllToggle={false}
             onChange={(key) => {
               setError(null);
               setPendingKey(key);

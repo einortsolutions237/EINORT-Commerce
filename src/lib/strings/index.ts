@@ -1542,10 +1542,10 @@ export const strings = {
     templateLockedChip: "Requires {tier}",
     /** Tooltip on focus/hover of a tier-locked card. */
     templateLockedTooltip: "Available on the {tier} plan.",
-    /** Collapsed state of the show-all/show-recommended sort toggle. */
-    templateShowAll: "Show all {n} templates",
-    /** Expanded state of the same toggle — never removes a card, only re-sorts. */
-    templateShowRecommended: "Show recommended only",
+    /** Heading over the hoisted, industry-matched segment group (U-07). */
+    templateGroupRecommended: "Recommended for you · {segment} ({n})",
+    /** Heading over every other segment group, in `INDUSTRY_SEGMENTS` order. */
+    templateGroupHeading: "{segment} ({n})",
     /** Inline error beneath the grid when the form is submitted unselected. */
     templateRequired: "Choose a template to continue.",
 
