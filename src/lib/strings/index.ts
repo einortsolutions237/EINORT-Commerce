@@ -559,19 +559,32 @@ export const strings = {
     },
 
     /**
-     * Quick task 260903-ugl. VISUAL PLACEHOLDER ONLY, per CONTEXT.md's
-     * locked decision #3: no search Server Action or query is wired to this
-     * copy anywhere in the codebase. Real cross-entity search across
-     * products/orders/customers is a deliberately separate future task —
-     * these strings existing is not a sign the feature is live.
+     * Quick task 260903-ugl shipped this namespace as a VISUAL PLACEHOLDER
+     * ONLY — no search Server Action or query was wired to it, and
+     * `searchShortcutHint` was decorative with no keydown listener anywhere.
      *
-     * `searchShortcutHint` in particular is decorative only; no keydown
-     * listener is registered anywhere in this task.
+     * Quick task 260906-egn REPLACES that placeholder with a real Cmd/Ctrl+K
+     * search modal over the merchant's own Products and Orders
+     * (`dashboard-topbar-search.tsx`, `@/server/search/*`). Both halves of
+     * that earlier sentence are now false, which is why this whole block is
+     * rewritten rather than appended to. The single `searchShortcutHint`
+     * string is now two platform-specific hints: the collapsed trigger
+     * server-renders the Windows/Linux glyph by default (this market's
+     * hardware, per CLAUDE.md) and swaps to the Mac glyph post-mount via
+     * `usePlatformIsMac()` — never guessed on the server, never Meta-only.
      */
     topbar: {
       searchPlaceholder: "Search",
       searchAriaLabel: "Search",
-      searchShortcutHint: "⌘K",
+      searchShortcutHintWindows: "Ctrl K",
+      searchShortcutHintMac: "⌘K",
+
+      modalTitle: "Search your store",
+      modalPlaceholder: "Search products and orders",
+      modalEmpty: "No results",
+      groupProducts: "Products",
+      groupOrders: "Orders",
+      rateLimited: "Too many searches. Try again in a minute.",
     },
 
     emptyHeading: "Your store is live",
