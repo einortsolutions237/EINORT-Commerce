@@ -587,6 +587,39 @@ export const strings = {
       rateLimited: "Too many searches. Try again in a minute.",
     },
 
+    /**
+     * Quick task 260906-egn, Task 4 — the real Overview: four metric cards,
+     * the 7-day revenue chart, and the recent-orders list. Replaces the
+     * Phase-2 empty state below, which this task's page.tsx no longer
+     * renders (kept here rather than deleted — see `emptyHeading` below).
+     *
+     * `sublabelActiveOrders` is deliberately its own string, not a reuse of
+     * `sublabelLast7Days`: decision A-01 makes the Active orders card
+     * UNWINDOWED (the merchant's whole current backlog, not a 7-day slice),
+     * and the sublabel is what makes that asymmetry visible on screen rather
+     * than buried in a code comment. `metricNewCustomers`'s label is load-
+     * bearing in the other direction — see `@/server/dashboard/queries.ts`'s
+     * header for why a raw distinct-phone count would have to be relabelled
+     * "Customers who ordered" instead.
+     */
+    overview: {
+      metricRevenue: "Revenue",
+      metricActiveOrders: "Active orders",
+      metricUnitsSold: "Units sold",
+      metricNewCustomers: "New customers",
+      sublabelLast7Days: "Last 7 days",
+      sublabelActiveOrders: "All time",
+
+      chartHeading: "Revenue",
+      /** `{total}` is the 7-day revenue total, already formatted as XAF. */
+      chartAriaLabel: "Bar chart of daily revenue for the last 7 days, totaling {total}.",
+
+      recentOrdersHeading: "Recent orders",
+      recentOrdersEmptyHeading: "No orders yet",
+      recentOrdersEmptyBody:
+        "Orders will show up here the moment your first customer checks out.",
+    },
+
     emptyHeading: "Your store is live",
     emptyBody:
       "Your storefront is ready at your address. Open it to see what your customers see.",
