@@ -515,6 +515,47 @@ export const strings = {
       plan: "Plan",
       paymentSettings: "Payment settings",
       openNavigation: "Open navigation",
+
+      /**
+       * Quick task 260906-egn — CONTEXT.md's locked nav-grouping decision.
+       * `app-sidebar.tsx` renders `NAV_GROUPS` (three `SidebarGroup`s) rather
+       * than a flat `NAV_ITEMS` list; these three labels are each group's
+       * `SidebarGroupLabel`. Order matches the rail: General holds Overview
+       * alone, Commerce holds Products/Storefront/Orders/Claims, Configuration
+       * holds Plan/Payment settings.
+       */
+      groupGeneral: "General",
+      groupCommerce: "Commerce",
+      groupConfiguration: "Configuration",
+    },
+
+    /**
+     * Quick task 260906-egn — the dashboard header's right-side controls
+     * (`dashboard-header-controls.tsx`): the 3-way theme toggle, a decorative
+     * notification bell, and the Super Admin Panel stub. None of this reuses
+     * `nav` — a header control is not a rail destination.
+     */
+    header: {
+      /** Accessible name on the theme-toggle trigger button. */
+      themeToggleLabel: "Toggle theme",
+      themeLight: "Light",
+      themeSystem: "System",
+      themeDark: "Dark",
+
+      /**
+       * The bell is decorative — there is no notification data model yet, so
+       * it carries no badge and opens nothing. The accessible name still says
+       * what it is, not that it does nothing.
+       */
+      notificationsLabel: "Notifications",
+
+      /**
+       * Links to `/admin`, a Phase 6+ stub that 404s today (T-egn-07 in this
+       * plan's threat model: no privilege is granted by the link existing).
+       * A header button, deliberately not a `NAV_GROUPS` entry — see
+       * `dashboard-header-controls.tsx` for why.
+       */
+      superAdminPanel: "Super Admin Panel",
     },
 
     /**

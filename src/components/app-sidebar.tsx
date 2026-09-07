@@ -20,6 +20,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -73,6 +74,20 @@ import { BRAND, strings } from "@/lib/strings";
  * Not a house-style preference: `tests/unit/dashboard-nav.test.ts` fails on a
  * user-facing literal in this file, and on a missing destination. An
  * unreachable dashboard page is then a red test rather than a discovery.
+ *
+ * ---------------------------------------------------------------------------
+ * QUICK TASK 260906-egn — THREE GROUPS, NOT ONE FLAT LIST.
+ * ---------------------------------------------------------------------------
+ * `NAV_GROUPS` replaces the flat `NAV_ITEMS` array with three named groups —
+ * General (Overview), Commerce (Products, Storefront, Orders, Claims) and
+ * Configuration (Plan, Payment settings) — each rendered as its own
+ * `SidebarGroup` with a `SidebarGroupLabel`. Every `NavItem` field, the render
+ * shape inside each group's `SidebarMenu`, `aria-current`, the `h-auto min-h-11`
+ * touch-target override and the single gold badge are all unchanged from the
+ * flat version — this is a regrouping of the same seven destinations, not a
+ * rewrite of how any one of them renders. `REQUIRED_HREFS` in
+ * `tests/unit/dashboard-nav.test.ts` still matches on the bare href string
+ * literal, so grouping the items does not change what that test scans for.
  */
 
 interface NavItem {
@@ -83,61 +98,82 @@ interface NavItem {
   readonly badged?: boolean;
 }
 
+interface NavGroup {
+  readonly label: string;
+  readonly items: readonly NavItem[];
+}
+
 /** The apex route, matched exactly — every other item matches by prefix. */
 const OVERVIEW_HREF = "/dashboard";
 
 /**
- * The seven destinations, in render order. Adding a dashboard route means adding
- * it here AND to `REQUIRED_HREFS` in `tests/unit/dashboard-nav.test.ts`, in the
- * same commit — adding either half alone fails that test, which is the whole
- * point of it (04-RESEARCH.md Pitfall 10).
+ * The seven destinations, grouped for the rail. Adding a dashboard route means
+ * adding it here AND to `REQUIRED_HREFS` in `tests/unit/dashboard-nav.test.ts`,
+ * in the same commit — adding either half alone fails that test, which is the
+ * whole point of it (04-RESEARCH.md Pitfall 10).
  */
-const NAV_ITEMS: readonly NavItem[] = [
+const NAV_GROUPS: readonly NavGroup[] = [
   {
-    href: OVERVIEW_HREF,
-    label: strings.dashboard.nav.overview,
-    icon: LayoutDashboard,
+    label: strings.dashboard.nav.groupGeneral,
+    items: [
+      {
+        href: OVERVIEW_HREF,
+        label: strings.dashboard.nav.overview,
+        icon: LayoutDashboard,
+      },
+    ],
   },
   {
-    href: "/dashboard/products",
-    label: strings.dashboard.nav.products,
-    icon: Package,
+    label: strings.dashboard.nav.groupCommerce,
+    items: [
+      {
+        href: "/dashboard/products",
+        label: strings.dashboard.nav.products,
+        icon: Package,
+      },
+      /*
+       * Phase 4, EDIT-02. Between `Products` and `Orders`, per 04-UI-SPEC.md
+       * § Navigation.
+       *
+       * NO `badged` KEY, AND ITS ABSENCE IS THE CONTRACT. The gold budget is
+       * fully spent on the pending-claims count and the `Payment claimed`
+       * order chip (see the header above), and
+       * `tests/unit/dashboard-nav.test.ts` counts exactly one
+       * `variant="gold"` in this file. This destination is a workbench, not a
+       * queue: nothing here needs a human to look at it now.
+       */
+      {
+        href: "/dashboard/storefront-editor",
+        label: strings.dashboard.nav.storefrontEditor,
+        icon: Paintbrush,
+      },
+      {
+        href: "/dashboard/orders",
+        label: strings.dashboard.nav.orders,
+        icon: ShoppingBag,
+      },
+      {
+        href: "/dashboard/claims",
+        label: strings.dashboard.nav.claims,
+        icon: Banknote,
+        badged: true,
+      },
+    ],
   },
-  /*
-   * Phase 4, EDIT-02. Between `Products` and `Orders`, per 04-UI-SPEC.md
-   * § Navigation.
-   *
-   * NO `badged` KEY, AND ITS ABSENCE IS THE CONTRACT. The gold budget is fully
-   * spent on the pending-claims count and the `Payment claimed` order chip (see
-   * the header above), and `tests/unit/dashboard-nav.test.ts` counts exactly one
-   * `variant="gold"` in this file. This destination is a workbench, not a queue:
-   * nothing here needs a human to look at it now.
-   */
   {
-    href: "/dashboard/storefront-editor",
-    label: strings.dashboard.nav.storefrontEditor,
-    icon: Paintbrush,
-  },
-  {
-    href: "/dashboard/orders",
-    label: strings.dashboard.nav.orders,
-    icon: ShoppingBag,
-  },
-  {
-    href: "/dashboard/claims",
-    label: strings.dashboard.nav.claims,
-    icon: Banknote,
-    badged: true,
-  },
-  {
-    href: "/dashboard/plan",
-    label: strings.dashboard.nav.plan,
-    icon: CreditCard,
-  },
-  {
-    href: "/dashboard/settings/payment",
-    label: strings.dashboard.nav.paymentSettings,
-    icon: Settings,
+    label: strings.dashboard.nav.groupConfiguration,
+    items: [
+      {
+        href: "/dashboard/plan",
+        label: strings.dashboard.nav.plan,
+        icon: CreditCard,
+      },
+      {
+        href: "/dashboard/settings/payment",
+        label: strings.dashboard.nav.paymentSettings,
+        icon: Settings,
+      },
+    ],
   },
 ];
 
@@ -168,43 +204,46 @@ export function AppSidebar({ pendingClaims }: { pendingClaims: number }) {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              {NAV_ITEMS.map((item) => {
-                const current = isCurrent(pathname, item.href);
-                const Icon = item.icon;
+        {NAV_GROUPS.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {group.items.map((item) => {
+                  const current = isCurrent(pathname, item.href);
+                  const Icon = item.icon;
 
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      isActive={current}
-                      /*
-                       * `h-auto min-h-11` overrides the registry's `h-8`: the
-                       * 44px touch target is inherited and non-negotiable on
-                       * this market's hardware. `font-semibold` (and its
-                       * `data-active` twin, which beats the registry's
-                       * `font-medium`) holds the two-weight type contract —
-                       * there is no 500 in this system.
-                       */
-                      className="h-auto min-h-11 text-sm font-semibold data-active:font-semibold data-active:text-sidebar-primary"
-                      aria-current={current ? "page" : undefined}
-                      render={<Link href={item.href} />}
-                    >
-                      <Icon aria-hidden="true" />
-                      <span>{item.label}</span>
-                      {item.badged && pendingClaims > 0 ? (
-                        <Badge variant="gold" className="ml-auto tabular-nums">
-                          {pendingClaims}
-                        </Badge>
-                      ) : null}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        isActive={current}
+                        /*
+                         * `h-auto min-h-11` overrides the registry's `h-8`: the
+                         * 44px touch target is inherited and non-negotiable on
+                         * this market's hardware. `font-semibold` (and its
+                         * `data-active` twin, which beats the registry's
+                         * `font-medium`) holds the two-weight type contract —
+                         * there is no 500 in this system.
+                         */
+                        className="h-auto min-h-11 text-sm font-semibold data-active:font-semibold data-active:text-sidebar-primary"
+                        aria-current={current ? "page" : undefined}
+                        render={<Link href={item.href} />}
+                      >
+                        <Icon aria-hidden="true" />
+                        <span>{item.label}</span>
+                        {item.badged && pendingClaims > 0 ? (
+                          <Badge variant="gold" className="ml-auto tabular-nums">
+                            {pendingClaims}
+                          </Badge>
+                        ) : null}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

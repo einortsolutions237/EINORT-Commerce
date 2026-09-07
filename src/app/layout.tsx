@@ -51,9 +51,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    /*
+     * `suppressHydrationWarning` — quick task 260906-egn. `next-themes`
+     * (mounted only in `src/app/(dashboard)/layout.tsx`, never here) writes
+     * the resolved theme's `class` attribute onto this element with an inline
+     * pre-hydration script, before React hydrates. Without this flag React
+     * would report a hydration mismatch on every dashboard page load for an
+     * attribute React itself never set and does not own. Scoped to this one
+     * attribute — `suppressHydrationWarning` only silences a mismatch on the
+     * element it is applied to, never its descendants, so it cannot hide an
+     * unrelated hydration bug anywhere else in the tree. The storefront route
+     * tree never mounts the theme provider, so this is a no-op there.
+     */
     <html
       lang="en"
       className={`${plusJakartaSans.variable} ${outfit.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

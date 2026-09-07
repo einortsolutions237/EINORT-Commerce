@@ -1,5 +1,7 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { DashboardHeaderControls } from "@/components/dashboard-header-controls";
 import { DashboardTopbarSearch } from "@/components/dashboard-topbar-search";
+import { ThemeProvider } from "@/components/theme-provider";
 import {
   SidebarInset,
   SidebarProvider,
@@ -84,75 +86,75 @@ export default async function DashboardLayout({
   const pendingClaims = await pendingClaimCount(ctx.tenantId);
 
   return (
-    <SidebarProvider>
-      <AppSidebar pendingClaims={pendingClaims} />
+    <ThemeProvider>
+      <SidebarProvider>
+        <AppSidebar pendingClaims={pendingClaims} />
 
-      <SidebarInset>
-        {/*
-         * The header band, retained from Phase 2 and extended with the sheet
-         * trigger. The store name is still here because it is the one fact the
-         * whole dashboard is scoped to, and a merchant with two stores open in
-         * two tabs needs to be able to tell them apart at a glance.
-         *
-         * The trigger is hidden at `lg` and above, where the rail is already
-         * on screen. Its accessible name comes from `strings` rather than the
-         * registry's own hardcoded sr-only text, so the one string a screen
-         * reader announces here is copy like every other.
-         */}
-        <header className="flex min-h-14 items-center gap-3 border-b border-border px-4 sm:px-8">
-          <SidebarTrigger
-            aria-label={strings.dashboard.nav.openNavigation}
-            className="lg:hidden"
-          />
-          <span className="text-sm leading-normal font-semibold text-foreground">
-            {ctx.storeName}
-          </span>
-          <DashboardTopbarSearch />
-          {/* Calls the signOutMerchant server action; see sign-out-button.tsx. */}
-          <div className="ml-auto">
-            <SignOutButton />
-          </div>
-        </header>
-
-        <div className="flex flex-1 flex-col gap-6 px-4 py-8 sm:px-8">
+        <SidebarInset>
           {/*
-           * Above the content on every dashboard route (D-11). `isUrgentTrial`
-           * owns the threshold so the banner never compares against a literal
-           * day count of its own.
+           * The header band, retained from Phase 2 and extended with the sheet
+           * trigger. The store name is still here because it is the one fact
+           * the whole dashboard is scoped to, and a merchant with two stores
+           * open in two tabs needs to be able to tell them apart at a glance.
+           *
+           * The trigger is hidden at `lg` and above, where the rail is already
+           * on screen. Its accessible name comes from `strings` rather than
+           * the registry's own hardcoded sr-only text, so the one string a
+           * screen reader announces here is copy like every other.
            */}
-          <TrialBanner
-            daysLeft={ctx.trial.daysLeft}
-            state={ctx.trial.state}
-            urgent={isUrgentTrial(ctx)}
-          />
+          <header className="flex min-h-14 items-center gap-3 border-b border-border px-4 sm:px-8">
+            <SidebarTrigger
+              aria-label={strings.dashboard.nav.openNavigation}
+              className="lg:hidden"
+            />
+            <span className="text-sm leading-normal font-semibold text-foreground">
+              {ctx.storeName}
+            </span>
+            <DashboardTopbarSearch />
+            {/* Calls the signOutMerchant server action; see sign-out-button.tsx. */}
+            <div className="ml-auto flex items-center gap-1">
+              <DashboardHeaderControls />
+              <SignOutButton />
+            </div>
+          </header>
 
-          {children}
-        </div>
+          <div className="flex flex-1 flex-col gap-6 px-4 py-8 sm:px-8">
+            {/*
+             * Above the content on every dashboard route (D-11).
+             * `isUrgentTrial` owns the threshold so the banner never compares
+             * against a literal day count of its own.
+             */}
+            <TrialBanner
+              daysLeft={ctx.trial.daysLeft}
+              state={ctx.trial.state}
+              urgent={isUrgentTrial(ctx)}
+            />
+
+            {children}
+          </div>
+        </SidebarInset>
 
         {/*
          * The toast host, mounted once for the whole dashboard shell.
          *
-         * Here rather than in the root layout because `sonner.tsx`'s own header
-         * fixes toasts as Surface A only — non-blocking merchant success
-         * signals, never a blocking error and never the storefront. Mounting it
-         * at the root would put a merchant-palette overlay inside every
-         * tenant's storefront tree for no caller.
+         * Mounted here rather than in the root layout (plan 03-10): toasts are
+         * Surface A only (`src/components/ui/sonner.tsx`'s own header —
+         * "non-blocking success toasts only", the merchant palette), and the
+         * storefront under `src/app/s/[slug]/**` has no reason to load this
+         * component or its `--popover` styling. D-02's one-tap order confirm
+         * on `/dashboard/orders` is the first caller.
          *
-         * It is in the layout rather than in each page so that two dashboard
-         * routes both calling `toast()` share one stack instead of racing two.
+         * A sibling of `SidebarInset` rather than nested inside it — outside
+         * the scrolling inset, so a toast fired from deep inside a scrolled
+         * page still anchors to the viewport rather than to the inset's own
+         * scroll container. It is in the layout rather than in each page so
+         * that two dashboard routes both calling `toast()` share one stack
+         * instead of racing two. (Quick task 260906-egn removed a second
+         * `<Toaster />` that had been mounted inside `SidebarInset` above —
+         * the two mounts would have shown every toast twice.)
          */}
         <Toaster />
-      </SidebarInset>
-
-      {/*
-       * Mounted here rather than in the root layout (plan 03-10): toasts are
-       * Surface A only (`src/components/ui/sonner.tsx`'s own header —
-       * "non-blocking success toasts only", the merchant palette), and the
-       * storefront under `src/app/s/[slug]/**` has no reason to load this
-       * component or its `--popover` styling. D-02's one-tap order confirm on
-       * `/dashboard/orders` is the first caller.
-       */}
-      <Toaster />
-    </SidebarProvider>
+      </SidebarProvider>
+    </ThemeProvider>
   );
 }
