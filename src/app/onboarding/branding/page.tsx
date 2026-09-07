@@ -208,8 +208,18 @@ export default async function BrandingPage() {
 
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-16 sm:px-8">
-      {/* Wider than create-store's max-w-md: the industry tile grid needs it. */}
-      <div className="w-full max-w-2xl">
+      {/*
+       * Wider than create-store's `md`-capped container, and wider still
+       * than this page's own earlier `2xl` cap (U-09, 05.1-UI-SPEC.md
+       * § Onboarding Container Widening). At this width (1024px, roughly
+       * 976px of content after the `px-4 sm:px-8` padding) the template
+       * grid lands 3-up at approximately 309px per card, inside the
+       * 300-340px band taken from the Shopify reference. The prior, smaller
+       * cap yielded 205px cards on the same 3-up grid -- smaller than the
+       * wireframe tiles they replace, which would not close the gap TMPL-06
+       * names.
+       */}
+      <div className="w-full max-w-5xl">
         {/* Heading role: 24px / 600 / 1.2 */}
         <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
           {strings.branding.heading}
