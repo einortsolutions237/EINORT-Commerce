@@ -132,3 +132,26 @@ plan's two test files (`tests/unit/theming-registry.test.ts`,
 files changed. `npm run lint` exits 0 (zero warnings) and `npm run test:unit` passes 588/588
 across all 34 unit test files. Not fixed — out of scope for 05-20; the fix (if one is ever
 needed outside a build step) is a `next build`/`.next/types` regeneration, not a source edit.
+
+## From Wave 5 post-merge full suite run (2026-09-07)
+
+`npm run test:full` (full 63-file isolation suite, post-05-21-merge) reported 3 failures out
+of 936 tests / 2 failed files out of 63:
+
+1. `tests/isolation/checkout-paths.test.ts` — "a double submit > places a second order..." —
+   `PrismaClientKnownRequestError: Transaction API error: Unable to start a transaction in
+   the given time.` Unrelated file (order placement, not templates); the exact, repeatedly-
+   documented Neon-contention signature named throughout this project's history.
+2. `tests/isolation/template-switch.test.ts` — 2 of its 8 tests failed under the full-suite
+   run ("publish promotes all three" — 30s timeout; "discardDraft reverts..." — the same
+   "Unable to start a transaction" error). This is a NEW file from 05-21, so it was verified
+   directly rather than assumed: re-ran `npx dotenv -e .env.test -- vitest run
+   tests/isolation/template-switch.test.ts` alone — **8/8 passed**, confirming this is the
+   same full-suite-only contention flake (many isolation files each call `seedTwoTenants()`
+   in their own `beforeAll`, contending for a transaction slot against the shared remote
+   Neon test branch when run back-to-back), not a regression in 05-21's code.
+
+Not fixed — this is environmental flakiness under full-suite load against a real remote
+database, not a correctness bug; the same signature has been documented and dismissed under
+this exact reasoning at least four times earlier in this project's history (05-02, 05-11,
+and now here).
