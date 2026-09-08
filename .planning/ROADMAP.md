@@ -289,7 +289,7 @@ Plans:
 - [x] 05.1-05-PLAN.md — TemplateTile gains previewUrl/segmentLabel, show-all toggle deleted, both call sites segment-ordered, onboarding widened to max-w-5xl (Wave 2)
 - [x] 05.1-06-PLAN.md — Picker visual redesign: container-query grid, segment grouping, 16:10 full-bleed card, D-05 fallback, contract test (Wave 3)
 - [x] 05.1-07-PLAN.md — scripts/generate-template-previews.ts: guarded reseed, Playwright capture, Sharp + R2, manifest emit, documented command (Wave 2)
-- [ ] 05.1-08-PLAN.md — Calibration run over four varied templates + blocking crop-framing checkpoint (Wave 4)
+- [x] 05.1-08-PLAN.md — Calibration run over four varied templates + blocking crop-framing checkpoint (Wave 4)
 - [ ] 05.1-09-PLAN.md — Full 50-template generation, manifest completeness gate, 05-22 reconciliation, blocking 50-preview review (Wave 5)
 
 ### Phase 05.2: Marketing Landing Page Redesign (INSERTED)
@@ -343,6 +343,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 15/16 | In Progress|  |
 | 5. Template Segment Expansion | 9/22 | In Progress|  |
-| 05.1. Template Preview Rendering & Picker Redesign | 7/9 | In Progress|  |
+| 05.1. Template Preview Rendering & Picker Redesign | 8/9 | In Progress|  |
 | 05.2. Marketing Landing Page Redesign | 1/1 | Complete   | 2026-09-08 |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |

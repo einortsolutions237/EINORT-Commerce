@@ -38,4 +38,9 @@ export interface TemplatePreview {
 
 export const TEMPLATE_PREVIEWS: Readonly<
   Partial<Record<TemplateKey, TemplatePreview>>
-> = {};
+> = {
+  "flagship-fashion": { width: 800, height: 500, bytes: 10862, generatedAt: "2026-09-08T04:03:21.820Z" },
+  "fashion-classic": { width: 800, height: 500, bytes: 14768, generatedAt: "2026-09-08T04:02:47.188Z" },
+  "fashion-edit": { width: 800, height: 500, bytes: 13612, generatedAt: "2026-09-08T04:02:50.584Z" },
+  "electronics-grid": { width: 800, height: 500, bytes: 17446, generatedAt: "2026-09-08T04:02:54.548Z" },
+};

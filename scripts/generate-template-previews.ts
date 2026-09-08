@@ -319,66 +319,93 @@ async function seedScratchProducts(
     const originalKey = r2.objectKeyFor(tenantId, "products", uploadId);
     const prefix = r2.derivativePrefixFor(originalKey);
 
+    /*
+     * PLAN 05.1-08 BUG FIX (Rule 1). Before this fix, the three Prisma
+     * upserts below ran UNCONDITIONALLY regardless of `options.dryRun`, while
+     * only the R2 `putObject` call above was gated on it. A `--dry-run` pass
+     * therefore left behind a real `ProductImage` row whose `storageKey`
+     * pointed at an R2 object that was never actually uploaded — a dangling
+     * reference indistinguishable, from the DB's point of view, from a
+     * correctly-seeded product. Worse, `skipIfPresent` above only checks
+     * `Product` COUNT, so every later `--only` run (dry or real) silently
+     * skipped reseeding forever, permanently hiding the gap: the product
+     * grid then rendered a broken `next/image` (a real `<img>` with a src
+     * that 404s), not the "no ImageOff glyph, no empty-state" success this
+     * script's whole purpose is to produce. Discovered while inspecting this
+     * plan's fashion-edit (product-grid-second) calibration render — the
+     * tiles showed alt text over a blank box, which is the browser's native
+     * broken-image fallback, not `product-grid-section.tsx`'s own `ImageOff`
+     * icon branch (that branch never even executes, because `storageKey` IS
+     * present — it is just wrong).
+     *
+     * The fix: a dry run must leave zero persistent state, full stop —
+     * matching this flag's name and every other tool's convention for the
+     * term, and precisely the property that would have prevented this bug.
+     */
     if (!options.dryRun) {
       await Promise.all(
         derived.map((image) =>
           r2.putObject(`${prefix}/${image.label}.webp`, image.body, image.contentType),
         ),
       );
-    }
 
-    const product = await prisma.product.upsert({
-      where: { tenantId_slug: { tenantId, slug } },
-      update: {
-        name: `Preview product ${n}`,
-        basePriceXaf: scratchProductPriceXaf(index),
-        active: true,
-      },
-      create: {
-        tenantId,
-        slug,
-        name: `Preview product ${n}`,
-        basePriceXaf: scratchProductPriceXaf(index),
-        active: true,
-      },
-    });
+      const product = await prisma.product.upsert({
+        where: { tenantId_slug: { tenantId, slug } },
+        update: {
+          name: `Preview product ${n}`,
+          basePriceXaf: scratchProductPriceXaf(index),
+          active: true,
+        },
+        create: {
+          tenantId,
+          slug,
+          name: `Preview product ${n}`,
+          basePriceXaf: scratchProductPriceXaf(index),
+          active: true,
+        },
+      });
 
-    await prisma.productVariant.upsert({
-      where: {
-        tenantId_productId_option1Value_option2Value: {
+      await prisma.productVariant.upsert({
+        where: {
+          tenantId_productId_option1Value_option2Value: {
+            tenantId,
+            productId: product.id,
+            option1Value: "",
+            option2Value: "",
+          },
+        },
+        update: { stock: 10, active: true },
+        create: {
           tenantId,
           productId: product.id,
           option1Value: "",
           option2Value: "",
+          stock: 10,
+          active: true,
         },
-      },
-      update: { stock: 10, active: true },
-      create: {
-        tenantId,
-        productId: product.id,
-        option1Value: "",
-        option2Value: "",
-        stock: 10,
-        active: true,
-      },
-    });
+      });
 
-    await prisma.productImage.upsert({
-      where: {
-        tenantId_productId_position: { tenantId, productId: product.id, position: 0 },
-      },
-      update: { storageKey: prefix, width: largest.width, height: largest.height },
-      create: {
-        tenantId,
-        productId: product.id,
-        position: 0,
-        storageKey: prefix,
-        width: largest.width,
-        height: largest.height,
-      },
-    });
+      await prisma.productImage.upsert({
+        where: {
+          tenantId_productId_position: { tenantId, productId: product.id, position: 0 },
+        },
+        update: { storageKey: prefix, width: largest.width, height: largest.height },
+        create: {
+          tenantId,
+          productId: product.id,
+          position: 0,
+          storageKey: prefix,
+          width: largest.width,
+          height: largest.height,
+        },
+      });
+    }
 
-    log(`seeded product "${slug}" (${segment})`);
+    log(
+      options.dryRun
+        ? `dry run: would seed product "${slug}" (${segment})`
+        : `seeded product "${slug}" (${segment})`,
+    );
   }
 }
 
@@ -387,15 +414,77 @@ async function seedScratchProducts(
 // ---------------------------------------------------------------------------
 
 const VIEWPORT_WIDTH = 1280;
-const VIEWPORT_HEIGHT = 800;
+/**
+ * PLAN 05.1-08 CALIBRATION FIX, second half (see `measureAndCapture`'s "16:10
+ * BUDGET" comment for the first half). 640, not 800.
+ *
+ * Every hero variant sizes itself off the SMALL VIEWPORT HEIGHT unit —
+ * `min-h-[85svh]` (`hero-section.tsx`, full-bleed/split) or `min-h-[70svh]`
+ * (`hero-stack.tsx`) — so the hero's absolute pixel height is proportional to
+ * WHATEVER height this script renders at, not a fixed number. At the
+ * original 800px viewport, a full-bleed hero alone measured ~680px plus
+ * ~91px of header/announcement chrome = ~771px — already within 30px of the
+ * 800px-tall slice this file's own 16:10 output budget allows (see below),
+ * leaving no real room to show any of the next section for that hero variant
+ * REGARDLESS of `SECOND_SECTION_CLIP_MARGIN_PX`'s value. That is what made
+ * Pitfall 6's "some previews show a sliver" bug un-fixable by tuning the
+ * margin alone: the hero itself was eating the entire budget.
+ *
+ * Shrinking the CAPTURE viewport (not the output aspect, not the crop
+ * budget) shrinks every `svh`-sized hero proportionally, which pulls the
+ * second section's real page position further up — genuinely INTO the
+ * fixed-width 16:10 budget window, rather than past it. Chosen by solving
+ * `chrome(~91px) + 0.85·VH + margin(~150px, enough for a legible trust-bar
+ * row) <= 800px` for the worst case (the tallest hero ratio, 85svh): VH <=
+ * ~657. 640 leaves ~165px of margin room for a full-bleed hero and ~260px
+ * for a 70svh stack/split hero, verified against this plan's four
+ * calibration renders — see the SUMMARY for the actual before/after pixel
+ * measurements this traded off against.
+ */
+const VIEWPORT_HEIGHT = 640;
 
 /**
  * D-01's "hero plus roughly the next section", expressed as a fixed overlap
  * added to the SECOND section's own measured top offset (RESEARCH Pitfall 6).
  * A single named constant so the crop can be recalibrated in one place if
  * plan 05.1-08's eyeball pass says otherwise.
+ *
+ * PLAN 05.1-08: raised from the original 120 to 300 ALONGSIDE the
+ * `VIEWPORT_HEIGHT` reduction above and the new `TARGET_CLIP_HEIGHT_PX` cap
+ * below. 120 was measured to be enough only for the smallest trust-bar
+ * `strip` variant (86px tall) — a `band` variant (210–236px tall) or a
+ * `product-grid` `showcase` variant (~930px tall, heading + tile rows) both
+ * needed meaningfully more before any of their own actual content — not just
+ * their section's top padding — became visible. 300 is intentionally larger
+ * than what either case can ever actually use once the `TARGET_CLIP_HEIGHT_PX`
+ * cap below binds — the cap, not this constant, is what ultimately decides
+ * how much shows for a tall hero; this constant only matters for a template
+ * whose hero+chrome leaves more than 300px of the budget spare.
  */
-const SECOND_SECTION_CLIP_MARGIN_PX = 120;
+const SECOND_SECTION_CLIP_MARGIN_PX = 300;
+
+/**
+ * PLAN 05.1-08 CALIBRATION FIX, first half. The picker's card frame
+ * (`05.1-UI-SPEC.md` § Card Anatomy, already shipped in plan 05.1-06) is a
+ * HARD `aspect-[16/10]` box with `object-cover object-top` — so ANY stored
+ * image taller than a true 16:10 slice has its excess silently cropped away
+ * by the browser, invisible in the deployed picker even though it is fully
+ * visible when opening the raw WebP file directly. Before this fix, nothing
+ * stopped `clipHeight` from growing far past that limit — a raw-file review
+ * could look perfectly calibrated while the actual rendered card still
+ * showed almost nothing extra, because the "improvement" lived entirely in
+ * the part the picker crops off. Capping `clipHeight` here makes the
+ * generated asset's aspect ratio match what the picker will actually render,
+ * so a raw-file review (as `05.1-UI-SPEC.md` Task 2's `how-to-verify`
+ * instructs) is trustworthy evidence of the real UI, not just of this file.
+ *
+ * Derived from the target 16:10 aspect at the capture width: a 1280-wide
+ * capture whose final width becomes 800 (the `templatePreview` preset's long
+ * edge) needs a CSS clip height of `1280 * (500/800)` = 800 to land on
+ * 800×500 after Sharp's downscale — independent of `VIEWPORT_HEIGHT`, which
+ * only controls how tall the RENDERED hero is, not this budget.
+ */
+const TARGET_CLIP_HEIGHT_PX = Math.round(VIEWPORT_WIDTH * (500 / 800));
 
 /** Used only when the second section cannot be located at all. */
 const FALLBACK_CLIP_HEIGHT_PX = VIEWPORT_HEIGHT;
@@ -433,7 +522,20 @@ async function measureAndCapture(
   const scrollHeight = await page.evaluate(
     () => document.documentElement.scrollHeight,
   );
-  const height = Math.max(1, Math.min(clipHeight, scrollHeight));
+  const height = Math.max(
+    1,
+    Math.min(clipHeight, scrollHeight, TARGET_CLIP_HEIGHT_PX),
+  );
+
+  // Force everything within the clip region through the real viewport at
+  // least once before the shot, so `next/image`'s default `loading="lazy"`
+  // IntersectionObserver-based load has a chance to fire — a `fullPage`
+  // capture rasterizes content Chromium has laid out, not content it has
+  // necessarily finished fetching, so a product tile below the original fold
+  // can otherwise be rasterized mid-request.
+  await page.evaluate((h) => window.scrollTo(0, h), height);
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   return page.screenshot({
     type: "png",
@@ -443,6 +545,24 @@ async function measureAndCapture(
     animations: "disabled",
     caret: "hide",
     scale: "device",
+    // PLAN 05.1-08 CALIBRATION FIX. Without `fullPage: true`, Chromium's
+    // screenshot silently CLAMPS `clip.height` to the current viewport
+    // height (VIEWPORT_HEIGHT, 800 CSS px) — verified empirically: a
+    // `full-bleed`/`band` hero+trust-bar combination measures a second-section
+    // top offset (`box.y`) of ~771px, so `box.y + SECOND_SECTION_CLIP_MARGIN_PX`
+    // (891px) silently became 800px, showing only the hero's last ~29px of
+    // padding and none of the trust-bar's actual icon/text row. This is
+    // exactly Pitfall 6's "some previews show a sliver" failure mode, but its
+    // cause was a missing capture flag, not a wrong margin constant.
+    // `fullPage: true` + `clip` together let Chromium capture the full
+    // scrollable page first and clip afterward, so `clip.height` can exceed
+    // VIEWPORT_HEIGHT — matching what this function's own `scrollHeight`
+    // clamp already assumed was possible. Growing VIEWPORT_HEIGHT instead
+    // would not have worked: every hero is `min-h-[85svh]`, so a taller
+    // viewport makes the hero taller too (85% of it), and the shortfall
+    // recurs at any viewport height — this is a capture-mode bug, not a
+    // pixel-budget one.
+    fullPage: true,
     clip: { x: 0, y: 0, width: VIEWPORT_WIDTH, height },
   });
 }

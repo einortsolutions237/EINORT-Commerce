@@ -150,7 +150,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | TMPL-03 | Phase 5 | Pending |
 | TMPL-04 | Phase 5 | Pending |
 | TMPL-05 | Phase 5 | Pending |
-| TMPL-06 | Phase 05.1 | In Progress (Waves 1-3/5 merged; Wave 5 populates real screenshots) |
+| TMPL-06 | Phase 05.1 | In Progress (Waves 1-4/5 merged; Wave 5 populates real screenshots for all 50 templates) |
 | EDIT-01 | Phase 4 | Pending |
 | EDIT-02 | Phase 4 | Pending |
 | EDIT-03 | Phase 4 | Pending |
