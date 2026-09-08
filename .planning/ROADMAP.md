@@ -288,7 +288,7 @@ Plans:
 - [x] 05.1-04-PLAN.md — D-06 placeholder segment photography, licence checkpoint, and the source-scanning containment test (Wave 1)
 - [ ] 05.1-05-PLAN.md — TemplateTile gains previewUrl/segmentLabel, show-all toggle deleted, both call sites segment-ordered, onboarding widened to max-w-5xl (Wave 2)
 - [ ] 05.1-06-PLAN.md — Picker visual redesign: container-query grid, segment grouping, 16:10 full-bleed card, D-05 fallback, contract test (Wave 3)
-- [ ] 05.1-07-PLAN.md — scripts/generate-template-previews.ts: guarded reseed, Playwright capture, Sharp + R2, manifest emit, documented command (Wave 2)
+- [x] 05.1-07-PLAN.md — scripts/generate-template-previews.ts: guarded reseed, Playwright capture, Sharp + R2, manifest emit, documented command (Wave 2)
 - [ ] 05.1-08-PLAN.md — Calibration run over four varied templates + blocking crop-framing checkpoint (Wave 4)
 - [ ] 05.1-09-PLAN.md — Full 50-template generation, manifest completeness gate, 05-22 reconciliation, blocking 50-preview review (Wave 5)
 

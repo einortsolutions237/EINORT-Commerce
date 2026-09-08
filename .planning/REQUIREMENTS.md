@@ -35,7 +35,7 @@
 - [ ] **TMPL-03**: At least 3 additional merchant segments (from: electronics, beauty/cosmetics, grocery/food, furniture/home, general retail) get their own structurally distinct layout — not just a recolored copy of the flagship
 - [ ] **TMPL-04**: The full template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional tier split) by recombining the segment layouts' sections/blocks with different imagery, color, and copy — not 50 independently designed templates
 - [ ] **TMPL-05**: Template distinctiveness is checked explicitly (side-by-side comparison) before the library is considered done — genericness is treated as a failure condition, not a subjective nice-to-have
-- [ ] **TMPL-06**: The template picker (onboarding and the storefront editor's "Change template" action) shows a real rendered preview image per template, not a placeholder geometric thumbnail, in a grid layout comparable to mainstream theme-store quality (owner-supplied Shopify reference)
+- [x] **TMPL-06**: The template picker (onboarding and the storefront editor's "Change template" action) shows a real rendered preview image per template, not a placeholder geometric thumbnail, in a grid layout comparable to mainstream theme-store quality (owner-supplied Shopify reference)
 
 ### Storefront Editor
 
@@ -150,7 +150,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | TMPL-03 | Phase 5 | Pending |
 | TMPL-04 | Phase 5 | Pending |
 | TMPL-05 | Phase 5 | Pending |
-| TMPL-06 | Phase 05.1 | Pending |
+| TMPL-06 | Phase 05.1 | Complete |
 | EDIT-01 | Phase 4 | Pending |
 | EDIT-02 | Phase 4 | Pending |
 | EDIT-03 | Phase 4 | Pending |
