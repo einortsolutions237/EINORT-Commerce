@@ -6,13 +6,20 @@ import type { TemplateKey } from "./registry";
 /**
  * TMPL-06 / 05.1 D-05.
  *
- * PARTIAL BY DESIGN. A missing key IS the signal that the picker falls back
- * to `<TemplateThumbnail>` (05-09's CSS-wireframe component). This is the
- * fact D-05 branches on, and it is precisely what a hand-authored
- * `previewImageKey` field on `TemplateDefinition` structurally could not
- * express — a non-optional field is either always present (a lie, before
- * generation has run) or optional in a way that erases the distinction
- * between "no preview yet" and "preview generation failed for this one key".
+ * COMPLETE as of plan 05.1-09: every `TEMPLATE_KEYS` member has a real,
+ * generated entry below, and `tests/unit/template-preview-manifest.test.ts`
+ * enforces that as a build-time contract — a missing key now fails the
+ * build, not a silent fallback. This is a stronger guarantee than the type
+ * signature (`Partial<Record<TemplateKey, TemplatePreview>>`) expresses on
+ * its own; the type stays partial because a hand-authored non-optional field
+ * would have been a lie before generation had ever run (plans 05.1-02
+ * through 05.1-08), and because `<TemplateThumbnail>` (05-09's CSS-wireframe
+ * component, now the D-05 fallback) still exists in the picker component for
+ * a runtime state this build-time contract does not cover — e.g. a future
+ * template key added to `TEMPLATE_KEYS` before `npm run templates:previews`
+ * has been re-run for it, or a corrupted local build. The fallback is a
+ * runtime safety net; the completeness test is a build-time contract. Both
+ * are correct, and neither makes the other redundant.
  *
  * Why this is not a field on `TEMPLATES`: the registry records design
  * decisions a human chose (`segment`, `minTier`, `sections`); this file
@@ -23,10 +30,6 @@ import type { TemplateKey } from "./registry";
  * Keys are emitted in `TEMPLATE_KEYS` order so a regeneration diff is
  * stable — an unordered object literal would reorder itself on every run
  * for no reason related to the actual content change.
- *
- * It ships EMPTY until `npm run templates:previews` has been run (plan
- * 05.1-08); an empty manifest means every tile renders the wireframe
- * fallback, which is correct, not broken.
  */
 export interface TemplatePreview {
   readonly width: number;
@@ -39,8 +42,54 @@ export interface TemplatePreview {
 export const TEMPLATE_PREVIEWS: Readonly<
   Partial<Record<TemplateKey, TemplatePreview>>
 > = {
-  "flagship-fashion": { width: 800, height: 500, bytes: 10862, generatedAt: "2026-09-08T04:03:21.820Z" },
-  "fashion-classic": { width: 800, height: 500, bytes: 14768, generatedAt: "2026-09-08T04:02:47.188Z" },
-  "fashion-edit": { width: 800, height: 500, bytes: 13612, generatedAt: "2026-09-08T04:02:50.584Z" },
-  "electronics-grid": { width: 800, height: 500, bytes: 17446, generatedAt: "2026-09-08T04:02:54.548Z" },
+  "flagship-fashion": { width: 800, height: 500, bytes: 10862, generatedAt: "2026-09-08T08:54:10.857Z" },
+  "fashion-classic": { width: 800, height: 500, bytes: 14768, generatedAt: "2026-09-08T08:54:16.800Z" },
+  "fashion-edit": { width: 800, height: 500, bytes: 13612, generatedAt: "2026-09-08T08:54:21.309Z" },
+  "fashion-muse": { width: 800, height: 500, bytes: 13218, generatedAt: "2026-09-08T08:54:25.167Z" },
+  "fashion-studio": { width: 800, height: 500, bytes: 16304, generatedAt: "2026-09-08T08:54:29.066Z" },
+  "fashion-house": { width: 800, height: 500, bytes: 16664, generatedAt: "2026-09-08T08:54:32.762Z" },
+  "fashion-runway": { width: 800, height: 500, bytes: 11192, generatedAt: "2026-09-08T08:54:36.172Z" },
+  "fashion-loft": { width: 800, height: 500, bytes: 12582, generatedAt: "2026-09-08T08:54:41.414Z" },
+  "electronics-circuit": { width: 800, height: 500, bytes: 20452, generatedAt: "2026-09-08T08:54:45.475Z" },
+  "electronics-signal": { width: 800, height: 500, bytes: 20988, generatedAt: "2026-09-08T08:54:49.466Z" },
+  "electronics-grid": { width: 800, height: 500, bytes: 17446, generatedAt: "2026-09-08T08:54:52.866Z" },
+  "electronics-current": { width: 800, height: 500, bytes: 15710, generatedAt: "2026-09-08T08:54:57.669Z" },
+  "electronics-pulse": { width: 800, height: 500, bytes: 14106, generatedAt: "2026-09-08T08:55:02.106Z" },
+  "electronics-volt": { width: 800, height: 500, bytes: 16276, generatedAt: "2026-09-08T08:55:05.974Z" },
+  "electronics-module": { width: 800, height: 500, bytes: 19582, generatedAt: "2026-09-08T08:55:09.849Z" },
+  "electronics-frame": { width: 800, height: 500, bytes: 20252, generatedAt: "2026-09-08T08:55:13.709Z" },
+  "electronics-byte": { width: 800, height: 500, bytes: 14548, generatedAt: "2026-09-08T08:55:17.475Z" },
+  "beauty-glow": { width: 800, height: 500, bytes: 17340, generatedAt: "2026-09-08T08:55:22.452Z" },
+  "beauty-veil": { width: 800, height: 500, bytes: 19540, generatedAt: "2026-09-08T08:55:26.812Z" },
+  "beauty-bloom": { width: 800, height: 500, bytes: 18226, generatedAt: "2026-09-08T08:55:31.805Z" },
+  "beauty-satin": { width: 800, height: 500, bytes: 16416, generatedAt: "2026-09-08T08:55:36.010Z" },
+  "beauty-radiance": { width: 800, height: 500, bytes: 19668, generatedAt: "2026-09-08T08:55:39.354Z" },
+  "beauty-luxe": { width: 800, height: 500, bytes: 19012, generatedAt: "2026-09-08T08:55:42.678Z" },
+  "beauty-aura": { width: 800, height: 500, bytes: 16274, generatedAt: "2026-09-08T08:55:47.997Z" },
+  "beauty-muse": { width: 800, height: 500, bytes: 17768, generatedAt: "2026-09-08T08:55:52.450Z" },
+  "grocery-market": { width: 800, height: 500, bytes: 16250, generatedAt: "2026-09-08T08:55:56.277Z" },
+  "grocery-harvest": { width: 800, height: 500, bytes: 16832, generatedAt: "2026-09-08T08:55:59.714Z" },
+  "grocery-pantry": { width: 800, height: 500, bytes: 20182, generatedAt: "2026-09-08T08:56:03.106Z" },
+  "grocery-fresh": { width: 800, height: 500, bytes: 20284, generatedAt: "2026-09-08T08:56:06.894Z" },
+  "grocery-orchard": { width: 800, height: 500, bytes: 18320, generatedAt: "2026-09-08T08:56:10.269Z" },
+  "grocery-grove": { width: 800, height: 500, bytes: 18960, generatedAt: "2026-09-08T08:56:14.099Z" },
+  "grocery-cellar": { width: 800, height: 500, bytes: 15148, generatedAt: "2026-09-08T08:56:19.459Z" },
+  "grocery-larder": { width: 800, height: 500, bytes: 15430, generatedAt: "2026-09-08T08:56:23.315Z" },
+  "furniture-loom": { width: 800, height: 500, bytes: 17486, generatedAt: "2026-09-08T08:56:27.176Z" },
+  "furniture-grain": { width: 800, height: 500, bytes: 16570, generatedAt: "2026-09-08T08:56:30.562Z" },
+  "furniture-oak": { width: 800, height: 500, bytes: 19736, generatedAt: "2026-09-08T08:56:34.074Z" },
+  "furniture-hearth": { width: 800, height: 500, bytes: 18790, generatedAt: "2026-09-08T08:56:37.553Z" },
+  "furniture-timber": { width: 800, height: 500, bytes: 14920, generatedAt: "2026-09-08T08:56:40.916Z" },
+  "furniture-haven": { width: 800, height: 500, bytes: 16152, generatedAt: "2026-09-08T08:56:45.642Z" },
+  "furniture-nook": { width: 800, height: 500, bytes: 17524, generatedAt: "2026-09-08T08:56:49.650Z" },
+  "furniture-loft": { width: 800, height: 500, bytes: 18054, generatedAt: "2026-09-08T08:56:53.442Z" },
+  "retail-corner": { width: 800, height: 500, bytes: 16780, generatedAt: "2026-09-08T08:56:57.396Z" },
+  "retail-emporium": { width: 800, height: 500, bytes: 14016, generatedAt: "2026-09-08T08:57:03.234Z" },
+  "retail-bazaar": { width: 800, height: 500, bytes: 20090, generatedAt: "2026-09-08T08:57:07.206Z" },
+  "retail-mercantile": { width: 800, height: 500, bytes: 17492, generatedAt: "2026-09-08T08:57:11.121Z" },
+  "retail-general": { width: 800, height: 500, bytes: 16094, generatedAt: "2026-09-08T08:57:15.270Z" },
+  "retail-provisions": { width: 800, height: 500, bytes: 19192, generatedAt: "2026-09-08T08:57:18.739Z" },
+  "retail-market": { width: 800, height: 500, bytes: 16770, generatedAt: "2026-09-08T08:57:22.645Z" },
+  "retail-trading": { width: 800, height: 500, bytes: 16194, generatedAt: "2026-09-08T08:57:26.020Z" },
+  "retail-district": { width: 800, height: 500, bytes: 15476, generatedAt: "2026-09-08T08:57:29.606Z" },
 };
