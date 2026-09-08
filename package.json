@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run tests/unit --reporter=dot",
     "test:full": "dotenv -e .env.test -- vitest run",
+    "templates:previews": "tsx --conditions=react-server scripts/generate-template-previews.ts",
     "postinstall": "node scripts/prisma-generate.mjs"
   },
   "dependencies": {

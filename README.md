@@ -122,6 +122,37 @@ the workaround would have to be undone. Treat it as a blocking finding.
 
 ---
 
+## Regenerating template preview images
+
+The template picker (onboarding and the storefront editor's "Change template"
+action) shows a real rendered screenshot per template, generated once by a
+build script rather than at request time (D-02). Re-run it whenever any
+template's default document or tokens change — the picker otherwise keeps
+showing the previous design.
+
+| Step | Command / action |
+| --- | --- |
+| 1. One-time browser install | `npx playwright install chromium` (~150 MB, cached under your user profile — never run as part of `npm install`). |
+| 2. A throwaway scratch store | Set `TEMPLATE_PREVIEW_STORE_SLUG` in `.env.local` to a store slug that is yours alone to overwrite, then sign one up at <http://localhost:3001/signup> with that exact slug. The generator refuses to run against any other store, and refuses a store that has ever taken an order. |
+| 3. The dev server, running | `npm run dev` in one terminal (binds port 3001) — the script screenshots the real storefront over HTTP, it does not render anything itself. |
+| 4. The generator, in a second terminal | `npm run templates:previews` regenerates every template's preview and rewrites `src/server/theming/preview-manifest.ts`. |
+
+Useful flags:
+
+- `npm run templates:previews -- --only=flagship-fashion,fashion-classic`
+  regenerates just the named templates — calibrate a crop on a handful before
+  committing to all fifty.
+- `npm run templates:previews -- --dry-run` runs the whole pipeline except the
+  R2 upload and the manifest rewrite, useful for checking the guard and the
+  crop without touching anything.
+
+If a template's screenshot is missing (generation never ran, or failed for
+that one key), the picker falls back to the existing CSS-wireframe thumbnail
+rather than a broken image (D-05) — that fallback should be rare in
+production, not a steady state.
+
+---
+
 ## Layout
 
 ```
