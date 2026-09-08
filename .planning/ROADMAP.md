@@ -260,7 +260,7 @@ Plans:
 
 - [x] 05-21-PLAN.md — Isolation suites: the non-elevated tier gate, draft-only switch, discard revert and onboarding seed
 
-**Wave 6** *(blocked on Wave 5 completion AND Phase 05.1 completion — Phase 05.1 must ship first so no reviewer-facing surface in the product still shows the 05-09 CSS-wireframe placeholders as primary UI when 05-22's human stranger tests run. Corrected 2026-09-08 by plan 05.1-09 Task 2: 05-22's contact-sheet mechanism (`scripts/contact-sheet.mjs`) does NOT consume 05.1's `TemplatePicker`/`TEMPLATE_PREVIEWS` real-screenshot cards — it was already designed to render full default home pages directly from `templateDefaultDocument()`/the section components, independent of both the picker and its CSS-wireframe fallback. The prior wording here overstated that dependency as a literal "must use 05.1's...thumbnails" mechanism coupling; see 05-22-PLAN.md's own reconciliation note for the full audit)*
+**Wave 6** *(blocked on Wave 5 completion — Phase 05.1 dependency cleared 2026-09-08, Phase 05.1 is now complete. Phase 05.1 was required to land first so no reviewer-facing surface in the product still shows the 05-09 CSS-wireframe placeholders as primary UI when 05-22's human stranger tests run; that condition now holds. Note from plan 05.1-09 Task 2's reconciliation: 05-22's contact-sheet mechanism (`scripts/contact-sheet.mjs`) never actually consumed 05.1's `TemplatePicker`/`TEMPLATE_PREVIEWS` real-screenshot cards — it was already designed to render full default home pages directly from `templateDefaultDocument()`/the section components, independent of both the picker and its CSS-wireframe fallback; see 05-22-PLAN.md's own reconciliation note for the full audit)*
 
 - [ ] 05-22-PLAN.md — Phase gate: full automated suite, the 50-template contact sheet, and the six adversarial-pair stranger tests (closes Phase 4's D-14 check)
 
@@ -278,7 +278,7 @@ Plans:
   2. The shared `TemplatePicker`/`TemplateTile` component renders these real images in both the onboarding flow and the editor's "Change template" panel, at a card size/grid density close to the Shopify reference, with the old CSS-wireframe thumbnail retained only as a fallback for a missing image.
   3. Phase 5's Wave 6 (05-22) can build its 50-template contact sheet against this redesigned component.
 
-**Plans**: 9 plans across 5 waves
+**Plans**: 9 plans across 5 waves — COMPLETE (Task 3 full-set human-verify checkpoint approved 2026-09-08)
 **Canonical refs:** `.planning/phases/05.1-template-preview-rendering-picker-redesign/` — `05.1-CONTEXT.md`, `05.1-RESEARCH.md`, `05.1-PATTERNS.md`, `05.1-UI-SPEC.md`, `05.1-VALIDATION.md`
 
 Plans:
@@ -290,7 +290,7 @@ Plans:
 - [x] 05.1-06-PLAN.md — Picker visual redesign: container-query grid, segment grouping, 16:10 full-bleed card, D-05 fallback, contract test (Wave 3)
 - [x] 05.1-07-PLAN.md — scripts/generate-template-previews.ts: guarded reseed, Playwright capture, Sharp + R2, manifest emit, documented command (Wave 2)
 - [x] 05.1-08-PLAN.md — Calibration run over four varied templates + blocking crop-framing checkpoint (Wave 4)
-- [ ] 05.1-09-PLAN.md — Full 50-template generation, manifest completeness gate, 05-22 reconciliation, blocking 50-preview review (Wave 5)
+- [x] 05.1-09-PLAN.md — Full 50-template generation, manifest completeness gate, 05-22 reconciliation, blocking 50-preview review (Wave 5)
 
 ### Phase 05.2: Marketing Landing Page Redesign (INSERTED)
 
@@ -343,6 +343,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 15/16 | In Progress|  |
 | 5. Template Segment Expansion | 9/22 | In Progress|  |
-| 05.1. Template Preview Rendering & Picker Redesign | 8/9 | In Progress|  |
+| 05.1. Template Preview Rendering & Picker Redesign | 9/9 | Complete   | 2026-09-08 |
 | 05.2. Marketing Landing Page Redesign | 1/1 | Complete   | 2026-09-08 |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
