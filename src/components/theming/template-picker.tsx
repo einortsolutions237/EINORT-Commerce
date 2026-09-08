@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
+import Image from "next/image";
 import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -19,8 +20,8 @@ import {
 import { TemplateThumbnail } from "./template-thumbnail";
 
 /**
- * The shared template-picker grid (05-UI-SPEC.md § Onboarding Template
- * Picker, § Editor "Change Template" Action, TMPL-04).
+ * The shared template-picker grid (05.1-UI-SPEC.md § Grid Engine, §
+ * Segment Grouping, § Card Anatomy, § D-05 Fallback; TMPL-06).
  *
  * ---------------------------------------------------------------------------
  * ONE COMPONENT, TWO SURFACES. IT MUST NEVER FORK.
@@ -61,6 +62,43 @@ import { TemplateThumbnail } from "./template-thumbnail";
  * downgrade has since put it above their tier — that is exactly the
  * re-selection path a stale/forged request would replay to route around a
  * plan gate the confirm dialog is supposed to enforce.
+ *
+ * ---------------------------------------------------------------------------
+ * THE PREVIEW .WEBP CONTAINS STOREFRONT COLOUR — THIS IS CONTENT, NOT A LEAK.
+ * ---------------------------------------------------------------------------
+ * Each `tile.previewUrl` points at a photograph of a real, rendered
+ * storefront and therefore contains that template's own zinc palette and
+ * merchant accent AS PIXELS. That is categorically different from a token
+ * leak: no CSS custom property crosses the surface boundary, no class is
+ * written, and the source scanners (`surface-token-isolation.test.ts`) see
+ * only `<Image src={tile.previewUrl}>` — a URL, not a colour. Do NOT "fix"
+ * this by stripping colour from the screenshot pipeline; it is the entire
+ * point of TMPL-06.
+ *
+ * ---------------------------------------------------------------------------
+ * GROUPING IS A PARTITION, NEVER A FILTER.
+ * ---------------------------------------------------------------------------
+ * `partitionBySegment` below buckets `tiles` by `tile.segment`, preserving
+ * first-appearance order. Every tile handed in renders in exactly one group:
+ * `Σ group.tiles.length === tiles.length` always holds, because a tile is
+ * pushed into exactly one bucket and no bucket is ever dropped except for
+ * being empty (which cannot happen for a segment with zero tiles, since no
+ * bucket is created for a segment that never appears). This is D-05's
+ * SORT-NEVER-FILTER rule extended to grouping, not a new rule.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY `@container`, NOT A VIEWPORT BREAKPOINT.
+ * ---------------------------------------------------------------------------
+ * The editor's "Change template" panel renders inside a fixed ~288px rail
+ * column (`editor-shell.tsx`'s `lg:w-80` minus its own padding) whose width
+ * is completely decoupled from the browser viewport's. A viewport breakpoint
+ * (`sm:grid-cols-3`) fires based on the WINDOW's width, so a desktop merchant
+ * with a wide window got three columns squeezed into 288px — roughly 85px per
+ * card. A container query fires based on the GRID'S OWN CONTAINING BLOCK, so
+ * the same markup renders 1-up in the rail and 3-up on the wider onboarding
+ * page, correctly, with zero surface-specific branching. Do not reintroduce
+ * `sm:grid-cols-`, `md:grid-cols-` or `lg:grid-cols-` here — the point of this
+ * component's design is that it never again depends on the viewport at all.
  */
 
 /**
@@ -98,6 +136,62 @@ export type TemplateTile = {
   readonly segmentLabel: string;
 };
 
+/** One segment's worth of tiles, in the order they should render. */
+type SegmentGroup = {
+  readonly segment: string;
+  readonly label: string;
+  readonly tiles: readonly TemplateTile[];
+};
+
+/**
+ * Partition `tiles` by `tile.segment`, preserving first-appearance order,
+ * then (when `sortBySegment` matches a real group) hoist that one group to
+ * the front. A `Map` is used specifically because it preserves insertion
+ * order — the first tile of a new segment creates that segment's bucket in
+ * place, so the bucket order always mirrors `tiles`' own order (both RSCs
+ * already hand tiles in `INDUSTRY_SEGMENTS` order, which is why this
+ * function needs no registry import to reproduce a stable, sensible order).
+ *
+ * A PARTITION, NOT A FILTER: every tile is appended to exactly one bucket,
+ * so `groups.reduce((n, g) => n + g.tiles.length, 0) === tiles.length`
+ * always holds. A segment with zero tiles never gets a bucket at all, so a
+ * zero-length group can never be rendered.
+ */
+function partitionBySegment(
+  tiles: readonly TemplateTile[],
+  sortBySegment: string | undefined,
+): readonly SegmentGroup[] {
+  const bySegment = new Map<string, TemplateTile[]>();
+
+  for (const tile of tiles) {
+    const bucket = bySegment.get(tile.segment);
+    if (bucket) {
+      bucket.push(tile);
+    } else {
+      bySegment.set(tile.segment, [tile]);
+    }
+  }
+
+  const groups: SegmentGroup[] = Array.from(bySegment.entries()).map(
+    ([segment, segmentTiles]) => ({
+      segment,
+      label: segmentTiles[0]!.segmentLabel,
+      tiles: segmentTiles,
+    }),
+  );
+
+  if (sortBySegment === undefined) return groups;
+
+  const hoistIndex = groups.findIndex(
+    (group) => group.segment === sortBySegment,
+  );
+  if (hoistIndex <= 0) return groups;
+
+  const hoisted = groups[hoistIndex]!;
+  const rest = groups.filter((_, index) => index !== hoistIndex);
+  return [hoisted, ...rest];
+}
+
 export function TemplatePicker({
   tiles,
   selectedKey,
@@ -113,17 +207,15 @@ export function TemplatePicker({
   /** The merchant's existing template — editor surface only. */
   readonly currentKey?: string;
   /**
-   * The merchant's chosen industry — onboarding surface only. U-07
-   * repurposes this from "sort" to "which segment group is hoisted first
-   * and titled Recommended for you"; unused by this task's render (which
-   * maps `tiles` directly) -- consumed by the grouping introduced in
-   * 05.1-06.
+   * The merchant's chosen industry — onboarding surface only. Repurposed
+   * from "sort" to "which segment group is hoisted first and titled
+   * Recommended for you" (U-07). The editor passes no `sortBySegment`; a
+   * merchant there is changing template, not declaring an industry.
    */
   readonly sortBySegment?: string;
   readonly error?: string;
 }): ReactElement {
-  // consumed by the grouping introduced in 05.1-06
-  void sortBySegment;
+  const groups = partitionBySegment(tiles, sortBySegment);
 
   return (
     <div className="flex flex-col gap-2">
@@ -134,98 +226,149 @@ export function TemplatePicker({
           if (currentKey !== undefined && key === currentKey) return;
           onChange(key);
         }}
-        className="grid grid-cols-2 gap-4 sm:grid-cols-3"
+        className="flex flex-col gap-8"
       >
         <TooltipProvider>
-          {tiles.map((tile) => {
-            const isCurrent =
-              currentKey !== undefined && tile.key === currentKey;
-            const isSelected = isCurrent || selectedKey === tile.key;
-            const isRetainedAboveTier = isCurrent && tile.locked;
-            const isLocked = tile.locked && !isCurrent;
-            const isInert = isLocked || isRetainedAboveTier;
-            const tileLabelId = `template-tile-${tile.key}`;
-            const tierName = strings.plan[tile.minTier].name;
-
-            const card = (
-              <div
-                key={tile.key}
-                className={cn(
-                  "relative flex flex-col rounded-lg border p-2 text-left transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
-                  isSelected
-                    ? "border-primary ring-2 ring-primary"
-                    : "border-border hover:bg-accent",
-                )}
-              >
-                <RadioGroupItem
-                  value={tile.key}
-                  disabled={isInert}
-                  aria-disabled={isInert ? "true" : undefined}
-                  aria-labelledby={tileLabelId}
-                  className={cn(
-                    "absolute inset-0 aspect-auto size-full rounded-lg border-0 bg-transparent opacity-0 after:hidden data-checked:bg-transparent",
-                    isInert && "cursor-not-allowed",
-                  )}
-                />
-
-                <div className={cn("relative", isLocked && "opacity-60")}>
-                  <TemplateThumbnail
-                    sections={tile.sections}
-                    primaryAccent={tile.primaryAccent}
-                  />
-
-                  {isLocked ? (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-                      <Badge
-                        variant="outline"
-                        className="gap-1 border-border bg-background text-xs font-medium text-foreground"
-                      >
-                        <Lock aria-hidden="true" className="size-3" />
-                        {strings.branding.templateLockedChip.replace(
-                          "{tier}",
-                          tierName,
-                        )}
-                      </Badge>
-                    </div>
-                  ) : null}
-
-                  {isCurrent ? (
-                    <Badge className="absolute top-1 left-1 bg-primary text-primary-foreground">
-                      {strings.editor.templateCurrentBadge}
-                    </Badge>
-                  ) : null}
-                </div>
-
-                <Label
-                  id={tileLabelId}
-                  className="mt-2 px-1 text-sm leading-normal font-semibold text-foreground"
-                >
-                  {tile.name}
-                </Label>
-                <p className="mt-1 px-1 text-sm leading-normal text-muted-foreground">
-                  {tile.segmentTag}
-                </p>
-
-                {isRetainedAboveTier ? (
-                  <p className="mt-1 px-1 text-sm leading-normal text-muted-foreground">
-                    {strings.editor.templateRetainedCaption}
-                  </p>
-                ) : null}
-              </div>
-            );
-
-            if (!isLocked) return card;
+          {groups.map((group) => {
+            const isRecommended =
+              sortBySegment !== undefined && group.segment === sortBySegment;
+            const headingId = `template-group-${group.segment}`;
+            const headingText = (
+              isRecommended
+                ? strings.branding.templateGroupRecommended
+                : strings.branding.templateGroupHeading
+            )
+              .replace("{segment}", group.label)
+              .replace("{n}", String(group.tiles.length));
 
             return (
-              <Tooltip key={tile.key}>
-                <TooltipTrigger render={card} />
-                <TooltipContent>
-                  {strings.branding.templateLockedTooltip.replace(
-                    "{tier}",
-                    tierName,
-                  )}
-                </TooltipContent>
-              </Tooltip>
+              <div key={group.segment} role="group" aria-labelledby={headingId}>
+                <div
+                  id={headingId}
+                  className="border-b border-border pb-2 text-sm leading-normal font-semibold text-foreground"
+                >
+                  {headingText}
+                </div>
+
+                <div className="@container mt-4">
+                  <div className="grid grid-cols-1 gap-6 @lg:grid-cols-2 @4xl:grid-cols-3">
+                    {group.tiles.map((tile) => {
+                      const isCurrent =
+                        currentKey !== undefined && tile.key === currentKey;
+                      const isSelected =
+                        isCurrent || selectedKey === tile.key;
+                      const isRetainedAboveTier = isCurrent && tile.locked;
+                      const isLocked = tile.locked && !isCurrent;
+                      const isInert = isLocked || isRetainedAboveTier;
+                      /**
+                       * Locked and current cards never suggest an available
+                       * action, so they omit `group` entirely — that is what
+                       * keeps the image's `group-hover:scale-[1.02]` from
+                       * resolving on hover for either state.
+                       */
+                      const disableHoverLift = isLocked || isCurrent;
+                      const tileLabelId = `template-tile-${tile.key}`;
+                      const tierName = strings.plan[tile.minTier].name;
+
+                      const card = (
+                        <div
+                          key={tile.key}
+                          className={cn(
+                            "relative flex flex-col overflow-hidden rounded-lg border bg-card transition-colors duration-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
+                            !disableHoverLift && "group",
+                            isSelected
+                              ? "border-primary ring-2 ring-primary"
+                              : "border-border hover:border-primary/40 hover:bg-accent",
+                            isLocked && "opacity-60",
+                          )}
+                        >
+                          <RadioGroupItem
+                            value={tile.key}
+                            disabled={isInert}
+                            aria-disabled={isInert ? "true" : undefined}
+                            aria-labelledby={tileLabelId}
+                            className={cn(
+                              "absolute inset-0 aspect-auto size-full rounded-lg border-0 bg-transparent opacity-0 after:hidden data-checked:bg-transparent",
+                              isInert && "cursor-not-allowed",
+                            )}
+                          />
+
+                          <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-border bg-muted">
+                            {tile.previewUrl !== null ? (
+                              <Image
+                                src={tile.previewUrl}
+                                alt=""
+                                fill
+                                sizes="(min-width: 1024px) 340px, (min-width: 640px) 50vw, 92vw"
+                                className="object-cover object-top transition-transform duration-200 group-hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none"
+                              />
+                            ) : (
+                              <TemplateThumbnail
+                                sections={tile.sections}
+                                primaryAccent={tile.primaryAccent}
+                                className="h-full w-full aspect-auto min-w-0 rounded-none border-0"
+                              />
+                            )}
+
+                            {isLocked ? (
+                              <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+                                <Badge
+                                  variant="outline"
+                                  className="gap-1 border-border bg-background text-xs font-medium text-foreground"
+                                >
+                                  <Lock aria-hidden="true" className="size-3" />
+                                  {strings.branding.templateLockedChip.replace(
+                                    "{tier}",
+                                    tierName,
+                                  )}
+                                </Badge>
+                              </div>
+                            ) : null}
+
+                            {isCurrent ? (
+                              <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">
+                                {strings.editor.templateCurrentBadge}
+                              </Badge>
+                            ) : null}
+                          </div>
+
+                          <div className="flex flex-col gap-2 p-4">
+                            <Label
+                              id={tileLabelId}
+                              className="text-sm leading-normal font-semibold text-foreground"
+                            >
+                              {tile.name}
+                            </Label>
+                            <p className="text-sm leading-normal text-muted-foreground">
+                              {tile.segmentTag}
+                            </p>
+
+                            {isRetainedAboveTier ? (
+                              <p className="text-sm leading-normal text-muted-foreground">
+                                {strings.editor.templateRetainedCaption}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+
+                      if (!isLocked) return card;
+
+                      return (
+                        <Tooltip key={tile.key}>
+                          <TooltipTrigger render={card} />
+                          <TooltipContent>
+                            {strings.branding.templateLockedTooltip.replace(
+                              "{tier}",
+                              tierName,
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </TooltipProvider>
