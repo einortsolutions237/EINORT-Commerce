@@ -1,26 +1,17 @@
 import type { Metadata } from "next";
 
-import type { TemplateTile } from "@/components/theming/template-picker";
 import { env } from "@/env";
 import { strings } from "@/lib/strings";
 import { activeProductCount } from "@/server/catalog/queries";
-import { publicUrlFor, templatePreviewPrefixFor } from "@/server/images/r2";
 import { requireMerchantContext } from "@/server/merchant/context";
 import { getPaymentSettings } from "@/server/payments/settings";
-import { accessibleTemplateKeys } from "@/server/theming/access";
 import { ensureStorefrontSeeded } from "@/server/theming/actions";
-import { templateDefaultTokens } from "@/server/theming/defaults";
-import { TEMPLATE_PREVIEWS } from "@/server/theming/preview-manifest";
 import { getEditorStorefront } from "@/server/theming/queries";
 import {
-  INDUSTRY_SEGMENTS,
-  isTemplateKey,
   SECTION_TYPES,
-  TEMPLATES,
   THEME_FIELDS,
   THEME_NON_TOKEN_FIELD,
   variantsForTemplate,
-  type TemplateKey,
 } from "@/server/theming/registry";
 import {
   sectionFieldMaxima,
@@ -31,7 +22,7 @@ import {
 import { EditorShell, type EditorSectionType } from "./editor-shell";
 
 /**
- * `/dashboard/storefront-editor` (EDIT-02, EDIT-03).
+ * `/dashboard/storefront/editor` (EDIT-02, EDIT-03).
  *
  * ---------------------------------------------------------------------------
  * THIS PAGE AUTHORIZES ITSELF.
@@ -84,13 +75,18 @@ import { EditorShell, type EditorSectionType } from "./editor-shell";
  * exactly the drift that comparison cannot survive.
  *
  * ---------------------------------------------------------------------------
- * NO `max-w-*` CONTAINER, AND THERE IS NOTHING TO OPT OUT OF.
+ * FULL-BLEED IS A CANCELLED PADDING, NOT AN ABSENT CONTAINER (05.3-UI-SPEC.md
+ * § R-1).
  * ---------------------------------------------------------------------------
  * The editor needs the viewport (04-UI-SPEC.md § Layout). `(dashboard)/layout
  * .tsx` stopped owning a width container in Phase 3 — its own header records
- * that content width is now a per-page decision — so this page simply declares
- * none. Nothing in the shared layout had to change for every other dashboard
- * screen.
+ * that content width is now a per-page decision — but this page's own render
+ * root (`editor-shell.tsx`) goes one step further than "no container": it
+ * applies a `-mx-4 -my-8 sm:-mx-8` bleed that exactly cancels the layout's
+ * `px-4 py-8 sm:px-8`, so the rail and preview canvas reach the same edges the
+ * header band already does, while the sidebar, header, `TrialBanner` and
+ * `<Toaster/>` stay mounted around it (Option B — see R-1's rejection of a
+ * sibling route group, which would have silently dropped all four).
  */
 
 export const metadata: Metadata = {
@@ -146,76 +142,6 @@ const SECTION_TYPE_DATA = Object.fromEntries(
 
 const THEME_MAXIMA = themeFieldMaxima();
 
-/**
- * The editor's own `TemplateTile[]`, tier-scoped rather than segment-sorted.
- *
- * D-08/TMPL-04 (05-UI-SPEC.md § Editor "Change Template" Action). Unlike the
- * onboarding grid, the editor's picker shows ONLY the merchant's current-tier
- * accessible set as ordinary selectable cards — no locked upsell cards repeat
- * here, because a working surface is not a conversion moment. The one
- * exception is `currentKey`: it must always render, even when a downgrade has
- * since put it above the merchant's tier, marked `locked: true` so
- * `<TemplatePicker>`'s own inert-current-card treatment (`isRetainedAboveTier`)
- * takes over — see that component's header for why the rendering split lives
- * there and not here.
- *
- * `primaryAccent` on every tile is the TEMPLATE's own default accent
- * (`templateDefaultTokens(key).primaryAccent`), never the merchant's actual
- * saved colour (05-UI-SPEC.md § Template Thumbnail Component) — the thumbnail
- * is a generic preview of the template's own design, not a live rendering of
- * this merchant's brand. `previewUrl`'s `.webp` is generated from that same
- * `TEMPLATE_DEFAULTS`-derived default styling (`npm run templates:previews`,
- * plan 05.1-08) — a screenshot of the template's own look, so the "generic
- * preview, not this merchant's brand" promise above survives the redesign
- * unchanged.
- *
- * Tiles are returned in `INDUSTRY_SEGMENTS` order (a pure reorder, D-05 —
- * `keys.length` is unchanged) rather than `accessible`'s own order, so the
- * client component can group by first-appearing segment without importing
- * the registry — the same contract the onboarding surface's flatten in
- * `src/app/onboarding/branding/page.tsx` establishes.
- */
-function editorTemplateTiles(
-  tier: string,
-  currentKey: string,
-): TemplateTile[] {
-  const accessible = accessibleTemplateKeys(tier);
-  const currentIsAccessible =
-    isTemplateKey(currentKey) && accessible.includes(currentKey);
-  const keys: readonly TemplateKey[] =
-    currentIsAccessible || !isTemplateKey(currentKey)
-      ? accessible
-      : [...accessible, currentKey];
-
-  const tiles: TemplateTile[] = keys.map((key) => {
-    const template = TEMPLATES[key];
-    return {
-      key,
-      name: strings.templates[key]?.name ?? key,
-      segment: template.segment,
-      segmentTag: strings.branding.segments[template.segment],
-      minTier: template.minTier,
-      sections: template.sections,
-      primaryAccent: templateDefaultTokens(key).primaryAccent,
-      locked: !accessible.includes(key),
-      previewUrl: TEMPLATE_PREVIEWS[key]
-        ? publicUrlFor(`${templatePreviewPrefixFor(key)}/card.webp`)
-        : null,
-      segmentLabel: strings.branding.segments[template.segment],
-    };
-  });
-
-  const segmentOrder: readonly string[] = INDUSTRY_SEGMENTS;
-  return tiles
-    .map((tile, index) => ({ tile, index }))
-    .sort((a, b) => {
-      const aRank = segmentOrder.indexOf(a.tile.segment);
-      const bRank = segmentOrder.indexOf(b.tile.segment);
-      return aRank !== bRank ? aRank - bRank : a.index - b.index;
-    })
-    .map(({ tile }) => tile);
-}
-
 export default async function StorefrontEditorPage() {
   const ctx = await requireMerchantContext();
 
@@ -265,7 +191,6 @@ export default async function StorefrontEditorPage() {
          * shell's "use client" bundle cannot reach it. TMPL-04 / D-08.
          */
         initialVariants={variantsForTemplate(editor.templateKey)}
-        templates={editorTemplateTiles(ctx.plan.tier, editor.templateKey)}
         currentTemplateKey={editor.templateKey}
         sectionTypes={SECTION_TYPE_DATA}
         themeFields={EDITABLE_THEME_FIELDS}
