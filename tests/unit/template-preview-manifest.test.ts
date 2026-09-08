@@ -27,11 +27,11 @@ import { TEMPLATE_KEYS, type TemplateKey } from "@/server/theming/registry";
  * once, and the negative-control fixture so it is observed saying "yes" at
  * least once — a guard nobody has watched fail is not a guard.
  *
- * The manifest is EMPTY at this point in the phase (05.1-02 lands before
- * generation runs in 05.1-08), so this file deliberately does NOT assert
- * "all 50 templates present" — that assertion lands in the same commit that
- * populates the manifest. Test 7 below states that explicitly so the
- * omission reads as sequencing, not oversight.
+ * Plan 05.1-08 populated the manifest with exactly FOUR calibration entries
+ * — a deliberate subset chosen for maximum template variety, not the full
+ * 50-template run — so this file deliberately does NOT assert "all 50
+ * templates present". The final test below states that explicitly so the
+ * omission reads as sequencing (a future full-run plan's job), not oversight.
  */
 
 /**
@@ -186,13 +186,24 @@ describe("TEMPLATE_PREVIEWS — the real, committed manifest", () => {
     expect(previewManifestErrors(TEMPLATE_PREVIEWS)).toEqual([]);
   });
 
-  it("is empty at this point in the phase — every key present is a real TemplateKey", () => {
-    // Generation (05.1-08) has not run yet, so TEMPLATE_PREVIEWS ships empty.
-    // An empty manifest is explicitly VALID here: 05.1-08 is the plan that
-    // replaces this assertion with an all-50-present completeness check once
-    // generation has actually produced entries — the absence of that check
-    // in THIS file is sequencing, not an oversight.
-    expect(Object.keys(TEMPLATE_PREVIEWS)).toEqual([]);
+  it("has exactly plan 05.1-08's four calibration entries, in TEMPLATE_KEYS order", () => {
+    // 05.1-08 is a deliberate CALIBRATION run over four templates chosen for
+    // maximum variety (flagship baseline, a trust-bar-second template, a
+    // product-grid-second template — the hard case — and a template from a
+    // different segment entirely with a different hero variant) — not the
+    // full 50-template run. This replaces the prior "ships empty" assertion
+    // that guarded the sequencing before this plan ran (05.1-02 lands before
+    // generation). The remaining 46 keys are legitimately absent — D-05's
+    // partial-manifest fallback renders `<TemplateThumbnail>` for them, and
+    // that is correct, not broken. A future plan that runs the full 50-key
+    // generation replaces THIS assertion with an all-50-present completeness
+    // check once that generation has actually produced entries.
+    expect(Object.keys(TEMPLATE_PREVIEWS)).toEqual([
+      "flagship-fashion",
+      "fashion-classic",
+      "fashion-edit",
+      "electronics-grid",
+    ]);
     expect(
       Object.keys(TEMPLATE_PREVIEWS).every((key) =>
         (TEMPLATE_KEYS as readonly string[]).includes(key),
