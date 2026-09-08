@@ -34,8 +34,11 @@ import type { TemplateTile } from "./template-picker";
  */
 export function CurrentTemplateCard({
   tile,
+  sizes = "320px",
 }: {
   readonly tile: TemplateTile;
+  /** Caller-supplied `sizes` for the image. Defaults to the rail's own 320px width. */
+  readonly sizes?: string;
 }): ReactElement {
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-lg border border-primary/40 bg-card ring-2 ring-primary">
@@ -44,7 +47,7 @@ export function CurrentTemplateCard({
           previewUrl={tile.previewUrl}
           sections={tile.sections}
           primaryAccent={tile.primaryAccent}
-          sizes="320px"
+          sizes={sizes}
         />
       </div>
 
