@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   ChevronDown,
@@ -29,6 +30,14 @@ import type { SectionType } from "@/server/theming/schema";
  * with no jsdom, so any behaviour inlined here would be EDIT-02's core
  * interaction with zero automated coverage. Plan 04-15's `editor-shell.tsx`
  * owns the `useReducer` and passes `onSelect` / `onMove` down.
+ *
+ * The invariant survives the 05.3 route split by construction: the
+ * `Change template` row's dirty-draft leave guard (05.3-UI-SPEC.md § R-4)
+ * needs to read whether the draft has unsaved edits, but that reducer flag
+ * never arrives here as a prop or a read — `editor-shell.tsx` builds a
+ * fully-closed `onChangeTemplateNavigate` handler around its own reducer
+ * state and hands it down whole. This file calls the handler; it never
+ * inspects the draft to decide whether to.
  *
  * The one piece of state below is the live-region announcement, which is
  * chrome: it describes a move that already happened in the parent, and it
@@ -121,12 +130,20 @@ export interface SectionListProps {
   readonly themeSelected: boolean;
   readonly onSelectTheme: () => void;
   /**
-   * True while the `Change template` panel is open (TMPL-04, D-08) — the same
-   * "which panel is showing" role `themeSelected` already plays for
-   * `Brand & logo`.
+   * `Change template`'s destination (TMPL-04, D-08). This is a navigation the
+   * merchant is guarded against losing unsaved work over (05.3-UI-SPEC.md §
+   * R-4), not a panel to toggle — there is no "current" state for a row the
+   * merchant is about to leave through, which is why this row carries no
+   * `*Selected` counterpart the way `themeSelected` does for `Brand & logo`.
    */
-  readonly changeTemplateSelected: boolean;
-  readonly onSelectChangeTemplate: () => void;
+  readonly changeTemplateHref: string;
+  /**
+   * Fired by the `<Link>`'s `onNavigate`. Built and owned by `editor-shell.tsx`
+   * around its own reducer state — this component never reads the draft's
+   * unsaved-changes flag itself, preserving the "owns no draft state"
+   * invariant above.
+   */
+  readonly onChangeTemplateNavigate: (event: { preventDefault: () => void }) => void;
   readonly onSelect: (sectionId: string) => void;
   readonly onMove: (sectionId: string, direction: "up" | "down") => void;
 }
@@ -198,8 +215,8 @@ export function SectionList({
   selectedSectionId,
   themeSelected,
   onSelectTheme,
-  changeTemplateSelected,
-  onSelectChangeTemplate,
+  changeTemplateHref,
+  onChangeTemplateNavigate,
   onSelect,
   onMove,
 }: SectionListProps) {
@@ -256,22 +273,24 @@ export function SectionList({
       </div>
 
       {/*
-       * `Change template` — TMPL-04, D-08. Same row shell, same button
-       * classes, same `aria-current` handling as `Brand & logo` above; only
-       * the icon, label, handler and selected flag differ.
+       * `Change template` — TMPL-04, D-08, 05.3-UI-SPEC.md § R-4. Now a guarded
+       * `<Link>` to the Themes page rather than a rail push/pop: the merchant
+       * is leaving this screen, not toggling a panel, so this row is never
+       * "current" and carries no `aria-current` (05.3-UI-SPEC.md §
+       * Accessibility floor). Same row shell, same button-shaped classes as
+       * `Brand & logo` above.
        */}
-      <div className={rowShellClass(changeTemplateSelected)}>
-        <button
-          type="button"
-          onClick={onSelectChangeTemplate}
-          aria-current={changeTemplateSelected ? "true" : undefined}
+      <div className={rowShellClass(false)}>
+        <Link
+          href={changeTemplateHref}
+          onNavigate={onChangeTemplateNavigate}
           className="flex min-h-14 flex-1 items-center gap-3 px-4 text-left text-sm font-semibold focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
         >
           <LayoutTemplate aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">
             {strings.editor.railChangeTemplateEntry}
           </span>
-        </button>
+        </Link>
       </div>
 
       <GroupHeader className="pt-6">
