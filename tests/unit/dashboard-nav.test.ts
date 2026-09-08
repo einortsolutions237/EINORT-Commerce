@@ -62,7 +62,7 @@ const REQUIRED_HREFS = [
    * where 04-UI-SPEC.md § Navigation puts the rail item, and this list is
    * ordered to match the rail rather than sorted.
    */
-  "/dashboard/storefront-editor",
+  "/dashboard/storefront",
   "/dashboard/orders",
   "/dashboard/claims",
   "/dashboard/plan",

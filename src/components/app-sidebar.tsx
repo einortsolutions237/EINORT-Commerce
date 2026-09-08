@@ -143,7 +143,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
        * queue: nothing here needs a human to look at it now.
        */
       {
-        href: "/dashboard/storefront-editor",
+        href: "/dashboard/storefront",
         label: strings.dashboard.nav.storefrontEditor,
         icon: Paintbrush,
       },
