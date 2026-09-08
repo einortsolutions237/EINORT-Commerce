@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05.1 Wave 1 (05.1-01..04) merged and gated; Phase 05.2 (marketing landing page) just inserted, not yet planned
-last_updated: "2026-09-07T18:05:00.000Z"
-last_activity: 2026-09-07 -- Phase 05.1 Wave 1 complete (playwright installed, image pipeline + preview manifest, scratch-tenant guard, placeholder photos + containment test; both blocking checkpoints independently re-verified and approved). Phase 05.2 (Marketing Landing Page Redesign) inserted per the user's request after reviewing Shopify's marketing site, not yet planned.
+stopped_at: Completed 05.1-06-PLAN.md
+last_updated: "2026-09-08T03:24:19.770Z"
+last_activity: 2026-09-07 -- Quick task 260907-a2v (remove Super Admin Panel header stub) merged and gated; quick task 260906-egn (dashboard shell rebuild + real Overview page) and Phase 5 Wave 4 (05-18..20) also merged and gated.
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 77
-  completed_plans: 68
-  percent: 25
+  completed_plans: 72
+  percent: 38
 ---
 
 # Project State
@@ -36,7 +36,7 @@ Phase 04 (theme-section-block-system-flagship-template) remains genuinely incomp
 Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete for the same kind of reason: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on rather than complete it first (2026-09-01); it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
 Last activity: 2026-09-07 -- Quick task 260907-a2v (remove Super Admin Panel header stub) merged and gated; quick task 260906-egn (dashboard shell rebuild + real Overview page) and Phase 5 Wave 4 (05-18..20) also merged and gated.
 
-Progress: [██░░░░░░░░] 25% phases (2/8 complete) · 88% plans (68/77 complete — Phase 3's 03-16, Phase 4's 04-16, Phase 5's Wave 6 (05-22, blocked on 05.1), Phase 05.1's Waves 2-5 (5 plans), and Phase 05.2's plan count TBD after planning, still to execute)
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -56,6 +56,8 @@ Progress: [██░░░░░░░░] 25% phases (2/8 complete) · 88% plan
 
 - Last 5 plans: -
 - Trend: -
+
+| Phase 05.1 P06 | 20min | 2 tasks | 3 files |
 
 ## Quick Tasks Completed
 
@@ -93,6 +95,7 @@ Recent decisions affecting current work:
 - [Phase 02-06]: beforeAddMember omitted (verified against crud-members.mjs/crud-org.mjs that membershipLimit already gates add-member and org creation never calls membershipLimit)
 - [Phase 02-06]: beforeUpdateOrganization refuses any incoming slug rather than validating it, pending Phase 4's real rename flow (StoreSlugHistory, invalidateTenantHost)
 - [Phase 02-06]: beforeDeleteOrganization refuses unconditionally; remove-member/update-member-role/leave left deliberately ungated (T-02-37, accepted)
+- [Phase 05.1]: 05.1-06: separate disableHoverLift (locked OR current) from isInert (locked OR retained-above-tier) so an unlocked current card omits the hover-lift group class without being radio-disabled
 
 ### Pending Todos
 
@@ -114,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-07T07:57:45.281Z
-Stopped at: Phase 05.1 context gathered
-Resume file: .planning/phases/05.1-template-preview-rendering-picker-redesign/05.1-CONTEXT.md
+Last session: 2026-09-08T03:24:19.754Z
+Stopped at: Completed 05.1-06-PLAN.md
+Resume file: None
