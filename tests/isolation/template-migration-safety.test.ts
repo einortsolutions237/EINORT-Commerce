@@ -175,7 +175,7 @@ describe("template migration safety (D-13 / Pitfall 1)", () => {
       // A fresh, known baseline. This file only reads — it never mutates a
       // seeded tenant's rows — so a single beforeAll (rather than a
       // per-test reseed) is enough, matching merchant-context.test.ts's
-      // and storefront-editor.test.ts's documented preference for one
+      // and the theming editor isolation suite's documented preference for one
       // seedTwoTenants() call per session-bearing... file over several,
       // to avoid contending with prismaBase's own pool for a transaction
       // slot.

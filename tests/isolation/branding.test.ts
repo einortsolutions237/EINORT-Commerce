@@ -41,8 +41,9 @@ import { seedTwoTenants, TENANT_A, TENANT_B } from "../setup/seed-two-tenants";
  * `session.session.activeOrganizationId`.
  *
  * That makes the session the ONLY channel by which this file can name an acting
- * tenant, so it takes the same option `storefront-editor.test.ts` took: reuse
- * the session-construction helper this repository already established
+ * tenant, so it takes the same option the theming editor's isolation suite
+ * took: reuse the session-construction helper this repository already
+ * established
  * (`tests/isolation/plan-selection.test.ts`, inherited by `read-only.test.ts`
  * and `merchant-context.test.ts`) rather than mocking anything that resolves
  * identity. The difference matters for what the file proves: with the real

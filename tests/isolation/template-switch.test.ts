@@ -11,8 +11,8 @@ import { seedTwoTenants, TENANT_B } from "../setup/seed-two-tenants";
  * 05-21 Task 1 — TMPL-04 (D-06, D-08, D-09, D-11, D-12) against a real
  * database and a real session.
  *
- * These are `isolation` (not `unit`) tests for the reason `storefront-editor
- * .test.ts`'s own header names: `scopedDb`'s tenant guarantee is a DATABASE
+ * These are `isolation` (not `unit`) tests for the reason the theming
+ * editor's isolation suite's own header names: `scopedDb`'s tenant guarantee is a DATABASE
  * property, not a stub property. The tier gate is the same kind of claim —
  * "a Starter merchant on an active trial is refused a Professional template"
  * is a statement about what `assertTemplateAccess` does when handed a real
@@ -45,11 +45,11 @@ import { seedTwoTenants, TENANT_B } from "../setup/seed-two-tenants";
  * `requireMerchantContext()` from a signed session cookie. This file reuses
  * the session-construction helper this repository already established
  * (`tests/isolation/plan-selection.test.ts`, inherited by
- * `storefront-editor.test.ts`, `read-only.test.ts` and
+ * the theming editor isolation suite, `read-only.test.ts` and
  * `merchant-context.test.ts`) rather than mocking `@/server/merchant/context`.
  *
  * The tier-refusal case (D-06/D-12) is built exactly the way
- * `storefront-editor.test.ts`'s own EDIT-03 case is built, mirrored: that
+ * the theming editor isolation suite's own EDIT-03 case is built, mirrored: that
  * file locks the editor with an EXPIRED trial to prove the gate is the
  * tier/trial composition and not the read-only gate underneath it. This file
  * does the opposite on purpose — a Starter merchant on an ACTIVE trial, so
@@ -93,7 +93,7 @@ vi.mock("next/headers", () => ({
 /**
  * `switchTemplate`, `publishStorefront` and `discardDraft` all call
  * `revalidatePath` outside of a Next request scope, which throws. Same idiom
- * as `storefront-editor.test.ts` and `tests/isolation/checkout-paths.test.ts`.
+ * as the theming editor isolation suite and `tests/isolation/checkout-paths.test.ts`.
  */
 const revalidatePath = vi.hoisted(() => vi.fn());
 vi.mock("next/cache", () => ({ revalidatePath }));
@@ -620,7 +620,7 @@ describe("discardDraft reverts template, document and tokens (D-09 / Pitfall 5)"
      * Written straight through `scopedDb`, never through an action: this
      * is a row already in the database, not a request the schema would
      * ever accept — the same STALE_DRAFT idiom
-     * `storefront-editor.test.ts` uses.
+     * the theming editor isolation suite uses.
      */
     await scopedDb(tenantId).storefrontTheme.update({
       where: { tenantId },

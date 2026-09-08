@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * No `requireMerchantContext()` here: this is the Suspense boundary Next
  * renders WHILE the real page's data is still loading, so it has nothing to
  * authorize and nothing tenant-specific to show — the same contract
- * `dashboard/storefront-editor/loading.tsx` (and `products/loading.tsx`
+ * `dashboard/storefront/editor/loading.tsx` (and `products/loading.tsx`
  * before it) states.
  *
  * Shape matches `page.tsx`'s final render exactly: `max-w-5xl` container,
