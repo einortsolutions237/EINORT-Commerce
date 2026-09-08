@@ -286,8 +286,8 @@ Plans:
 - [x] 05.1-02-PLAN.md — Preview asset contracts: IMAGE_PRESETS lossless decoupling + templatePreview row, templatePreviewPrefixFor, generated manifest + drift guard (Wave 1)
 - [x] 05.1-03-PLAN.md — Fail-closed scratch-tenant target guard + refusal tests + .env.example entry (Wave 1)
 - [x] 05.1-04-PLAN.md — D-06 placeholder segment photography, licence checkpoint, and the source-scanning containment test (Wave 1)
-- [ ] 05.1-05-PLAN.md — TemplateTile gains previewUrl/segmentLabel, show-all toggle deleted, both call sites segment-ordered, onboarding widened to max-w-5xl (Wave 2)
-- [ ] 05.1-06-PLAN.md — Picker visual redesign: container-query grid, segment grouping, 16:10 full-bleed card, D-05 fallback, contract test (Wave 3)
+- [x] 05.1-05-PLAN.md — TemplateTile gains previewUrl/segmentLabel, show-all toggle deleted, both call sites segment-ordered, onboarding widened to max-w-5xl (Wave 2)
+- [x] 05.1-06-PLAN.md — Picker visual redesign: container-query grid, segment grouping, 16:10 full-bleed card, D-05 fallback, contract test (Wave 3)
 - [x] 05.1-07-PLAN.md — scripts/generate-template-previews.ts: guarded reseed, Playwright capture, Sharp + R2, manifest emit, documented command (Wave 2)
 - [ ] 05.1-08-PLAN.md — Calibration run over four varied templates + blocking crop-framing checkpoint (Wave 4)
 - [ ] 05.1-09-PLAN.md — Full 50-template generation, manifest completeness gate, 05-22 reconciliation, blocking 50-preview review (Wave 5)
@@ -304,16 +304,13 @@ Plans:
   2. Every claim on the page is honest and verifiable against the actual shipped product — no fabricated merchant counts, logos, or testimonials.
   3. The page visually extends the existing merchant-platform blue/gold/slate design system rather than introducing a new one.
 
-**Plans**: 1 plan (1 wave)
+**Plans**: 1 plan (1 wave) — COMPLETE (Task 3 human-verify checkpoint approved 2026-09-08)
 **Canonical refs:** `.planning/phases/05.2-marketing-landing-page-redesign/` — `05.2-CONTEXT.md`, `05.2-DISCUSSION-LOG.md`, `05.2-RESEARCH.md`, `05.2-UI-SPEC.md`, `05.2-PATTERNS.md`, `05.2-VALIDATION.md`
 
 Plans:
 **Wave 1**
 
-- [ ] 05.2-01-PLAN.md — marketing.ts copy module + strings.root rewire, the five-band page.tsx rewrite (top lockup, hero with D-05 manifest-conditional image slot, three differentiators, how-it-works, final CTA), and the landing-page-contract.test.ts honesty guard
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 05.2 to break down)
+- [x] 05.2-01-PLAN.md — marketing.ts copy module + strings.root rewire, the five-band page.tsx rewrite (top lockup, hero with D-05 manifest-conditional image slot, three differentiators, how-it-works, final CTA), and the landing-page-contract.test.ts honesty guard
 
 ### Phase 6: Merchant Dashboard & Platform Admin
 
@@ -346,4 +343,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 15/16 | In Progress|  |
 | 5. Template Segment Expansion | 9/22 | In Progress|  |
+| 05.1. Template Preview Rendering & Picker Redesign | 7/9 | In Progress|  |
+| 05.2. Marketing Landing Page Redesign | 1/1 | Complete   | 2026-09-08 |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
