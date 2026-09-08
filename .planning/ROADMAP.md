@@ -318,6 +318,7 @@ Plans:
 **Requirements**: EDIT-01, EDIT-02, EDIT-03
 **Depends on:** Phase 4 (the editor this phase restructures); Phase 05.1 (the template-picker/current-template-card work this phase's new Themes page builds on)
 **Plans:** 4 plans across 3 waves
+**Canonical refs:** `.planning/phases/05.3-storefront-editor-page-split/` — `05.3-CONTEXT.md`, `05.3-DISCUSSION-LOG.md`, `05.3-RESEARCH.md`, `05.3-UI-SPEC.md`, `05.3-PATTERNS.md`, `05.3-VALIDATION.md`
 
 Plans:
 **Wave 1**
