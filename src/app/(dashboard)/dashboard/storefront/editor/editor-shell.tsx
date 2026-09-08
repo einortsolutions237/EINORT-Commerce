@@ -1,9 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { Info, Monitor, RotateCcw, Smartphone } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +25,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { TemplateTile } from "@/components/theming/template-picker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { editorReducer, type EditorState } from "@/lib/editor/reducer";
 import { strings } from "@/lib/strings";
@@ -29,10 +39,6 @@ import {
   type ThemeTokens,
 } from "@/server/theming/schema";
 
-import {
-  ChangeTemplatePanel,
-  type TemplateSwitchedState,
-} from "./change-template-panel";
 import { PublishBar } from "./publish-bar";
 import { SectionList, type SectionListEntry } from "./section-list";
 import { REPEATABLE_KEY_SEPARATOR, SettingsPanel } from "./settings-panel";
@@ -142,7 +148,7 @@ type Pane = "edit" | "preview";
 type Viewport = "desktop" | "mobile";
 
 /** Which entry the rail's settings panel is showing, when one is open. */
-type RailTarget = "theme" | "section" | "changeTemplate";
+type RailTarget = "theme" | "section";
 
 /**
  * One section type's editor entry, resolved from the `server-only` registry by
@@ -166,9 +172,13 @@ export interface EditorShellProps {
   readonly initialTokens: ThemeTokens;
   /** The draft template's variant map, resolved server-side (TMPL-04). */
   readonly initialVariants: SectionVariantMap;
-  /** The editor-scoped `TemplateTile[]` the RSC assembled — tier-accessible set plus the retained current template, if any. */
-  readonly templates: readonly TemplateTile[];
-  /** The draft template key, i.e. `EditorStorefront.templateKey`. */
+  /**
+   * The draft template key, i.e. `EditorStorefront.templateKey`. Has no
+   * reader after the 05.3 split (its only prior consumer — the in-page
+   * template-switch panel — moved to the Themes page) but stays in
+   * `EditorState` byte-for-byte — `tests/unit/editor-reducer.test.ts:474-481`
+   * asserts the exact six-key shape.
+   */
   readonly currentTemplateKey: string;
   readonly sectionTypes: Readonly<Record<SectionType, EditorSectionType>>;
   /**
@@ -260,7 +270,6 @@ export function EditorShell({
   initialDocument,
   initialTokens,
   initialVariants,
-  templates,
   currentTemplateKey,
   sectionTypes,
   themeFields,
@@ -291,6 +300,29 @@ export function EditorShell({
   const [railTarget, setRailTarget] = useState<RailTarget | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [pane, setPane] = useState<Pane>("edit");
+
+  /*
+   * The R-4 dirty-draft leave guard (05.3-UI-SPEC.md § R-4). This state lives
+   * HERE, not in `section-list.tsx`: that component's own header states it
+   * "owns no draft state and must never grow any", and `state.dirty` is this
+   * component's own reducer state. `section-list.tsx` only receives a
+   * pre-built `onChangeTemplateNavigate` handler and stays state-free.
+   */
+  const router = useRouter();
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const changeTemplateHref = "/dashboard/storefront";
+
+  /**
+   * Passed to `SectionList`'s `<Link onNavigate>` (§ R-4). A clean draft lets
+   * the client-side transition proceed untouched; a dirty one holds it and
+   * asks. The unload guard below stays the complementary "real tab close or
+   * reload" half — neither substitutes for the other.
+   */
+  function onChangeTemplateNavigate(event: { preventDefault: () => void }) {
+    if (!state.dirty) return;
+    event.preventDefault();
+    setLeaveDialogOpen(true);
+  }
 
   /*
    * Desktop at `lg`+, Mobile below, until the merchant says otherwise —
@@ -510,57 +542,6 @@ export function EditorShell({
     dispatch({ kind: "set-token", key, value });
   }
 
-  /**
-   * `switchTemplate`'s completed write, applied in one state update (TMPL-04,
-   * D-08/D-09/D-11 — 05-19).
-   *
-   * `reset` is the right action for this, not a new one: a template switch is
-   * a persisted server write, exactly as a save or a discard is, so "the
-   * server's copy is now the truth" is the same fact in all three cases.
-   * `selectedSectionId` is forced to `null` rather than carried over from
-   * `state` — the new template can declare an entirely different section
-   * list (TMPL-03), and a stale selection would point the settings panel at a
-   * section id the new document does not have.
-   *
-   * The rail returns to its list view here (`setPanelOpen(false)`), the same
-   * closing behaviour every panel's own `onBack` already performs — the
-   * `Current` badge then follows `templateKey` into the picker on the next
-   * render, since `templates` and `currentTemplateKey` are RSC props the
-   * server recomputes on the `revalidatePath` this action already triggers.
-   *
-   * `setSavedAgainstPublishedAt(publishedAt)` — the SAME call `onSaved` makes
-   * below, not the `null` `onDiscarded` uses — is deliberate: `null` means "no
-   * local save since page load, fall back to comparing the (possibly stale)
-   * `draftUpdatedAt` prop against `publishedAt`", which is the correct answer
-   * after a DISCARD (draft now matches what was published) but the WRONG one
-   * here. `switchTemplate` just persisted a NEW draft write; the RSC's
-   * `draftUpdatedAt` prop has not refreshed yet, so falling back to it could
-   * under-report "already unpublished" as false when the store had nothing
-   * pending before the switch. Matching `publishedAt` against itself is what
-   * forces `hasUnpublishedChanges` to `true` immediately, exactly the
-   * saved-but-unpublished branch D-09/TMPL-04 requires.
-   */
-  function handleTemplateSwitched({
-    document,
-    tokens,
-    variants,
-    templateKey,
-  }: TemplateSwitchedState) {
-    setSavedAgainstPublishedAt(publishedAt);
-    dispatch({
-      kind: "reset",
-      state: {
-        document,
-        tokens,
-        selectedSectionId: null,
-        dirty: false,
-        variants,
-        templateKey,
-      },
-    });
-    setPanelOpen(false);
-  }
-
   /* --- derived render data ------------------------------------------------ */
 
   /*
@@ -622,7 +603,7 @@ export function EditorShell({
   /* --- render ------------------------------------------------------------- */
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="-mx-4 -my-8 flex min-h-[calc(100svh-3.5rem)] flex-col sm:-mx-8">
       {/*
        * NO SIDE-BY-SIDE AT 360px. Below `lg` the two panes are one at a time
        * behind this switch, defaulting to `Edit`; at `lg` and above it is gone
@@ -701,14 +682,6 @@ export function EditorShell({
               onBack={() => setPanelOpen(false)}
               onChange={handleThemeChange}
             />
-          ) : panelOpen && railTarget === "changeTemplate" ? (
-            <ChangeTemplatePanel
-              tiles={templates}
-              currentTemplateKey={state.templateKey}
-              canEditStorefront={canEditStorefront}
-              onBack={() => setPanelOpen(false)}
-              onSwitched={handleTemplateSwitched}
-            />
           ) : panelOpen &&
             railTarget === "section" &&
             selectedSection !== null ? (
@@ -736,11 +709,8 @@ export function EditorShell({
                 setRailTarget("theme");
                 setPanelOpen(true);
               }}
-              changeTemplateSelected={railTarget === "changeTemplate"}
-              onSelectChangeTemplate={() => {
-                setRailTarget("changeTemplate");
-                setPanelOpen(true);
-              }}
+              changeTemplateHref={changeTemplateHref}
+              onChangeTemplateNavigate={onChangeTemplateNavigate}
               onSelect={handleSelect}
               onMove={handleMove}
             />
@@ -894,6 +864,39 @@ export function EditorShell({
           </div>
         </div>
       </div>
+
+      {/*
+       * The R-4 leave-confirmation dialog. Rendered here, not in
+       * `section-list.tsx`, for the same reason the state above lives here:
+       * `state.dirty` is this component's own reducer state, and the row's
+       * `<Link onNavigate>` only ever calls the pre-built handler passed down
+       * as a prop. Pattern copied from `publish-bar.tsx`'s discard-confirm
+       * dialog (the canonical `AlertDialog` idiom on this surface).
+       */}
+      <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{strings.editor.leaveEditorTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {strings.editor.leaveEditorBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {strings.editor.leaveEditorCancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setLeaveDialogOpen(false);
+                router.push(changeTemplateHref);
+              }}
+            >
+              {strings.editor.leaveEditorConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
