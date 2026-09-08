@@ -312,6 +312,16 @@ Plans:
 
 - [x] 05.2-01-PLAN.md — marketing.ts copy module + strings.root rewire, the five-band page.tsx rewrite (top lockup, hero with D-05 manifest-conditional image slot, three differentiators, how-it-works, final CTA), and the landing-page-contract.test.ts honesty guard
 
+### Phase 05.3: Storefront Editor Page Split (INSERTED)
+
+**Goal:** Split the merchant dashboard's storefront editor from its current single-screen, single-route design into two genuinely separate pages/routes -- a dedicated "Themes" page for browsing/switching templates, and a dedicated full-screen "Editor" page for section/block editing only -- matching the navigational separation in Shopify's own admin, layout/structure only, no new capabilities (existing fixed-five-sections, no-add/remove behavior from Phase 4's locked D-05 preserved exactly).
+**Requirements**: EDIT-01, EDIT-02, EDIT-03
+**Depends on:** Phase 4 (the editor this phase restructures); Phase 05.1 (the template-picker/current-template-card work this phase's new Themes page builds on)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 05.3 to break down)
+
 ### Phase 6: Merchant Dashboard & Platform Admin
 
 **Goal**: A merchant can run their business day-to-day from a dashboard that surfaces what needs attention, and the platform owner can operate and support the pilot fleet of stores from a pilot-scoped Super Admin surface — including a direct messaging channel to every merchant and the ability to verify their subscription payments through it.
