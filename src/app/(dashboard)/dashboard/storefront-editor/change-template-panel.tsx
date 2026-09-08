@@ -19,6 +19,7 @@ import {
   TemplatePicker,
   type TemplateTile,
 } from "@/components/theming/template-picker";
+import { CurrentTemplateCard } from "@/components/theming/current-template-card";
 import { strings } from "@/lib/strings";
 import { switchTemplate } from "@/server/theming/actions";
 import type {
@@ -72,6 +73,21 @@ import type {
  * own accent is never read or written on this surface (D-12); every tile's
  * `primaryAccent` is the TEMPLATE's own default colour, resolved server-side
  * by the RSC, never the merchant's saved one.
+ *
+ * ---------------------------------------------------------------------------
+ * THE SPOTLIGHT/GRID SPLIT (quick task 260908-bv1, CONTEXT.md D-A, D-B).
+ * ---------------------------------------------------------------------------
+ * `tiles` (the RSC's already-assembled `TemplateTile[]`) is split here, at
+ * this last consumer, into `spotlightTile` (the merchant's current template,
+ * rendered in its own non-interactive `<CurrentTemplateCard>` above the
+ * grid) and `gridTiles` (every other tile, unchanged, still tier-gated with
+ * locked templates visible-but-dimmed). `<TemplatePicker>` itself is
+ * unchanged in behaviour and contract — only the array this panel hands it
+ * has changed shape (`gridTiles` instead of `tiles`). `currentKey` is still
+ * passed to it as defense-in-depth, per RESEARCH.md Focus 1, even though
+ * `gridTiles` never contains that key anymore: `TemplatePicker` is a shared,
+ * surface-agnostic component (onboarding is its other caller), and keeping
+ * its own inert-current-card guard wired costs nothing.
  */
 
 /**
@@ -131,6 +147,16 @@ export function ChangeTemplatePanel({
 
   const pendingTile = tiles.find((tile) => tile.key === pendingKey) ?? null;
   const pendingName = pendingTile?.name ?? "";
+
+  /**
+   * The spotlight/grid split (quick task 260908-bv1, D-A/D-B) — see this
+   * file's own header comment. `spotlightTile` is `null` only if the RSC's
+   * `tiles` somehow omits the merchant's own current key, which should never
+   * happen; the grid still renders correctly with no spotlight above it.
+   */
+  const spotlightTile =
+    tiles.find((tile) => tile.key === currentTemplateKey) ?? null;
+  const gridTiles = tiles.filter((tile) => tile.key !== currentTemplateKey);
 
   async function handleConfirm() {
     if (pendingTile === null) return;
@@ -204,8 +230,20 @@ export function ChangeTemplatePanel({
           disabled={!canEditStorefront || busy}
           className="contents"
         >
+          {spotlightTile !== null ? (
+            <>
+              <h3 className="border-b border-border pb-2 text-sm leading-normal font-semibold text-foreground">
+                {strings.editor.templateCurrentHeading}
+              </h3>
+              <CurrentTemplateCard tile={spotlightTile} />
+            </>
+          ) : null}
+
+          <h3 className="border-b border-border pb-2 text-sm leading-normal font-semibold text-foreground">
+            {strings.editor.templateAvailableHeading}
+          </h3>
           <TemplatePicker
-            tiles={tiles}
+            tiles={gridTiles}
             selectedKey={pendingKey}
             currentKey={currentTemplateKey}
             onChange={(key) => {
