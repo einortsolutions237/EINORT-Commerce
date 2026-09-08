@@ -305,7 +305,7 @@ Plans:
   3. The page visually extends the existing merchant-platform blue/gold/slate design system rather than introducing a new one.
 
 **Plans**: 1 plan (1 wave)
-**Canonical refs:** `.planning/phases/05.2-marketing-landing-page-redesign/` — `05.2-CONTEXT.md`, `05.2-DISCUSSION-LOG.md`, `05.2-RESEARCH.md`, `05.2-UI-SPEC.md`, `05.2-PATTERNS.md`
+**Canonical refs:** `.planning/phases/05.2-marketing-landing-page-redesign/` — `05.2-CONTEXT.md`, `05.2-DISCUSSION-LOG.md`, `05.2-RESEARCH.md`, `05.2-UI-SPEC.md`, `05.2-PATTERNS.md`, `05.2-VALIDATION.md`
 
 Plans:
 **Wave 1**
