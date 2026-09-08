@@ -283,7 +283,7 @@ export const publishStorefront = merchantAction<
      * saying "unpublished changes" until a hard reload — the same staleness the
      * payment-settings form hit (`src/server/payments/actions.ts`).
      */
-    revalidatePath("/dashboard/storefront-editor");
+    revalidatePath("/dashboard/storefront/editor");
 
     return { ok: true as const, publishedAt: publishedAt.toISOString() };
   },
@@ -403,7 +403,7 @@ export const discardDraft = merchantAction<
       };
     });
 
-    revalidatePath("/dashboard/storefront-editor");
+    revalidatePath("/dashboard/storefront/editor");
 
     return { ok: true as const, ...reverted };
   },
@@ -520,10 +520,13 @@ export const switchTemplate = merchantAction<
       return { tokens };
     });
 
-    // Same reason `publishStorefront`/`discardDraft` revalidate: the publish
-    // bar and the editor's own preview state must not go stale until a hard
-    // reload.
-    revalidatePath("/dashboard/storefront-editor");
+    // Unlike `publishStorefront`/`discardDraft` (which only ever fire from the
+    // Editor page and so need exactly one path), this action now fires from
+    // the Themes page but must also refresh the Editor's own preview state for
+    // when the merchant navigates there next — so it needs BOTH paths, not a
+    // renamed single call.
+    revalidatePath("/dashboard/storefront");
+    revalidatePath("/dashboard/storefront/editor");
 
     return {
       ok: true as const,

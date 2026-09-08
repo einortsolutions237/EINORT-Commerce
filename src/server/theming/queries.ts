@@ -176,7 +176,7 @@ export const getPublishedStorefront = cache(async function getPublishedStorefron
   };
 });
 
-/** What `/dashboard/storefront-editor` loads before it renders. */
+/** What `/dashboard/storefront/editor` loads before it renders. */
 export type EditorStorefront = {
   document: PageDocument;
   tokens: ThemeTokens;

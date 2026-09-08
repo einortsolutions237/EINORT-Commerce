@@ -1553,8 +1553,8 @@ export const strings = {
   },
 
   /**
-   * `/dashboard/storefront-editor` (EDIT-02, EDIT-03, D-05…D-08, D-12…D-15) —
-   * surface 3.
+   * `/dashboard/storefront` (Themes) and `/dashboard/storefront/editor`
+   * (Editor) (EDIT-02, EDIT-03, D-05…D-08, D-12…D-15) — surface 3.
    *
    * The editor's own chrome is a dashboard surface: blue/gold/slate, Outfit
    * headings, 0.75rem radius. The merchant's accent resolves to nothing here
@@ -1809,6 +1809,14 @@ export const strings = {
     discardConfirm: "Discard changes",
     discardCancel: "Keep editing",
 
+    /* --- leave-editor dialog (05.3-UI-SPEC.md R-4 dirty-draft guard) --- */
+    leaveEditorTitle: "Leave without saving?",
+    leaveEditorBody:
+      "You have changes that haven't been saved. If you leave now, they'll be lost.",
+    leaveEditorConfirm: "Leave anyway",
+    /** Same phrase, same meaning as `discardCancel` above. */
+    leaveEditorCancel: "Keep editing",
+
     /**
      * D-13/D-15. The message `assertCanEditStorefront` hands back when an
      * expired-trial Starter merchant calls save or publish anyway — the
@@ -1864,6 +1872,17 @@ export const strings = {
     templateAvailableHeading: "Available templates",
     /** Text link beneath the editor's picker grid, to `/dashboard/plan`. */
     templateUpsellLink: "Want more templates? See plans",
+
+    /** The Themes page's own `<h1>`, separate from the sr-only Editor heading. */
+    themesPageHeading: "Storefront",
+    /** Primary action beside the spotlight card, Themes -> Editor (05.3-UI-SPEC.md R-3). */
+    customizeButton: "Customize theme",
+    /**
+     * `{templateName}` interpolated, toast shown after a successful
+     * `switchTemplate` on the Themes page.
+     */
+    templateSwitchedToast: "{templateName} is set as your template",
+
     /**
      * Non-destructive `alert` inside the panel when `switchTemplate` throws
      * `TemplateLockedError` — e.g. a stale client posting an out-of-tier key.
