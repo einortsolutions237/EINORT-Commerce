@@ -1850,11 +1850,21 @@ export const strings = {
     /** Pill badge on the picker card matching `draftTemplateKey`. */
     templateCurrentBadge: "Current",
     /**
+     * Small heading above the spotlight card in the editor's "Change
+     * template" panel — quick task 260908-bv1.
+     */
+    templateCurrentHeading: "Your current template",
+    /**
      * Caption beneath the current-template card when it sits above the
      * merchant's tier (Finding 6 corollary) — the one card the accessible-set
      * filter never hides.
      */
     templateRetainedCaption: "Your current template · kept from a previous plan.",
+    /**
+     * Heading above the switchable grid, once the current template moves
+     * into its own spotlight card above it — quick task 260908-bv1.
+     */
+    templateAvailableHeading: "Available templates",
     /** Text link beneath the editor's picker grid, to `/dashboard/plan`. */
     templateUpsellLink: "Want more templates? See plans",
     /**
