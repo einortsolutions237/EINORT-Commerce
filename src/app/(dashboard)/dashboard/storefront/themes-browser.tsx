@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -15,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   TemplatePicker,
   type TemplateTile,
@@ -29,41 +31,44 @@ import type {
 } from "@/server/theming/schema";
 
 /**
- * The editor's "Change template" panel (D-08, D-09, D-11, TMPL-04 —
- * 05-UI-SPEC.md § Editor "Change Template" Action).
+ * The Themes page's own primary content (D-08, D-09, D-11, TMPL-04 —
+ * 05.3-UI-SPEC.md § Layout → Themes page, moved and adapted from the
+ * editor's former "Change template" rail panel, `change-template-panel.tsx`
+ * — 05.3-CONTEXT.md D-A/D-B, 05.3-UI-SPEC.md § Component Changes).
  *
  * ---------------------------------------------------------------------------
  * THE `<TemplatePicker>` ALREADY OWNS THE CURRENT-CARD AND LOCKED-CARD
- * RENDERING. THIS PANEL DOES NOT DUPLICATE IT.
+ * RENDERING. THIS COMPONENT DOES NOT DUPLICATE IT.
  * ---------------------------------------------------------------------------
  * `src/components/theming/template-picker.tsx` is the ONE component shared
- * with onboarding, and its own header states the rule this panel leans on:
- * the current-template card's ring, `Current` badge, retained-above-tier
+ * with onboarding, and its own header states the rule this component leans
+ * on: the current-template card's ring, `Current` badge, retained-above-tier
  * caption and inert click are ALL rendered there, driven by `currentKey` and
  * each tile's own `locked` flag (assembled by the RSC in `page.tsx`). This
- * file supplies only what the EDITOR context adds on top: no industry sort,
- * no tier-locked upsell cards (a single text link instead), and the
- * destructive confirm dialog that turns a pick into a persisted write.
+ * file supplies only what the Themes page adds on top: the current-template
+ * spotlight row above the grid, no industry sort, no tier-locked upsell
+ * cards (a single text link instead), and the destructive confirm dialog
+ * that turns a pick into a persisted write.
  *
  * ---------------------------------------------------------------------------
- * THE DIALOG IS THE CONFIRM STEP. THERE IS NO SECOND ONE INSIDE THIS PANEL.
+ * THE DIALOG IS THE CONFIRM STEP. THERE IS NO SECOND ONE INSIDE THIS FILE.
  * ---------------------------------------------------------------------------
  * Selecting any non-current card opens the `alert-dialog` immediately, via
- * `TemplatePicker`'s own `onChange` — clicking the current card never reaches
- * it (that component's own inert-current-card behaviour, T-05-35). Only the
- * dialog's own confirm button calls `switchTemplate`.
+ * `TemplatePicker`'s own `onChange` — clicking the current card never
+ * reaches it (that component's own inert-current-card behaviour, T-05-35).
+ * Only the dialog's own confirm button calls `switchTemplate`.
  *
  * ---------------------------------------------------------------------------
- * THIS PANEL ADDS NO SAVE BUTTON, NO PUBLISH BUTTON AND NO STATUS PILL.
+ * THIS PAGE ADDS NO SAVE BUTTON, NO PUBLISH BUTTON AND NO STATUS PILL.
  * ---------------------------------------------------------------------------
  * `switchTemplate` is a completed persisted write (`merchantAction({ mode:
  * "write" })`, writing the draft columns in one transaction) — there is
- * nothing left here to save. The existing `PublishBar` already renders its
- * `hasUnpublishedChanges: true, dirty: false` branch for any saved-but-
- * unpublished edit, which is exactly what a completed switch is. Rendering
- * this panel's own "changes not yet saved" status pill for something already
- * saved would be the misleading draft/live signal the editor's whole design
- * exists to prevent.
+ * nothing left here to save. It is also this page's ONLY commit flow: unlike
+ * the old combined route, this page has no `PublishBar` at all (D-B forbids
+ * adding a second commit UI — 05.3-UI-SPEC.md § U-6). The information that
+ * used to come from the `PublishBar`'s `Saved · not published yet` state on
+ * the same screen now comes from a success toast instead, with an action
+ * that navigates to the Editor (see `handleConfirm` below).
  *
  * ---------------------------------------------------------------------------
  * SURFACE 3 TOKENS ONLY. THE MERCHANT'S OWN ACCENT TOKEN RESOLVES TO NOTHING ON THIS SURFACE.
@@ -80,20 +85,23 @@ import type {
  * `tiles` (the RSC's already-assembled `TemplateTile[]`) is split here, at
  * this last consumer, into `spotlightTile` (the merchant's current template,
  * rendered in its own non-interactive `<CurrentTemplateCard>` above the
- * grid) and `gridTiles` (every other tile, unchanged, still tier-gated with
- * locked templates visible-but-dimmed). `<TemplatePicker>` itself is
- * unchanged in behaviour and contract — only the array this panel hands it
- * has changed shape (`gridTiles` instead of `tiles`). `currentKey` is still
- * passed to it as defense-in-depth, per RESEARCH.md Focus 1, even though
- * `gridTiles` never contains that key anymore: `TemplatePicker` is a shared,
- * surface-agnostic component (onboarding is its other caller), and keeping
- * its own inert-current-card guard wired costs nothing.
+ * grid, now in the R-3 two-column composition) and `gridTiles` (every other
+ * tile, unchanged, still tier-gated with locked templates visible-but-
+ * dimmed). `<TemplatePicker>` itself is unchanged in behaviour and contract
+ * — only the array this component hands it has changed shape (`gridTiles`
+ * instead of `tiles`). `currentKey` is still passed to it as defense-in-
+ * depth, per RESEARCH.md Focus 1, even though `gridTiles` never contains
+ * that key anymore: `TemplatePicker` is a shared, surface-agnostic
+ * component (onboarding is its other caller), and keeping its own inert-
+ * current-card guard wired costs nothing.
  */
 
 /**
- * Both halves of a discard hand back, plus the variant map — the shell's
- * `onTemplateSwitched` contract, parallel to `publish-bar.tsx`'s
- * `DiscardedState`.
+ * Both halves of a discard hand back, plus the variant map — kept as a
+ * documented shape even though this page's own caller no longer reads it
+ * (see `handleConfirm` below). `tests/isolation/template-switch.test.ts`
+ * asserts on the shape this interface documents, so it stays exported and
+ * unchanged rather than deleted with the callback that used to consume it.
  */
 export interface TemplateSwitchedState {
   readonly document: PageDocument;
@@ -102,26 +110,26 @@ export interface TemplateSwitchedState {
   readonly templateKey: string;
 }
 
-export interface ChangeTemplatePanelProps {
-  /** The editor-scoped tiles the RSC assembled — tier-accessible set plus the retained current template, if any. */
+export interface ThemesBrowserProps {
+  /** The RSC's already-assembled tiles — tier-accessible set plus the retained current template, if any. */
   readonly tiles: readonly TemplateTile[];
   /** The draft template key, i.e. `EditorState.templateKey`. */
   readonly currentTemplateKey: string;
   /** `resolveEntitlements`' trial-aware boolean. Decides what the picker allows, never what the server allows. */
   readonly canEditStorefront: boolean;
-  readonly onBack: () => void;
-  readonly onSwitched: (state: TemplateSwitchedState) => void;
 }
 
 /**
  * The message a refusal carries, preferring the server's own sentence.
  *
- * Copied from `publish-bar.tsx`'s own `refusalMessage`, body for body:
- * `merchantAction` converts `TemplateLockedError` (which extends
- * `EntitlementError`) into `{ form: [message] }`, and that message is
- * `strings.editor.templateTierLocked` — the same string this panel's
- * fallback reads, so the merchant sees one sentence for one situation
- * whichever door they came through.
+ * Copied from `publish-bar.tsx`'s own `refusalMessage`, body for body — a
+ * known, accepted small duplication in this codebase rather than a shared
+ * utility (05.3-PATTERNS.md explicitly flags this as intentional, not
+ * scope for a "clean up" during this move): `merchantAction` converts
+ * `TemplateLockedError` (which extends `EntitlementError`) into `{ form:
+ * [message] }`, and that message is `strings.editor.templateTierLocked` —
+ * the same string this component's fallback reads, so the merchant sees one
+ * sentence for one situation whichever door they came through.
  */
 function refusalMessage(
   error: Record<string, string[]>,
@@ -133,13 +141,13 @@ function refusalMessage(
   return first ?? fallback;
 }
 
-export function ChangeTemplatePanel({
+export function ThemesBrowser({
   tiles,
   currentTemplateKey,
   canEditStorefront,
-  onBack,
-  onSwitched,
-}: ChangeTemplatePanelProps) {
+}: ThemesBrowserProps) {
+  const router = useRouter();
+
   /** The card awaiting confirmation. Non-null is what opens the dialog. */
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -171,12 +179,23 @@ export function ChangeTemplatePanel({
         return;
       }
       setPendingKey(null);
-      onSwitched({
-        document: result.document,
-        tokens: result.tokens,
-        variants: result.variants,
-        templateKey: result.templateKey,
-      });
+      // `result.document`/`.tokens`/`.variants` are intentionally unread here
+      // — this page has no draft to repaint. `switchTemplate`'s dual
+      // `revalidatePath` (src/server/theming/actions.ts) is what refreshes
+      // the Current badge on this same page; the Editor gets a fresh RSC
+      // read the next time the merchant navigates there.
+      toast.success(
+        strings.editor.templateSwitchedToast.replace(
+          "{templateName}",
+          pendingTile.name,
+        ),
+        {
+          action: {
+            label: strings.editor.customizeButton,
+            onClick: () => router.push("/dashboard/storefront/editor"),
+          },
+        },
+      );
     } catch {
       // A rejected promise here is the network, not a refusal — the draft
       // template is untouched either way, same posture as `publish-bar.tsx`.
@@ -189,19 +208,10 @@ export function ChangeTemplatePanel({
 
   return (
     <div className="flex flex-col">
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex min-h-11 items-center gap-2 border-b border-border px-4 py-2 text-left text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-      >
-        <ChevronLeft aria-hidden="true" className="size-4 shrink-0" />
-        {strings.editor.railBack}
-      </button>
-
-      <div className="flex flex-col gap-6 px-4 py-6">
-        <h2 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
-          {strings.editor.railChangeTemplateEntry}
-        </h2>
+      <div className="flex flex-col gap-6">
+        <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
+          {strings.editor.themesPageHeading}
+        </h1>
 
         {/*
          * `TemplateLockedError` refusal — e.g. a stale client posting an
@@ -235,7 +245,29 @@ export function ChangeTemplatePanel({
               <h3 className="border-b border-border pb-2 text-sm leading-normal font-semibold text-foreground">
                 {strings.editor.templateCurrentHeading}
               </h3>
-              <CurrentTemplateCard tile={spotlightTile} />
+              {/* R-3 two-column spotlight row — Source: 05.3-UI-SPEC.md § R-3 */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,22rem)_1fr] md:items-center">
+                <CurrentTemplateCard
+                  tile={spotlightTile}
+                  sizes="(min-width: 768px) 352px, 100vw"
+                />
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <p className="text-sm leading-normal text-muted-foreground">
+                      {strings.editor.templateCurrentHeading}
+                    </p>
+                    <h2 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground">
+                      {spotlightTile.name}
+                    </h2>
+                  </div>
+                  <Button
+                    render={<Link href="/dashboard/storefront/editor" />}
+                    className="w-fit min-h-11"
+                  >
+                    {strings.editor.customizeButton}
+                  </Button>
+                </div>
+              </div>
             </>
           ) : null}
 
