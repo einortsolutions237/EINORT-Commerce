@@ -12,11 +12,21 @@ import type {
  * Thumbnail Component, 05-RESEARCH.md Pattern 6).
  *
  * ---------------------------------------------------------------------------
- * RENDERS FROM THE SKELETON. NEVER FROM A STORED IMAGE.
+ * TMPL-06 OVERRIDE: THIS IS NOW THE D-05 FALLBACK, NOT THE PRIMARY RENDER PATH.
  * ---------------------------------------------------------------------------
- * 50 templates in R2 or `public/` would create a regeneration obligation on
- * every skeleton change, plus real image bytes on the low-end Android this
- * market runs on. This component instead draws a proportional miniature of a
+ * This component originally rendered from the skeleton and never from a
+ * stored image, on two grounds: a regeneration obligation on every skeleton
+ * change, and real image bytes on the low-end Android this market runs on.
+ * TMPL-06 / phase 05.1 overrides that decision — the picker's primary render
+ * path is now a real per-template screenshot. Both original concerns were
+ * real and were addressed, not dismissed: D-02 turns the regeneration
+ * obligation into one documented command (`npm run templates:previews`), and
+ * the byte concern is answered by an 800px lossy WebP, lazy-loaded, with a
+ * correct `sizes` attribute and never `priority`.
+ *
+ * This component still renders whenever a template has no generated preview
+ * yet (`tile.previewUrl === null`) — it is D-05's silent fallback and must
+ * keep working. Do NOT delete it. It draws a proportional miniature of a
  * template's own `{type, variant}[]` section list — it CANNOT drift from the
  * skeleton it represents, because it is not a second copy of anything, it is
  * a direct geometric read of the same data the real page renders from.
@@ -286,16 +296,28 @@ function renderSectionMiniature(
 export function TemplateThumbnail({
   sections,
   primaryAccent,
+  className,
 }: {
   readonly sections: readonly TemplateSectionRef[];
   readonly primaryAccent: string;
+  /**
+   * Exists for exactly one caller: the picker's D-05 fallback
+   * (`template-picker.tsx`), which drops this portrait wireframe into a
+   * landscape `aspect-[16/10]` card frame and must neutralise the hardcoded
+   * aspect, the min-width, and the double border/radius the card already
+   * supplies (05.1-UI-SPEC.md U-11). Merged onto the default frame classes
+   * via `cn()`, default first, so `tailwind-merge` resolves the conflict in
+   * the caller's favour. Omitted, the output is byte-identical to before —
+   * every existing call site is unchanged in behaviour.
+   */
+  readonly className?: string;
 }): ReactElement {
   const accentIndex = accentSectionIndex(sections);
 
   return (
     <div
       aria-hidden="true"
-      className="aspect-[3/4] rounded-md border border-border bg-background overflow-hidden min-w-[140px]"
+      className={cn("aspect-[3/4] rounded-md border border-border bg-background overflow-hidden min-w-[140px]", className)}
     >
       <div className="flex h-full w-full flex-col gap-1 p-1.5">
         {sections.map((section, index) => (
