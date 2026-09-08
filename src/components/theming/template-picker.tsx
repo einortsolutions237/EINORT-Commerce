@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactElement } from "react";
-import Image from "next/image";
 import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -17,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { TemplateThumbnail } from "./template-thumbnail";
+import { TemplateMedia } from "./template-media";
 
 /**
  * The shared template-picker grid (05.1-UI-SPEC.md § Grid Engine, §
@@ -99,6 +98,10 @@ import { TemplateThumbnail } from "./template-thumbnail";
  * page, correctly, with zero surface-specific branching. Do not reintroduce
  * `sm:grid-cols-`, `md:grid-cols-` or `lg:grid-cols-` here — the point of this
  * component's design is that it never again depends on the viewport at all.
+ *
+ * The D-05 image/fallback branch itself now lives in `template-media.tsx`
+ * (quick task 260908-bv1), shared verbatim with the editor's new spotlight
+ * card so the two surfaces cannot render that decision differently.
  */
 
 /**
@@ -294,21 +297,13 @@ export function TemplatePicker({
                           />
 
                           <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-border bg-muted">
-                            {tile.previewUrl !== null ? (
-                              <Image
-                                src={tile.previewUrl}
-                                alt=""
-                                fill
-                                sizes="(min-width: 1024px) 340px, (min-width: 640px) 50vw, 92vw"
-                                className="object-cover object-top transition-transform duration-200 group-hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none"
-                              />
-                            ) : (
-                              <TemplateThumbnail
-                                sections={tile.sections}
-                                primaryAccent={tile.primaryAccent}
-                                className="h-full w-full aspect-auto min-w-0 rounded-none border-0"
-                              />
-                            )}
+                            <TemplateMedia
+                              previewUrl={tile.previewUrl}
+                              sections={tile.sections}
+                              primaryAccent={tile.primaryAccent}
+                              sizes="(min-width: 1024px) 340px, (min-width: 640px) 50vw, 92vw"
+                              imageClassName="group-hover:scale-[1.02]"
+                            />
 
                             {isLocked ? (
                               <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">

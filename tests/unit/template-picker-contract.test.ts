@@ -27,12 +27,25 @@ import { describe, expect, it } from "vitest";
  * would leave every assertion below scanning an empty string and reporting
  * perfect health, so the first test pins that the file was found and is
  * substantial enough to be the real component, not a stub.
+ *
+ * Quick task 260908-bv1 relocated the D-05 fallback branch itself (the
+ * `previewUrl !== null ? <Image> : <TemplateThumbnail>` decision, plus the
+ * `priority`/`onError` bans that pin it) out of `template-picker.tsx` and
+ * into `template-media.tsx`, shared with the editor's new spotlight card.
+ * Those assertions below now scan `MEDIA_FILE`, not `PICKER_FILE` — an
+ * extension, not a weakening, since the branch itself physically moved.
  */
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 /** The one file this whole contract is about. */
 const PICKER_FILE = "src/components/theming/template-picker.tsx";
+
+/**
+ * The D-05 fallback branch's own file, since quick task 260908-bv1 moved it
+ * out of `PICKER_FILE` and into here, shared with `current-template-card.tsx`.
+ */
+const MEDIA_FILE = "src/components/theming/template-media.tsx";
 
 /**
  * Anti-vacuity floor. The shipped (pre-redesign) file is 239 lines; the
@@ -42,6 +55,14 @@ const PICKER_FILE = "src/components/theming/template-picker.tsx";
  * assuming the scan below is still meaningful.
  */
 const MIN_LINE_COUNT = 150;
+
+/**
+ * Anti-vacuity floor for `MEDIA_FILE`, mirroring `MIN_LINE_COUNT`'s own
+ * rationale — a future rename/deletion of `template-media.tsx` must not
+ * make the D-05 fallback assertions below pass vacuously over an empty
+ * string.
+ */
+const MEDIA_MIN_LINE_COUNT = 30;
 
 interface SourceLine {
   readonly file: string;
@@ -96,6 +117,9 @@ function fixture(file: string, text: string): SourceLine {
 const rawContent = readFileSync(`${repoRoot}/${PICKER_FILE}`, "utf8");
 const codeLines = codeLinesIn(PICKER_FILE);
 
+const mediaRawContent = readFileSync(`${repoRoot}/${MEDIA_FILE}`, "utf8");
+const mediaCodeLines = codeLinesIn(MEDIA_FILE);
+
 describe("template picker contract (grid engine, grouping, D-05 fallback)", () => {
   it("actually scanned a real, substantial component file", () => {
     expect(
@@ -113,6 +137,25 @@ describe("template picker contract (grid engine, grouping, D-05 fallback)", () =
         "legitimately moved or shrank, update MIN_LINE_COUNT there rather " +
         "than assume this scan still means anything.",
     ).toBeGreaterThan(MIN_LINE_COUNT);
+  });
+
+  it("actually scanned a real, substantial media component file", () => {
+    expect(
+      mediaRawContent.length,
+      `${MEDIA_FILE} could not be read, or is empty. A scan over an empty ` +
+        "string reports every D-05 fallback ban below as passing with zero " +
+        "coverage.",
+    ).toBeGreaterThan(0);
+
+    const mediaLineCount = mediaRawContent.split(/\r?\n/).length;
+    expect(
+      mediaLineCount,
+      `${MEDIA_FILE} is only ${mediaLineCount} lines — below the ` +
+        `MEDIA_MIN_LINE_COUNT (${MEDIA_MIN_LINE_COUNT}) floor in ` +
+        "tests/unit/template-picker-contract.test.ts. If the component " +
+        "legitimately moved or shrank, update MEDIA_MIN_LINE_COUNT there " +
+        "rather than assume this scan still means anything.",
+    ).toBeGreaterThan(MEDIA_MIN_LINE_COUNT);
   });
 
   it("uses @container for the grid engine (U-01)", () => {
@@ -162,33 +205,43 @@ describe("template picker contract (grid engine, grouping, D-05 fallback)", () =
   });
 
   it("never sets `priority` on the tile image (T-05.1-26)", () => {
-    const offenders = codeLines.filter(({ text }) => /\bpriority\b/.test(text));
+    const offenders = mediaCodeLines.filter(({ text }) =>
+      /\bpriority\b/.test(text),
+    );
 
     expect(
       report(offenders),
-      "The picker's tile <Image> must never carry `priority` — 50 tiles " +
-        "with `priority` cancels lazy loading and drops several MB on a " +
-        "Douala mobile connection at first paint. next/image lazy-loads by " +
-        "default; leave it.",
+      "The tile <Image> in template-media.tsx must never carry `priority` " +
+        "— 50 tiles with `priority` cancels lazy loading and drops several " +
+        "MB on a Douala mobile connection at first paint. next/image " +
+        "lazy-loads by default; leave it.",
     ).toEqual([]);
   });
 
   it("contains both branches of the D-05 fallback (previewUrl and TemplateThumbnail)", () => {
     expect(
-      rawContent.includes("previewUrl"),
-      `${PICKER_FILE} must branch on \`tile.previewUrl\` to decide between ` +
-        "the real preview image and the wireframe fallback (D-05), decided " +
-        "in the RSC before render.",
+      mediaRawContent.includes("previewUrl"),
+      `${MEDIA_FILE} must branch on \`previewUrl\` to decide between the ` +
+        "real preview image and the wireframe fallback (D-05), decided in " +
+        "the RSC before render.",
     ).toBe(true);
     expect(
-      rawContent.includes("TemplateThumbnail"),
-      `${PICKER_FILE} must still render <TemplateThumbnail> as the ` +
-        "silent fallback when a template has no generated preview.",
+      mediaRawContent.includes("TemplateThumbnail"),
+      `${MEDIA_FILE} must still render <TemplateThumbnail> as the silent ` +
+        "fallback when a template has no generated preview.",
+    ).toBe(true);
+    expect(
+      rawContent.includes("TemplateMedia"),
+      `${PICKER_FILE} must delegate its image/fallback rendering to the ` +
+        "shared <TemplateMedia> component (quick task 260908-bv1), not " +
+        "re-inline the D-05 branch.",
     ).toBe(true);
   });
 
   it("never decides the fallback from onError (T-05.1-27)", () => {
-    const offenders = codeLines.filter(({ text }) => /\bonError\b/.test(text));
+    const offenders = mediaCodeLines.filter(({ text }) =>
+      /\bonError\b/.test(text),
+    );
 
     expect(
       report(offenders),
