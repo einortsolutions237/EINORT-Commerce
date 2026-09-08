@@ -317,10 +317,21 @@ Plans:
 **Goal:** Split the merchant dashboard's storefront editor from its current single-screen, single-route design into two genuinely separate pages/routes -- a dedicated "Themes" page for browsing/switching templates, and a dedicated full-screen "Editor" page for section/block editing only -- matching the navigational separation in Shopify's own admin, layout/structure only, no new capabilities (existing fixed-five-sections, no-add/remove behavior from Phase 4's locked D-05 preserved exactly).
 **Requirements**: EDIT-01, EDIT-02, EDIT-03
 **Depends on:** Phase 4 (the editor this phase restructures); Phase 05.1 (the template-picker/current-template-card work this phase's new Themes page builds on)
-**Plans:** 0 plans
+**Plans:** 4 plans across 3 waves
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 05.3 to break down)
+**Wave 1**
+
+- [ ] 05.3-01-PLAN.md — Shared infra: seven strings.editor keys, sidebar href repoint + paired test, switchTemplate dual revalidatePath fix
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05.3-02-PLAN.md — Editor route move: git mv the seven editor files into storefront/editor/, delete the changeTemplate rail branch, add the R-1 full-bleed wrapper and the R-4 leave-guard dialog
+- [ ] 05.3-03-PLAN.md — New Themes page: storefront/page.tsx + loading.tsx, change-template-panel.tsx moved and renamed to themes-browser.tsx with the R-3 spotlight composition and toast-on-switch
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05.3-04-PLAN.md — Phase gate: dead-route grep gate, D-B scope-creep check, full automated suite, and the blocking six-item manual verification checkpoint
 
 ### Phase 6: Merchant Dashboard & Platform Admin
 
@@ -355,4 +366,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 5. Template Segment Expansion | 9/22 | In Progress|  |
 | 05.1. Template Preview Rendering & Picker Redesign | 8/9 | In Progress|  |
 | 05.2. Marketing Landing Page Redesign | 1/1 | Complete   | 2026-09-08 |
+| 05.3. Storefront Editor Page Split | 0/4 | Not started | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
