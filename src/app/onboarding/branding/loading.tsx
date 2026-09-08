@@ -14,7 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function BrandingLoading() {
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-16 sm:px-8">
-      <div className="w-full max-w-2xl">
+      {/* Paired with page.tsx's own wrapper -- must change with it (U-09). */}
+      <div className="w-full max-w-5xl">
         {/* The h1. */}
         <Skeleton className="h-8 w-72 max-w-full" />
         {/* The subline. */}

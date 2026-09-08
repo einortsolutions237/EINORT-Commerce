@@ -4,13 +4,16 @@ import type { TemplateTile } from "@/components/theming/template-picker";
 import { env } from "@/env";
 import { strings } from "@/lib/strings";
 import { activeProductCount } from "@/server/catalog/queries";
+import { publicUrlFor, templatePreviewPrefixFor } from "@/server/images/r2";
 import { requireMerchantContext } from "@/server/merchant/context";
 import { getPaymentSettings } from "@/server/payments/settings";
 import { accessibleTemplateKeys } from "@/server/theming/access";
 import { ensureStorefrontSeeded } from "@/server/theming/actions";
 import { templateDefaultTokens } from "@/server/theming/defaults";
+import { TEMPLATE_PREVIEWS } from "@/server/theming/preview-manifest";
 import { getEditorStorefront } from "@/server/theming/queries";
 import {
+  INDUSTRY_SEGMENTS,
   isTemplateKey,
   SECTION_TYPES,
   TEMPLATES,
@@ -160,7 +163,17 @@ const THEME_MAXIMA = themeFieldMaxima();
  * (`templateDefaultTokens(key).primaryAccent`), never the merchant's actual
  * saved colour (05-UI-SPEC.md § Template Thumbnail Component) — the thumbnail
  * is a generic preview of the template's own design, not a live rendering of
- * this merchant's brand.
+ * this merchant's brand. `previewUrl`'s `.webp` is generated from that same
+ * `TEMPLATE_DEFAULTS`-derived default styling (`npm run templates:previews`,
+ * plan 05.1-08) — a screenshot of the template's own look, so the "generic
+ * preview, not this merchant's brand" promise above survives the redesign
+ * unchanged.
+ *
+ * Tiles are returned in `INDUSTRY_SEGMENTS` order (a pure reorder, D-05 —
+ * `keys.length` is unchanged) rather than `accessible`'s own order, so the
+ * client component can group by first-appearing segment without importing
+ * the registry — the same contract the onboarding surface's flatten in
+ * `src/app/onboarding/branding/page.tsx` establishes.
  */
 function editorTemplateTiles(
   tier: string,
@@ -174,7 +187,7 @@ function editorTemplateTiles(
       ? accessible
       : [...accessible, currentKey];
 
-  return keys.map((key) => {
+  const tiles: TemplateTile[] = keys.map((key) => {
     const template = TEMPLATES[key];
     return {
       key,
@@ -185,8 +198,22 @@ function editorTemplateTiles(
       sections: template.sections,
       primaryAccent: templateDefaultTokens(key).primaryAccent,
       locked: !accessible.includes(key),
+      previewUrl: TEMPLATE_PREVIEWS[key]
+        ? publicUrlFor(`${templatePreviewPrefixFor(key)}/card.webp`)
+        : null,
+      segmentLabel: strings.branding.segments[template.segment],
     };
   });
+
+  const segmentOrder: readonly string[] = INDUSTRY_SEGMENTS;
+  return tiles
+    .map((tile, index) => ({ tile, index }))
+    .sort((a, b) => {
+      const aRank = segmentOrder.indexOf(a.tile.segment);
+      const bRank = segmentOrder.indexOf(b.tile.segment);
+      return aRank !== bRank ? aRank - bRank : a.index - b.index;
+    })
+    .map(({ tile }) => tile);
 }
 
 export default async function StorefrontEditorPage() {

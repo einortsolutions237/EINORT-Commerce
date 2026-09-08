@@ -721,7 +721,6 @@ export function BrandingForm({
               setValue("templateKey", key, { shouldValidate: true })
             }
             sortBySegment={industry === "" ? undefined : industry}
-            showAllToggle
             error={errors.templateKey?.message}
           />
         </CardContent>

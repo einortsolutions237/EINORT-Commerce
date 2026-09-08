@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -50,7 +50,11 @@ import { TemplateThumbnail } from "./template-thumbnail";
  * disabled, never hidden. The one control that actually gates access is
  * `assertTemplateAccess` on the server (plans 05-04, 05-11) — everything this
  * component renders for a locked card is a courtesy, not the boundary
- * (T-05-32).
+ * (T-05-32). The `Show all {N} templates` toggle that used to let a merchant
+ * flip between a sorted and a full view was deleted in 05.1-05: explicit
+ * segment headings (05.1-06) prove "nothing is hidden" more directly than a
+ * button ever did, and the rendered set -- `tiles.length` -- is unchanged by
+ * that removal.
  *
  * THE CURRENT-TEMPLATE CARD IS INERT (T-05-35). Re-selecting the template a
  * merchant already has must never fire the change handler, even if a
@@ -75,27 +79,24 @@ export type TemplateTile = {
   readonly sections: readonly TemplateSectionRef[];
   readonly primaryAccent: string;
   readonly locked: boolean;
+  /**
+   * A finished, public preview-image URL, or `null` when no preview has
+   * been generated for this template yet. `null` is D-05's fallback signal,
+   * decided in the RSC from `TEMPLATE_PREVIEWS` manifest state BEFORE
+   * render -- never via an `onError` handler, which flashes a broken image
+   * and cannot catch the un-allowlisted-`next/image`-host case at all.
+   */
+  readonly previewUrl: string | null;
+  /**
+   * The human label for `tile.segment`, flattened by the RSC because
+   * `tile.segment` is typed `string` here and narrowing it to index
+   * `strings.branding.segments` would pull registry types across the
+   * `server-only` boundary that `tests/unit/theming-marker-boundary.test.ts`
+   * enforces. `segmentTag` stays a separate field -- the two feed different
+   * slots.
+   */
+  readonly segmentLabel: string;
 };
-
-/**
- * A pure reorder, never a removal — `tiles.length` is always preserved.
- * `Array.prototype.sort` is stable in every runtime this project targets, but
- * the explicit index tiebreaker keeps that guarantee legible rather than
- * implicit.
- */
-function sortedBySegment(
-  tiles: readonly TemplateTile[],
-  segment: string,
-): readonly TemplateTile[] {
-  return tiles
-    .map((tile, index) => ({ tile, index }))
-    .sort((a, b) => {
-      const aRank = a.tile.segment === segment ? 0 : 1;
-      const bRank = b.tile.segment === segment ? 0 : 1;
-      return aRank !== bRank ? aRank - bRank : a.index - b.index;
-    })
-    .map(({ tile }) => tile);
-}
 
 export function TemplatePicker({
   tiles,
@@ -103,7 +104,6 @@ export function TemplatePicker({
   onChange,
   currentKey,
   sortBySegment,
-  showAllToggle,
   error,
 }: {
   readonly tiles: readonly TemplateTile[];
@@ -112,17 +112,18 @@ export function TemplatePicker({
   readonly onChange: (key: string) => void;
   /** The merchant's existing template — editor surface only. */
   readonly currentKey?: string;
-  /** The merchant's chosen industry — onboarding surface only. */
+  /**
+   * The merchant's chosen industry — onboarding surface only. U-07
+   * repurposes this from "sort" to "which segment group is hoisted first
+   * and titled Recommended for you"; unused by this task's render (which
+   * maps `tiles` directly) -- consumed by the grouping introduced in
+   * 05.1-06.
+   */
   readonly sortBySegment?: string;
-  readonly showAllToggle: boolean;
   readonly error?: string;
 }): ReactElement {
-  const [showAll, setShowAll] = useState(false);
-
-  const visibleTiles =
-    sortBySegment !== undefined && !showAll
-      ? sortedBySegment(tiles, sortBySegment)
-      : tiles;
+  // consumed by the grouping introduced in 05.1-06
+  void sortBySegment;
 
   return (
     <div className="flex flex-col gap-2">
@@ -136,7 +137,7 @@ export function TemplatePicker({
         className="grid grid-cols-2 gap-4 sm:grid-cols-3"
       >
         <TooltipProvider>
-          {visibleTiles.map((tile) => {
+          {tiles.map((tile) => {
             const isCurrent =
               currentKey !== undefined && tile.key === currentKey;
             const isSelected = isCurrent || selectedKey === tile.key;
@@ -229,21 +230,6 @@ export function TemplatePicker({
           })}
         </TooltipProvider>
       </RadioGroup>
-
-      {showAllToggle ? (
-        <button
-          type="button"
-          className="w-fit text-sm leading-normal font-medium text-primary underline"
-          onClick={() => setShowAll((previous) => !previous)}
-        >
-          {showAll
-            ? strings.branding.templateShowRecommended
-            : strings.branding.templateShowAll.replace(
-                "{n}",
-                String(tiles.length),
-              )}
-        </button>
-      ) : null}
 
       {error !== undefined ? (
         <p className="text-sm leading-normal text-destructive">{error}</p>
