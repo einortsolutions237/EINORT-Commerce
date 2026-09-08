@@ -304,16 +304,13 @@ Plans:
   2. Every claim on the page is honest and verifiable against the actual shipped product — no fabricated merchant counts, logos, or testimonials.
   3. The page visually extends the existing merchant-platform blue/gold/slate design system rather than introducing a new one.
 
-**Plans**: 1 plan (1 wave)
+**Plans**: 1 plan (1 wave) — COMPLETE (Task 3 human-verify checkpoint approved 2026-09-08)
 **Canonical refs:** `.planning/phases/05.2-marketing-landing-page-redesign/` — `05.2-CONTEXT.md`, `05.2-DISCUSSION-LOG.md`, `05.2-RESEARCH.md`, `05.2-UI-SPEC.md`, `05.2-PATTERNS.md`, `05.2-VALIDATION.md`
 
 Plans:
 **Wave 1**
 
-- [ ] 05.2-01-PLAN.md — marketing.ts copy module + strings.root rewire, the five-band page.tsx rewrite (top lockup, hero with D-05 manifest-conditional image slot, three differentiators, how-it-works, final CTA), and the landing-page-contract.test.ts honesty guard
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 05.2 to break down)
+- [x] 05.2-01-PLAN.md — marketing.ts copy module + strings.root rewire, the five-band page.tsx rewrite (top lockup, hero with D-05 manifest-conditional image slot, three differentiators, how-it-works, final CTA), and the landing-page-contract.test.ts honesty guard
 
 ### Phase 6: Merchant Dashboard & Platform Admin
 
@@ -346,4 +343,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
 | 4. Theme/Section/Block System & Flagship Template | 15/16 | In Progress|  |
 | 5. Template Segment Expansion | 9/22 | In Progress|  |
+| 05.1. Template Preview Rendering & Picker Redesign | 7/9 | In Progress|  |
+| 05.2. Marketing Landing Page Redesign | 1/1 | Complete   | 2026-09-08 |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |

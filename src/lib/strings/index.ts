@@ -28,6 +28,7 @@
  */
 
 import { flagshipCopy } from "./flagship";
+import { marketingCopy } from "./marketing";
 import { beautyCosmeticsTemplates } from "./templates/beauty-cosmetics";
 import { electronicsTemplates } from "./templates/electronics";
 import { fashionApparelTemplates } from "./templates/fashion-apparel";
@@ -38,12 +39,8 @@ import { groceryFoodTemplates } from "./templates/grocery-food";
 export const BRAND = "EINORT" as const;
 
 export const strings = {
-  /** `/` — root-domain placeholder (D-06). Not a marketing site. */
-  root: {
-    wordmark: BRAND,
-    tagline: "Create your online store in minutes.",
-    cta: "Create my store",
-  },
+  /** `/` — the public marketing landing page (MKTG-01). See `./marketing.ts`. */
+  root: { ...marketingCopy },
 
   /**
    * The single branded failure surface (D-04). Rendered by
