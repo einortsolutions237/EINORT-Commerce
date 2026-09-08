@@ -18,7 +18,7 @@
 
 ### Marketing
 
-- [ ] **MKTG-01**: The public root page (`/`) is a real marketing landing page — not a placeholder — that explains what EINORT-Commerce does, why a Cameroonian merchant should choose it, and drives toward signup, using only honest, non-fabricated content (no invented merchant counts, logos, or testimonials)
+- [x] **MKTG-01**: The public root page (`/`) is a real marketing landing page — not a placeholder — that explains what EINORT-Commerce does, why a Cameroonian merchant should choose it, and drives toward signup, using only honest, non-fabricated content (no invented merchant counts, logos, or testimonials)
 
 ### Onboarding
 
@@ -139,7 +139,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | TEN-06 | Phase 1 | Pending |
 | TEN-07 | Phase 1 | Pending |
 | TEN-08 | Phase 1 | Pending |
-| MKTG-01 | Phase 05.2 | Pending |
+| MKTG-01 | Phase 05.2 | Complete |
 | ONB-01 | Phase 1 | Pending |
 | ONB-02 | Phase 4 | Pending |
 | ONB-03 | Phase 4 | Pending |
@@ -150,7 +150,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | TMPL-03 | Phase 5 | Pending |
 | TMPL-04 | Phase 5 | Pending |
 | TMPL-05 | Phase 5 | Pending |
-| TMPL-06 | Phase 05.1 | In Progress (Waves 1-3/5 merged; Wave 5 populates real screenshots) |
+| TMPL-06 | Phase 05.1 | In Progress (Waves 1-4/5 merged; Wave 5 populates real screenshots for all 50 templates) |
 | EDIT-01 | Phase 4 | Pending |
 | EDIT-02 | Phase 4 | Pending |
 | EDIT-03 | Phase 4 | Pending |
