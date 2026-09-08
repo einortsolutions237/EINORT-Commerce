@@ -327,8 +327,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05.3-02-PLAN.md — Editor route move: git mv the seven editor files into storefront/editor/, delete the changeTemplate rail branch, add the R-1 full-bleed wrapper and the R-4 leave-guard dialog
-- [ ] 05.3-03-PLAN.md — New Themes page: storefront/page.tsx + loading.tsx, change-template-panel.tsx moved and renamed to themes-browser.tsx with the R-3 spotlight composition and toast-on-switch
+- [x] 05.3-02-PLAN.md — Editor route move: git mv the seven editor files into storefront/editor/, delete the changeTemplate rail branch, add the R-1 full-bleed wrapper and the R-4 leave-guard dialog
+- [x] 05.3-03-PLAN.md — New Themes page: storefront/page.tsx + loading.tsx, change-template-panel.tsx moved and renamed to themes-browser.tsx with the R-3 spotlight composition and toast-on-switch
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -367,5 +367,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 5. Template Segment Expansion | 9/22 | In Progress|  |
 | 05.1. Template Preview Rendering & Picker Redesign | 9/9 | Complete   | 2026-09-08 |
 | 05.2. Marketing Landing Page Redesign | 1/1 | Complete   | 2026-09-08 |
-| 05.3. Storefront Editor Page Split | 1/4 | In Progress | - |
+| 05.3. Storefront Editor Page Split | 3/4 | In Progress | - |
 | 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
