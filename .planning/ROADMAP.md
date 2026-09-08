@@ -304,8 +304,13 @@ Plans:
   2. Every claim on the page is honest and verifiable against the actual shipped product — no fabricated merchant counts, logos, or testimonials.
   3. The page visually extends the existing merchant-platform blue/gold/slate design system rather than introducing a new one.
 
-**Plans**: TBD (run `/gsd:plan-phase 05.2` to break down)
-**Canonical refs:** `.planning/phases/05.2-marketing-landing-page-redesign/` — `05.2-CONTEXT.md`, `05.2-DISCUSSION-LOG.md`
+**Plans**: 1 plan (1 wave)
+**Canonical refs:** `.planning/phases/05.2-marketing-landing-page-redesign/` — `05.2-CONTEXT.md`, `05.2-DISCUSSION-LOG.md`, `05.2-RESEARCH.md`, `05.2-UI-SPEC.md`, `05.2-PATTERNS.md`
+
+Plans:
+**Wave 1**
+
+- [ ] 05.2-01-PLAN.md — marketing.ts copy module + strings.root rewire, the five-band page.tsx rewrite (top lockup, hero with D-05 manifest-conditional image slot, three differentiators, how-it-works, final CTA), and the landing-page-contract.test.ts honesty guard
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 05.2 to break down)
