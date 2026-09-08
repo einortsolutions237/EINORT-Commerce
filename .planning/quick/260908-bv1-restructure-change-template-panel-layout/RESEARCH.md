@@ -237,7 +237,7 @@ This is the closest in-repo precedent for a "here is the one you currently have,
 
 **If this table is empty:** N/A — two low-risk assumptions recorded above; both are self-correcting even if wrong (existing code already handles the edge case; no other consumer exists per grep).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 None remaining that block planning — all five focus items are resolved below with a stated reason. One item (the "View live store" link) is explicitly a design judgment call flagged for the UI-SPEC pass rather than an open research question; see Focus 3.
 
