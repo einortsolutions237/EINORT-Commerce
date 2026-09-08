@@ -260,7 +260,7 @@ Plans:
 
 - [x] 05-21-PLAN.md — Isolation suites: the non-elevated tier gate, draft-only switch, discard revert and onboarding seed
 
-**Wave 6** *(blocked on Wave 5 completion AND Phase 05.1 completion — the 50-template contact sheet below must use 05.1's redesigned real-screenshot thumbnails, not the 05-09 CSS-wireframe placeholders)*
+**Wave 6** *(blocked on Wave 5 completion AND Phase 05.1 completion — Phase 05.1 must ship first so no reviewer-facing surface in the product still shows the 05-09 CSS-wireframe placeholders as primary UI when 05-22's human stranger tests run. Corrected 2026-09-08 by plan 05.1-09 Task 2: 05-22's contact-sheet mechanism (`scripts/contact-sheet.mjs`) does NOT consume 05.1's `TemplatePicker`/`TEMPLATE_PREVIEWS` real-screenshot cards — it was already designed to render full default home pages directly from `templateDefaultDocument()`/the section components, independent of both the picker and its CSS-wireframe fallback. The prior wording here overstated that dependency as a literal "must use 05.1's...thumbnails" mechanism coupling; see 05-22-PLAN.md's own reconciliation note for the full audit)*
 
 - [ ] 05-22-PLAN.md — Phase gate: full automated suite, the 50-template contact sheet, and the six adversarial-pair stranger tests (closes Phase 4's D-14 check)
 
