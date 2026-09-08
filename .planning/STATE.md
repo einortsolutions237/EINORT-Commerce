@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05.1 Wave 1 (05.1-01..04) merged and gated; Phase 05.2 (marketing landing page) just inserted, not yet planned
-last_updated: "2026-09-07T18:05:00.000Z"
-last_activity: 2026-09-07 -- Phase 05.1 Wave 1 complete (playwright installed, image pipeline + preview manifest, scratch-tenant guard, placeholder photos + containment test; both blocking checkpoints independently re-verified and approved). Phase 05.2 (Marketing Landing Page Redesign) inserted per the user's request after reviewing Shopify's marketing site, not yet planned.
+stopped_at: Completed 05.1-07-PLAN.md
+last_updated: "2026-09-08T03:06:11.930Z"
+last_activity: 2026-09-07 -- Quick task 260907-a2v (remove Super Admin Panel header stub) merged and gated; quick task 260906-egn (dashboard shell rebuild + real Overview page) and Phase 5 Wave 4 (05-18..20) also merged and gated.
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 77
-  completed_plans: 68
-  percent: 25
+  completed_plans: 71
+  percent: 38
 ---
 
 # Project State
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 
 ## Current Position
 
-Phase: 05.1 (template-preview-rendering-picker-redesign) — EXECUTING, WAVE 1 OF 5 MERGED
-Urgent decimal-phase insertion after Phase 5 Waves 1-5 (all merged) and before Phase 5's Wave 6 (05-22), triggered by the user reviewing the live "Change template" panel against Shopify's Discover Themes reference. Full planning pipeline completed 2026-09-07: discuss-phase (6 decisions D-01–D-06), research (chose Playwright over Puppeteer, a generated manifest over a registry field, found the picker's real container-query grid bug), UI-SPEC (approved 6/6, 3 consequential decisions confirmed by the user), pattern-mapper, planner (9 plans across 5 waves), plan-checker (PASSED). TMPL-06 added to REQUIREMENTS.md. Wave 1 (05.1-01 playwright install, 05.1-02 image pipeline/manifest, 05.1-03 scratch-tenant guard, 05.1-04 placeholder photos + containment test) all merged to master 2026-09-07; lint/typecheck/test:unit (637/637)/build all clean. Both Wave 1 blocking `checkpoint:human-verify` gates (playwright package legitimacy, CC0 placeholder-photo licensing) were independently re-verified by the orchestrator (npm registry packument checks; live StockSnap.io license-page and photo-page checks) before the user's approval. Remaining: Wave 2 (05.1-05, 05.1-07), Wave 3 (05.1-06), Wave 4 (05.1-08, crop-framing checkpoint), Wave 5 (05.1-09, full 50-template run + blocking review). Next: `/gsd:execute-phase 05.1` to continue Wave 2.
+Phase: 05.1 (template-preview-rendering-picker-redesign) — EXECUTING, WAVE 1 OF 5 MERGED, WAVE 2's 05.1-07 COMPLETE (this branch, not yet merged)
+Urgent decimal-phase insertion after Phase 5 Waves 1-5 (all merged) and before Phase 5's Wave 6 (05-22), triggered by the user reviewing the live "Change template" panel against Shopify's Discover Themes reference. Full planning pipeline completed 2026-09-07: discuss-phase (6 decisions D-01–D-06), research (chose Playwright over Puppeteer, a generated manifest over a registry field, found the picker's real container-query grid bug), UI-SPEC (approved 6/6, 3 consequential decisions confirmed by the user), pattern-mapper, planner (9 plans across 5 waves), plan-checker (PASSED). TMPL-06 added to REQUIREMENTS.md. Wave 1 (05.1-01 playwright install, 05.1-02 image pipeline/manifest, 05.1-03 scratch-tenant guard, 05.1-04 placeholder photos + containment test) all merged to master 2026-09-07; lint/typecheck/test:unit (637/637)/build all clean. Both Wave 1 blocking `checkpoint:human-verify` gates (playwright package legitimacy, CC0 placeholder-photo licensing) were independently re-verified by the orchestrator (npm registry packument checks; live StockSnap.io license-page and photo-page checks) before the user's approval. 05.1-07 (Wave 2 — `scripts/generate-template-previews.ts`, the guarded reseed + Playwright capture + Sharp/R2 + manifest-emit generator) completed 2026-09-08 in worktree branch `worktree-agent-a24c88366ec96d99b`, commit `f8f422f`: found and fixed a real ESM static-import evaluation-order bug (a static import of `r2.ts`, which imports `@/env`, always crashed before this script's own `.env.local`/`.env` loading loop could run — fixed via a deferred dynamic `import()` inside `main()`) plus a Windows-specific `*.localhost` DNS-resolution false-negative in the dev-server probe (fixed via `node:http` for local-dev hosts). All three of the plan's behavioral acceptance criteria verified against a real scratch store and a running dev server (see `05.1-07-SUMMARY.md`); lint/typecheck/test:unit (637/637) all clean. Remaining: Wave 2's 05.1-05 (status not confirmed by this session — may be in progress in a sibling worktree), Wave 3 (05.1-06), Wave 4 (05.1-08, crop-framing checkpoint), Wave 5 (05.1-09, full 50-template run + blocking review). Next: merge this branch, then `/gsd:execute-phase 05.1` to continue.
 
 Phase: 05.2 (marketing-landing-page-redesign) — INSERTED, NOT YET PLANNED
 Urgent decimal-phase insertion after Phase 5 (lands at 05.2 since 05.1 already exists), triggered by the user supplying a screenshot of Shopify's actual marketing/landing page (shopify.com "Start an online store for free" — hero, email capture, "Powering millions of businesses worldwide" + real client logos) and asking for EINORT's root page to reach the same professional quality. The current root page (`src/app/page.tsx`) is a deliberate placeholder — its own header comment already says "This is deliberately NOT a marketing site — that is future scope with its own phase," confirming this was always intended, not scope creep. Explicitly scoped to the root `/` page only (not signup/onboarding/dashboard). Known open questions for discuss-phase: honest trust-signal strategy (EINORT has no real merchant base yet, so Shopify's "millions of businesses" + client-logo pattern cannot be honestly replicated — needs a non-fabricated alternative), visual asset strategy (real template screenshot via Phase 05.1's new preview pipeline vs. illustration), primary language (French-first vs. English-first for the Cameroon market), section structure, and whether to extend the existing merchant-platform blue/gold/slate design reference or use a distinct treatment. Runs in parallel with Phase 05.1 — zero file overlap. Next: `/gsd:discuss-phase 05.2`.
@@ -36,7 +36,7 @@ Phase 04 (theme-section-block-system-flagship-template) remains genuinely incomp
 Phase 03 (product-catalog-order-payment-claim-state-machine) remains genuinely incomplete for the same kind of reason: all content (Waves 1-5, 03-01 through 03-15) plus phase-gate Tasks 1-2 are done (720/720 tests, nyquist_compliant: true), but 03-16's Task 3 — a blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior — has not been completed. The user chose to move on rather than complete it first (2026-09-01); it remains open and 03-16 is still unticked in ROADMAP.md. Once approved, mark 03-16 complete and run Phase 3's own completion gate (verifier + code-review + phase.complete) — it has not yet run.
 Last activity: 2026-09-07 -- Quick task 260907-a2v (remove Super Admin Panel header stub) merged and gated; quick task 260906-egn (dashboard shell rebuild + real Overview page) and Phase 5 Wave 4 (05-18..20) also merged and gated.
 
-Progress: [██░░░░░░░░] 25% phases (2/8 complete) · 88% plans (68/77 complete — Phase 3's 03-16, Phase 4's 04-16, Phase 5's Wave 6 (05-22, blocked on 05.1), Phase 05.1's Waves 2-5 (5 plans), and Phase 05.2's plan count TBD after planning, still to execute)
+Progress: [█████████░] 92% plans (71/77 complete — Phase 3's 03-16, Phase 4's 04-16, Phase 5's Wave 6 (05-22, blocked on 05.1), Phase 05.1's remaining plans (05.1-05, 05.1-06, 05.1-08, 05.1-09 — 05.1-07 now done, this branch not yet merged), and Phase 05.2's plan count TBD after planning, still to execute)
 
 ## Performance Metrics
 
@@ -56,6 +56,8 @@ Progress: [██░░░░░░░░] 25% phases (2/8 complete) · 88% plan
 
 - Last 5 plans: -
 - Trend: -
+
+| Phase 05.1 P07 | 50min | 2 tasks | 3 files |
 
 ## Quick Tasks Completed
 
@@ -93,6 +95,7 @@ Recent decisions affecting current work:
 - [Phase 02-06]: beforeAddMember omitted (verified against crud-members.mjs/crud-org.mjs that membershipLimit already gates add-member and org creation never calls membershipLimit)
 - [Phase 02-06]: beforeUpdateOrganization refuses any incoming slug rather than validating it, pending Phase 4's real rename flow (StoreSlugHistory, invalidateTenantHost)
 - [Phase 02-06]: beforeDeleteOrganization refuses unconditionally; remove-member/update-member-role/leave left deliberately ungated (T-02-37, accepted)
+- [Phase 05.1-07]: Deferred the r2.ts dynamic import inside main(), called after the cheaper guards, to avoid @/env's createEnv() throwing before the script's own .env.local/.env loading loop runs — ES module static imports evaluate fully before an importing module's own top-level statements run, regardless of textual position, so a static import of r2.ts (which imports @/env) always crashed before the env-loading loop could run
 
 ### Pending Todos
 
@@ -114,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-07T07:57:45.281Z
-Stopped at: Phase 05.1 context gathered
-Resume file: .planning/phases/05.1-template-preview-rendering-picker-redesign/05.1-CONTEXT.md
+Last session: 2026-09-08T03:06:11.906Z
+Stopped at: Completed 05.1-07-PLAN.md
+Resume file: None
