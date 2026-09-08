@@ -29,9 +29,15 @@ import { TEMPLATE_KEYS, type TemplateKey } from "@/server/theming/registry";
  *
  * Plan 05.1-08 populated the manifest with exactly FOUR calibration entries
  * — a deliberate subset chosen for maximum template variety, not the full
- * 50-template run — so this file deliberately does NOT assert "all 50
- * templates present". The final test below states that explicitly so the
- * omission reads as sequencing (a future full-run plan's job), not oversight.
+ * 50-template run. Plan 05.1-09 then ran the full 50-template generation and
+ * ADDS completeness as a build-time contract: every `TEMPLATE_KEYS` member
+ * must have a manifest entry, and a missing one now fails this test (and
+ * therefore the build), not a silent fallback. `<TemplateThumbnail>` (the
+ * D-05 CSS-wireframe fallback) still exists in the picker component for a
+ * runtime state this build-time contract does not cover — e.g. a future key
+ * added to `TEMPLATE_KEYS` before regeneration has been re-run for it. The
+ * fallback is a runtime safety net; this test is a build-time contract. Both
+ * are correct, and neither makes the other redundant.
  */
 
 /**
@@ -105,6 +111,24 @@ function fixtureEntry(overrides: Partial<TemplatePreview> = {}): TemplatePreview
     generatedAt: "2026-09-07T00:00:00.000Z",
     ...overrides,
   };
+}
+
+/**
+ * Plan 05.1-09's completeness check. Returns every `TEMPLATE_KEYS` member
+ * that has no entry in `manifest`, by name — a set difference in the
+ * "missing" direction. (The other direction — an extraneous key not in
+ * `TEMPLATE_KEYS` — is already covered by `previewManifestErrors` above; this
+ * function is deliberately narrow so its one job, naming what is absent, is
+ * easy to verify in isolation.)
+ *
+ * Named keys, not a bare count, on purpose: a length-only comparison cannot
+ * distinguish "one real key is missing" from "one real key is missing AND a
+ * bogus extra key is present," which would coincidentally balance the count
+ * while being just as broken.
+ */
+function missingPreviewKeys(manifest: Record<string, unknown>): TemplateKey[] {
+  const present = new Set(Object.keys(manifest));
+  return TEMPLATE_KEYS.filter((key) => !present.has(key));
 }
 
 describe("previewManifestErrors — anti-vacuity", () => {
@@ -181,33 +205,83 @@ describe("previewManifestErrors — negative control (valid fixture)", () => {
   });
 });
 
+describe("missingPreviewKeys — completeness predicate self-check (anti-vacuity)", () => {
+  it("TEMPLATE_KEYS still has all 50 entries, so a completeness check below covers real ground", () => {
+    // Guards this describe block the same way the top-level anti-vacuity
+    // check guards `previewManifestErrors` — a set difference computed
+    // against an empty or truncated `TEMPLATE_KEYS` could report "nothing
+    // missing" for a reason that has nothing to do with actual coverage.
+    expect(TEMPLATE_KEYS.length).toBe(50);
+  });
+
+  it("(positive control) reports a synthetic manifest missing one real TemplateKey as incomplete, naming it", () => {
+    const missingKey: TemplateKey = "grocery-fresh";
+    const almostComplete: Record<string, TemplatePreview> = {};
+    for (const key of TEMPLATE_KEYS) {
+      if (key === missingKey) continue;
+      almostComplete[key] = fixtureEntry();
+    }
+    const missing = missingPreviewKeys(almostComplete);
+    expect(missing).toEqual([missingKey]);
+  });
+
+  it("(negative control) reports nothing missing for a fixture that already has all 50 keys", () => {
+    const complete: Record<string, TemplatePreview> = {};
+    for (const key of TEMPLATE_KEYS) {
+      complete[key] = fixtureEntry();
+    }
+    expect(missingPreviewKeys(complete)).toEqual([]);
+  });
+});
+
 describe("TEMPLATE_PREVIEWS — the real, committed manifest", () => {
   it("reports no errors for the real manifest", () => {
     expect(previewManifestErrors(TEMPLATE_PREVIEWS)).toEqual([]);
   });
 
-  it("has exactly plan 05.1-08's four calibration entries, in TEMPLATE_KEYS order", () => {
-    // 05.1-08 is a deliberate CALIBRATION run over four templates chosen for
-    // maximum variety (flagship baseline, a trust-bar-second template, a
-    // product-grid-second template — the hard case — and a template from a
-    // different segment entirely with a different hero variant) — not the
-    // full 50-template run. This replaces the prior "ships empty" assertion
-    // that guarded the sequencing before this plan ran (05.1-02 lands before
-    // generation). The remaining 46 keys are legitimately absent — D-05's
-    // partial-manifest fallback renders `<TemplateThumbnail>` for them, and
-    // that is correct, not broken. A future plan that runs the full 50-key
-    // generation replaces THIS assertion with an all-50-present completeness
-    // check once that generation has actually produced entries.
-    expect(Object.keys(TEMPLATE_PREVIEWS)).toEqual([
-      "flagship-fashion",
-      "fashion-classic",
-      "fashion-edit",
-      "electronics-grid",
-    ]);
+  it("TEMPLATE_PREVIEWS is non-empty (anti-vacuity for every check below)", () => {
     expect(
-      Object.keys(TEMPLATE_PREVIEWS).every((key) =>
-        (TEMPLATE_KEYS as readonly string[]).includes(key),
-      ),
-    ).toBe(true);
+      Object.keys(TEMPLATE_PREVIEWS).length,
+      "TEMPLATE_PREVIEWS is empty — run `npm run templates:previews` to generate it.",
+    ).toBeGreaterThan(0);
+  });
+
+  it("has all 50 TEMPLATE_KEYS entries, in TEMPLATE_KEYS order — the completeness gate plan 05.1-09 adds", () => {
+    // Plan 05.1-08 populated exactly four calibration entries; plan 05.1-09
+    // ran the full 50-template generation and promotes the guard from "valid
+    // if present" to "must be complete". A missing preview is now a build
+    // failure (this assertion), not a silent fallback to the wireframe.
+    //
+    // D-05's `<TemplateThumbnail>` fallback still exists in the component for
+    // a partial-generation runtime state (e.g. a future template key added to
+    // `TEMPLATE_KEYS` before its preview has been generated). That fallback
+    // is a runtime safety net; this test is a build-time contract. Both are
+    // correct, and neither makes the other redundant — the fallback covers a
+    // state this test refuses to let the committed manifest be in.
+    const missing = missingPreviewKeys(TEMPLATE_PREVIEWS);
+    expect(
+      missing,
+      missing.length > 0
+        ? `Missing preview(s) for: ${missing.join(", ")}. Run \`npm run templates:previews -- --only=${missing.join(",")}\` to generate them.`
+        : undefined,
+    ).toEqual([]);
+    expect(Object.keys(TEMPLATE_PREVIEWS)).toEqual(TEMPLATE_KEYS);
+  });
+
+  it("every entry's long edge is exactly 800px and every entry has non-zero bytes", () => {
+    for (const [key, entry] of Object.entries(TEMPLATE_PREVIEWS)) {
+      expect(Math.max(entry!.width, entry!.height), `${key}: expected long edge 800`).toBe(800);
+      expect(entry!.bytes, `${key}: expected bytes > 0`).toBeGreaterThan(0);
+    }
+  });
+
+  it("every entry's generatedAt parses as a valid ISO-8601 date", () => {
+    for (const [key, entry] of Object.entries(TEMPLATE_PREVIEWS)) {
+      const parsed = new Date(entry!.generatedAt);
+      expect(
+        Number.isNaN(parsed.getTime()),
+        `${key}: generatedAt "${entry!.generatedAt}" did not parse as a valid date`,
+      ).toBe(false);
+    }
   });
 });
