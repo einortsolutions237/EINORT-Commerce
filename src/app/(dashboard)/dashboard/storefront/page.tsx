@@ -19,8 +19,8 @@ import {
 import { ThemesBrowser } from "./themes-browser";
 
 /**
- * `/dashboard/storefront` (EDIT-02, EDIT-03) — the Themes half of the
- * storefront-editor page split (05.3-CONTEXT.md D-A, D-B).
+ * `/dashboard/storefront` (EDIT-02, EDIT-03) — the Themes half of this
+ * phase's Themes/Editor page split (05.3-CONTEXT.md D-A, D-B).
  *
  * ---------------------------------------------------------------------------
  * THIS PAGE AUTHORIZES ITSELF.

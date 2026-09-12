@@ -39,8 +39,8 @@ import { seedTwoTenants, TENANT_B } from "../setup/seed-two-tenants";
  * function's own header in `src/server/theming/actions.ts`. It resolves
  * `auth.api.getSession()` itself and takes its tenant from
  * `session.session.activeOrganizationId`, so this file reuses the same
- * session-construction helper `branding.test.ts` and
- * `storefront-editor.test.ts` already established
+ * session-construction helper `branding.test.ts` and the theming editor's
+ * isolation suite already established
  * (`tests/isolation/plan-selection.test.ts`) rather than mocking anything
  * that resolves identity.
  *
