@@ -1,5 +1,28 @@
 # EINORT-Commerce
 
+## Current Milestone: v2.0 Design Parity + Marketplace/Marketing Build-out
+
+**Goal:** Bring EINORT-Commerce's frontend into visual/UX parity with Master Product Specification V3's design-reference prototype, while building real (non-mock) backend support for the product surfaces that reference depends on, and adopting V3's revised trial length and template tier split.
+
+**Target features:**
+- Design system extraction + reusable component library (DesignButton, Card, Badge, Modal, PageHeader, StatusBadge, PricingCard, TemplateCard, ProductCard, MetricCard, EmptyState, DataTable, StorePreview)
+- Global shell restyle (sidebar, topbar, breadcrumbs, mobile nav) to match the reference
+- Business-rule updates: 30-day trial (was 10), template tiers 15/17/18 (was 10/15/25)
+- Visual migration of existing real surfaces: Landing, Auth, Onboarding, Dashboard Overview, Products, Orders, Storefront (Themes + Editor), Settings
+- New real subsystem: Customers (profiles + order history)
+- New real subsystem: Inventory (stock levels, adjustments, low-stock alerts)
+- New real subsystem: Delivery (zones, rates, fulfillment settings)
+- New real subsystem: Domains (custom domain, DNS verification, TLS)
+- New real subsystem: Analytics (sales, orders, top products, conversion)
+- New real subsystem: Marketplace (public discovery — search, categories, featured/trending, merchant discovery, product detail)
+- New real subsystem: Marketplace Marketing (merchant paid add-on, listing lifecycle, per-listing analytics)
+- Subscription & Billing UI: global Monthly/Yearly toggle, Amount Due Today vs After Trial, combined pricing, centralized pricing config
+- Responsive parity at 320/375/390/430/768/1024/1280/1440/1920
+
+**Explicitly deferred from this milestone:** Platform Admin (merchants/stores/subscriptions/listing-moderation/template-management/payments-config/health/support-audit/feature-flags/fraud surface) — stays at the pilot-scoped Super Admin dashboard already in v1.0's Active requirements; the fuller admin surface from the design reference is revisited in a later milestone. Live payment gateway/PSP integration — Master Spec V3 asks for at least one real integration, but the manual Mobile Money/Orange Money transfer + claim/verify + COD flow is preserved for a second time against this same kind of ask (see Key Decisions).
+
+**Driving documents:** `EINORT-Commerce_Master_Product_Specification_V3_Updated.docx` (Sept 2026, supersedes v2.0/v4.0) and a supplied final design-reference prototype (React/Vite/Zustand, client-only mock) — see `.planning/design-references/` for both.
+
 ## What This Is
 
 EINORT-Commerce is a multi-tenant commerce platform that lets Cameroonian small and medium business owners create a professional, good-looking online storefront in minutes using pre-built templates — without hiring developers or waiting months for an uncertain result. It is modeled on Shopify's product promise (Create → Customize → Publish → Sell) but is not attempting Shopify's scope or feature parity in V1. The architecture is deliberately built with a path to massive scale (eventually 100 → 1,000 → 100,000 → 1,000,000+ storefronts) in mind, but V1 itself is a 30-day, Cameroon/Douala-first, solo-built product.
@@ -72,6 +95,10 @@ Two prior planning documents inform this project and were reconciled during init
 | Zinc-monochrome DTC reference adopted as the fashion-segment flagship template direction | User-supplied visual reference judged as a tasteful, non-generic starting point superior to inventing a direction from adjectives | — Pending |
 | Architect for v4.0's 2,000,000-store / 300-products-per-store scale target without building or load-testing it in V1 | Cheap as a schema/indexing design discipline now; expensive to retrofit later; zero added engineering time at pilot scale | — Pending |
 | Merchant↔platform support messaging (SUB-03/ADM-05) built as a lightweight async in-app thread, not real-time chat, and slotted into Phase 6 rather than a new dedicated phase | User request (2026-08-23); async thread matches the manual-first pattern already established for payment claims and avoids new real-time infrastructure; Phase 6 already builds both the merchant dashboard and the Super Admin surface this thread lives in, and only has real subscription/claim data to work with once Phase 3 ships | — Pending |
+| v2.0: Storefront trial changed from 10 days to 30 days | Master Product Specification V3 (Sept 2026) names 30 days a "critical commercial rule"; user confirmed the change over keeping the shipped 10-day value (2026-09-13) | — Pending |
+| v2.0: Template tier split changed from 10 Starter / 15 Business / 25 Professional to 15 Starter / 17 Business / 18 Professional | Master Product Specification V3's split; user confirmed the change over the already-built 10/15/25 split (2026-09-13); same 50-template total and 6 segment categories, only the tier boundaries move | — Pending |
+| v2.0: Live payment gateway/PSP integration rejected again | Master Product Specification V3 asks for "at least one real payment integration," matching the same ask v4.0 made earlier in this project — rejected again in favor of the manual Mobile Money/Orange Money transfer + claim/verify flow (2026-09-13) | — Pending |
+| v2.0: Platform Admin (the design reference's ~17-page admin surface) deferred out of this milestone | User request (2026-09-13); the pilot-scoped Super Admin dashboard from v1.0's Active requirements remains the standing admin surface for now | — Pending |
 
 ## Evolution
 

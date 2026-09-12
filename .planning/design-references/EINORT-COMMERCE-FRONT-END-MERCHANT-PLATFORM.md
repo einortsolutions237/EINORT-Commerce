@@ -1,5 +1,7 @@
 # EINORT-Commerce-Front-End — Merchant Platform Design Source
 
+> **A later snapshot of this same reference (v6) was registered 2026-09-13 for milestone v2.0** — see `EINORT-V3-MASTER-SPEC-AND-PROTOTYPE-V6.md` in this directory for what's new (Marketplace, Marketing/BillingTab, split ThemeEditor/TemplateMarketplace, Landing) and the accompanying Master Spec V3 conflicts it resolved (trial length, template tiers, admin surface deferred). The token/inventory findings below are still confirmed accurate against v6 — nothing here is superseded, only extended.
+
 Registration and token analysis of the **dedicated design reference for EINORT's merchant platform surfaces** — the merchant dashboard and the platform Super Admin console. This is a different kind of artifact from the other four files in this directory: `FRAMER-TEMPLATE-REFERENCES.md`, `AWWWARDS-REFERENCES.md`, `RECENT-DESIGN-REFERENCES.md` and `SHOPIFY-THEME-STORE-RESEARCH.md` are all *research passes over third-party catalogues* — inspiration gathered to inform decisions not yet made. This one is not research. It is a design the project owner **supplied for this product**, and it settles decisions rather than informing them. Where the other four say "here is what the market does," this one says "here is what EINORT's merchant platform looks like."
 
 ## What this is and where it came from
