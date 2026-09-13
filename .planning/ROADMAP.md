@@ -346,6 +346,7 @@ Plans:
 **Canonical refs:** `.planning/phases/05.1-template-preview-rendering-picker-redesign/` — `05.1-CONTEXT.md`, `05.1-RESEARCH.md`, `05.1-PATTERNS.md`, `05.1-UI-SPEC.md`, `05.1-VALIDATION.md`
 
 Plans:
+
 - [x] 05.1-01-PLAN.md — Package legitimacy gate (blocking human-verify) + playwright devDependency install (Wave 1)
 - [x] 05.1-02-PLAN.md — Preview asset contracts: IMAGE_PRESETS lossless decoupling + templatePreview row, templatePreviewPrefixFor, generated manifest + drift guard (Wave 1)
 - [x] 05.1-03-PLAN.md — Fail-closed scratch-tenant target guard + refusal tests + .env.example entry (Wave 1)
@@ -463,6 +464,7 @@ Plans:
 - [ ] 06-17-PLAN.md — Phase gate: requirement-coverage guard, full automated suite, the two checkpoint:human-verify checks 06-VALIDATION.md names as automation-impossible (admin bootstrap correctness, full two-session thread round trip), documentation corrections
 
 Cross-cutting constraints:
+
 - `Organization.status` has exactly one writer (06-14) — every other plan that reads suspension state does so through `resolveEntitlements` or the derived domain-status function, never a second write path.
 - The support-thread "post a system message" primitive (06-06) is the only notification channel this milestone has — 06-14's suspension notice and 06-16's claim decisions both post through it rather than inventing their own.
 - Transcript UI components (06-09) are built once and reused via a `viewer` prop by 06-12's platform side, never forked.
@@ -483,8 +485,16 @@ Cross-cutting constraints:
 
 **Plans**: 3 plans (3 waves)
 Plans:
+**Wave 1**
+
 - [ ] 07-01-PLAN.md — 30-day trial: TRIAL_DAYS=30, its load-bearing comments, and every trial figure a merchant reads (ONB-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 07-02-PLAN.md — Re-tier all 50 templates to 15/17/18 per D-06, with the 15/32/50 documented counts, copy and frozen-table invariant (TMPL-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 07-03-PLAN.md — Phase gate: full suite + build, honest isolation-suite reporting, and the manual copy/tier walkthrough checkpoint
 
 **Notes for planning:** Both changes are small and touch known code — `TRIAL_DAYS` in `src/server/entitlements/resolve.ts`, `PlanLimits.templates` and the 50 templates' tier assignment in the theming registry, plus the centralized copy in `src/lib/strings/**` (no user-facing string may be inlined — the prose-literal contract tests will fail the build). Deliberately sequenced before Phase 8 so the visual migration renders final copy instead of numbers it would have to re-edit.
@@ -507,6 +517,7 @@ Plans:
 **UI hint**: yes
 
 **Notes for planning:**
+
 - DSGN-01 **extends** the already-shipped blue/gold/slate/zinc token retrofit (quick task `260823-gu4`) and the `DashboardCard` primitive from `260903-ugl`/`260906-egn` — it does not replace them. The storefront palette is a separate scope (`[data-surface="storefront"]`) and `tests/unit/surface-token-isolation.test.ts` will fail the build if the two are mixed.
 - **DSGN-03 carries a standing obligation into every later phase.** Its requirement covers "every migrated *and new* surface", but new surfaces do not exist yet. Phase 8 owns the responsive contract, the breakpoint checklist, and full verification of the migrated surfaces; Phases 9-15 each inherit the same checklist as a phase-gate item for the surfaces they add. DSGN-03 is mapped to Phase 8 for traceability, not because responsiveness stops being checked after it.
 - The v2.0 design reference is the merchant-platform blue/gold/slate direction (see project memory `project_einort_merchant_platform_design_reference`) — distinct from the zinc-monochrome storefront flagship reference.
@@ -612,6 +623,7 @@ Plans:
 **Research flag**: recommended — run `/gsd:plan-phase 13 --research-phase`. Both KD-V2-01 and KD-V2-02 are genuinely open design questions rather than implementation details.
 
 **Notes for planning:**
+
 - Model the lifecycle in the codebase's established idiom: a `LISTING_TRANSITIONS` legality table keyed by **`(actor, from, to)`** (not `(channel, from, to)` — a merchant and the platform have different rights, and self-approval must be structurally impossible), one sanctioned writer paired with an append-only event row, and a source-scanning contract test modeled on `tests/unit/single-order-state-writer.test.ts`.
 - MMKT-05: expiry is **derived at read time** from the subscription period. A stored `EXPIRED` status flipped by a cron drifts from `resolveEntitlements` and fails open during any cron outage — suspended stores stay visible, re-subscribed merchants stay hidden. Export a visibility predicate builder from the entitlements module and pin it to `resolveEntitlements` with a unit test.
 - A listing is a **live pointer**, not a snapshot. Do not copy the product's name, price, or images onto it (the `OrderItem` snapshot instinct is the wrong instinct here) — marketplace and storefront prices would visibly drift and "remove listing" would start to behave like "delete product". A denormalized sort key that is *allowed* to lag is the one acceptable exception, and only if the detail page reads the live price.
@@ -638,6 +650,7 @@ Plans:
 **Research flag**: recommended — validate the `marketplaceDb` extension mechanics (read-only enforcement, predicate injection) against a running Prisma 7 client early; `ARCHITECTURE.md` rates the proposed shape MEDIUM confidence.
 
 **Notes for planning:**
+
 - MKPL-07's reserved-slug addition (`marketplace`, and siblings such as `discover`, `explore`, `market`, `listings`) must land **before** the marketplace ships — a merchant can claim `marketplace.einort.com` today. One edit to `src/server/tenant/reserved-slugs.ts` closes all three layers (`classifyHost`, the write-path hook, the slug checker).
 - The public marketplace route tree must contain **no session read, no `requireMerchantContext`, and no `scopedDb`** — enforce with a contract test. Anonymous browsing must never redirect to a login.
 - Use explicit `select` allowlists, never `include:`, on every cross-tenant read — otherwise every column added to `Product` in a future phase ships to anonymous visitors the day it is added.
@@ -664,6 +677,7 @@ Plans:
 **Research flag**: recommended — highest external-dependency risk in the milestone.
 
 **Notes for planning:**
+
 - **Why last:** this is the only v2.0 area that touches the request path for 100% of traffic, and the only one with external wall-clock dependencies (DNS propagation is 24-48h, a real test domain and a provider token are needed). Isolating it at the tail keeps a regression here from contaminating six other in-flight areas. PROJECT.md has always treated custom domains as cuttable. It has no technical dependency on Phases 7-14 and could be pulled forward if the schedule demanded it.
 - **DOM-05 is the security core of this phase.** The hosting provider's TXT challenge fires only on conflict with another account on that provider — an unclaimed domain "verifies" with zero proof of ownership, which is a first-writer-wins takeover. Generate EINORT's own random per-`(tenantId, hostname)` TXT token, verify it with `dns/promises` using an explicit resolver and exact string equality, and only then call the provider. Add scheduled re-verification: verify-once-trust-forever leaves an expired or transferred domain mapped to the old tenant indefinitely.
 - **Keep `src/proxy.ts` at zero I/O.** `classifyHost` gains a fourth, still-pure `custom` kind (a syntactic check only) and the proxy rewrites to a sentinel path segment; resolution happens in the storefront layout behind its own Redis namespace, exactly where slug resolution already happens. Spike the sentinel-segment rewrite against a running Next 16 app before committing to it — `ARCHITECTURE.md` rates it MEDIUM confidence.

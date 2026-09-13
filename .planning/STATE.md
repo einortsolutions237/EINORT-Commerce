@@ -4,12 +4,12 @@ milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-09-13T14:38:29.881Z"
-last_activity: 2026-09-13 -- Phase 6 planning complete
+last_updated: "2026-09-13T14:52:49.602Z"
+last_activity: 2026-09-13 -- Phase 7 planning complete
 progress:
   total_phases: 18
   completed_phases: 6
-  total_plans: 99
+  total_plans: 102
   completed_plans: 80
   percent: 33
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Three phases now moving in parallel. Phase 6 fully staged for planning, planner running. Phase 7 context + research both complete (research caught a real flaw in the original tier-reassignment approach — corrected to Option D, an even per-segment allocation). Phase 8 context complete, but its research/planning deliberately waits on Phase 6 executing (real content dependency, not just sequencing) — see 08-CONTEXT.md's Phase Boundary note.
+**Current focus:** Phase 6 is executing now (Wave 1 of 7 in flight — plans 06-01/02/03 running in parallel worktrees). Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
 
 ## Current Position
 
-Phase: 6 — Merchant Dashboard & Platform Admin (planner running; v2.0 foundation phase, carried forward from v1.0)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 6 planning complete
+Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
+Plan: Wave 1 of 7 (06-01, 06-02, 06-03 in flight)
+Status: Executing Phase 6
+Last activity: 2026-09-13 -- Phase 6 Wave 1 dispatched; Phase 7 planning complete (3 plans, 3 waves, verified, queued behind Phase 6)
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -113,6 +113,8 @@ Recent decisions affecting current work:
 - Decide once, before Phase 12: which `Order` states count as earned revenue and whether `unitsSold` is filtered the same way (ANLY-02). The existing `overviewMetrics` code is already inconsistent on this. The answer must be applied to Overview, Analytics, and Customers' "total spent" simultaneously.
 
 ### Blockers/Concerns
+
+- Phase 7 (Trial & Template-Tier Business Rules): the automated `check.decision-coverage-plan` gate reported 2/4 decisions (D-04, D-05, trial-retroactivity) not cited by ID in plan frontmatter — same known false-positive pattern as Phase 6/Phase 2 below. Plan-checker's independent review confirmed "D-04/D-05 (zero-migration, derive-never-stamp) are implemented and explicitly documented as an accepted, not overlooked, consequence in 07-01"; spot-checked directly, both terms present in `07-01-PLAN.md`. Overridden 2026-09-13.
 
 - Phase 6 (Merchant Dashboard & Platform Admin): the automated `check.decision-coverage-plan` gate reported only 9/22 CONTEXT.md decisions (D-01..D-22) cited by ID in plan frontmatter — same false-positive pattern already documented for Phase 2 below (the gate only greps for literal `D-NN:` strings in specific fields, not semantic coverage). The plan-checker's independent full-content review explicitly confirmed all 22 decisions map to an implementing task; spot-checked 3 of the 13 flagged-uncovered items directly (D-01's separate `/admin` route appears in 5 plans, D-14's suspend-confirm-with-required-reason in 3 plans, D-22's PDF attachment support in 4 plans) — all genuinely implemented. Overridden and proceeded to execute-phase readiness 2026-09-13. Re-verify formally during Phase 6's verify-phase pass if this pattern recurs.
 
