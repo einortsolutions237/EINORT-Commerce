@@ -865,7 +865,7 @@ return {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — see 06-UI-SPEC.md R-3/R-5/Open Item #3, 06-PATTERNS.md R-1, and plans 06-01/06-07/06-15/06-16)
 
 1. **What does "activating or extending the merchant's subscription" actually write?**
    - **What we know:** `resolveEntitlements` (`src/server/entitlements/resolve.ts:137`) treats `subscriptionStatus === "active"` as unconditionally subscribed — `canWrite` becomes `true` forever, with no period end anywhere in the schema. `Organization` has `trialEndsAt` but no `subscriptionEndsAt`/`paidThroughAt`.
