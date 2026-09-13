@@ -587,7 +587,7 @@ const atDaysLeft = (days: number): Date =>
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — Q1 by CONTEXT.md D-06, Q2 by 07-02 Task 3's fashion-classic→retail-district swap, Q3 by 07-03 Task 1's probe-and-report step)
 
 1. **Which tier-reassignment option ships?**
    - What we know: all three hit 15/17/18 exactly and all three satisfy D-03's monotone-down invariant. Option A is D-01's literal reading and fails D-02's sanity gate. Options C and D are equally mechanical and pass it.
