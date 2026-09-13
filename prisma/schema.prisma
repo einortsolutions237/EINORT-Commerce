@@ -167,6 +167,21 @@ model Organization {
   /// server-side branding code going through `platformDb`.
   industry String?
 
+  /// SUB-03 (Phase 6): the end of the subscription period the platform owner's
+  /// most recent confirmation paid for. NULL until the first confirmed
+  /// `SubscriptionPaymentClaim`. Written only by the admin confirm path through
+  /// `adminDb`; declared `input: false` in the Better Auth organization
+  /// `additionalFields`, so no create/update body can reach it.
+  ///
+  /// STORED AND DISPLAYED ONLY IN THIS PHASE. `resolveEntitlements` is
+  /// deliberately NOT taught to expire on this value here. Doing so would
+  /// change `canWrite` semantics for every gated action in the product — every
+  /// catalog write, every order transition, every theme publish — and that is
+  /// tracked as `KD-V2-02` in STATE.md, the milestone's largest hidden cost.
+  /// A future plan owns that change deliberately; nothing in Phase 6 may
+  /// quietly start reading this column inside an entitlement decision.
+  subscriptionCurrentPeriodEnd DateTime?
+
   members     Member[]
   invitations Invitation[]
 
@@ -689,4 +704,239 @@ model StorefrontPage {
   @@unique([tenantId, pageType])
   @@index([tenantId, pageType])
   @@map("storefront_page")
+}
+
+// ---------------------------------------------------------------------------
+// Support thread / subscription claim enums (Phase 6)
+//
+// Same rule as the Phase 3 enum block above: enums are not models, so the
+// "must be registered in TENANT_SCOPED_MODELS" obligation does not apply to
+// them — but everything they are used by is tenant-scoped, so they live down
+// here with it. Feature code reaches them through `src/server/db/enums.ts`,
+// never through `@/generated/prisma*` (the lint gate is the TEN-02/TEN-05
+// enforcement mechanism, not a style rule).
+// ---------------------------------------------------------------------------
+
+/// ADM-05. Who wrote a support message. Mirrors `EventActor`'s three-valued
+/// shape deliberately: `SYSTEM` is what D-15's automatic suspension notice and
+/// every later phase's automated notice are written as, so a merchant can tell
+/// a human reply from a platform event at a glance. Collapsing `SYSTEM` into
+/// `PLATFORM` would make an automated state change look like the platform
+/// owner personally typed it.
+enum SupportAuthor {
+  MERCHANT
+  PLATFORM
+  SYSTEM
+}
+
+/// D-10 / D-22. TWO STORAGE CONTRACTS, ONE TABLE — discriminated so a reader
+/// cannot confuse them.
+///
+/// `IMAGE` bytes are Sharp-re-encoded derivatives served PUBLICLY from
+/// `R2_PUBLIC_BASE_URL` with no authentication (a capability URL, exactly like
+/// a claim screenshot). `DOCUMENT` bytes cannot be re-encoded by Sharp, so they
+/// are stored as uploaded and served ONLY through an authorized route handler
+/// that sets its own content-disposition. Reading this column is how a caller
+/// knows which of the two contracts a row is under; there is no way to infer it
+/// from `storageKey` alone.
+enum SupportAttachmentKind {
+  IMAGE
+  DOCUMENT
+}
+
+/// ADM-05 / D-07..D-13. One continuous per-merchant conversation between the
+/// merchant and the platform owner.
+///
+/// THERE IS DELIBERATELY NO `SupportThread` MODEL. D-12 makes the thread "one
+/// continuous conversation, never archived or closed", and there is exactly one
+/// per organization — so a thread row would carry no state of its own. Its only
+/// columns would be denormalized tallies and a most-recent-activity stamp, which
+/// is precisely what `src/server/claims/queries.ts` argues against by name: a
+/// number derived from the rows cannot drift from the rows. The thread IS
+/// `SupportMessage WHERE tenantId = X ORDER BY createdAt`, and the admin inbox
+/// is a `groupBy(["tenantId"])`.
+///
+/// DO NOT ADD A COUNTER COLUMN. Every tally this surface displays is derived at
+/// read time. A cached tally here would be a second writer on a value the rows
+/// already answer, and the first bug it produces is a badge nobody can explain.
+model SupportMessage {
+  id String @id @default(cuid())
+
+  /// `organization.id`. ORGANIZATION-scoped, not user-scoped — the thread
+  /// belongs to the store, so a future second staff account on the same
+  /// organization inherits the whole conversation rather than starting a new
+  /// one. Required, no default; see the tenant-scoped block comment above.
+  tenantId String
+
+  author SupportAuthor
+
+  /// `user.id` for MERCHANT and PLATFORM. NULL for SYSTEM — the same
+  /// nullable-actor contract `OrderEvent.actorUserId` carries, for the same
+  /// reason: an automated message has no human to name, and inventing one
+  /// would corrupt the audit reading of the thread.
+  authorUserId String?
+
+  /// Freeform. May be empty ONLY when the message carries an attachment, and
+  /// that rule is enforced in the action's Zod schema rather than by the
+  /// column — the constraint is "body OR attachment", which no single-column
+  /// NOT NULL can express.
+  body String
+
+  /// Read receipts as TIMESTAMPS, not booleans. "When" is free to store and
+  /// impossible to reconstruct after the fact. NULL means unread by that side.
+  readByMerchantAt DateTime?
+  readByPlatformAt DateTime?
+
+  /// SUB-03: set when this message is the one that announced a subscription
+  /// payment claim, so the thread can render the claim inline.
+  ///
+  /// DELIBERATELY NOT A RELATION. A claim may be reviewed from the admin ledger
+  /// page with no message in scope at all, and a declared relation would invert
+  /// that — it would make the message the claim's entry point rather than one
+  /// of two independent ways in. NULL on every other message.
+  subscriptionClaimId String?
+
+  createdAt DateTime @default(now())
+
+  attachments SupportAttachment[]
+
+  @@unique([tenantId, id]) // enables SupportAttachment's composite FK below
+  @@index([tenantId, createdAt]) // the thread read
+  @@index([author, readByPlatformAt, createdAt]) // the admin inbox's unread scan
+  @@map("support_message")
+}
+
+/// D-10 / D-22. Zero or more per message. A CHILD MODEL rather than a JSON
+/// column on `SupportMessage`, matching `ProductImage`: the encoder reads
+/// dimensions back and a JSON blob can neither be indexed nor constrained.
+///
+/// `kind`, `contentType`, `byteSize` and the nullable `width`/`height` are all
+/// here from day one so plan 06-13's document path (D-22) needs no second
+/// migration — a PDF has no raster dimensions, which is exactly why those two
+/// columns are nullable rather than defaulted to zero.
+model SupportAttachment {
+  id        String @id @default(cuid())
+  tenantId  String
+  messageId String
+
+  /// COMPOSITE FK on `(tenantId, messageId)`, same construction as
+  /// `ProductImage.product`: a forged cross-tenant `messageId` is a Postgres
+  /// rejection rather than a rule the application is trusted to remember.
+  /// `onDelete: Cascade` — an attachment has no meaning without its message.
+  message SupportMessage @relation(fields: [tenantId, messageId], references: [tenantId, id], onDelete: Cascade)
+
+  kind SupportAttachmentKind
+
+  /// WHAT THIS HOLDS DEPENDS ON `kind`, and that is the whole reason `kind`
+  /// exists. For `IMAGE` it is the R2 derivative PREFIX (the pipeline appends
+  /// the size suffixes), matching `ProductImage.storageKey`'s convention. For
+  /// `DOCUMENT` it is the stored object key itself, because there are no
+  /// derivatives to prefix. NEVER an `/original` key in either case, and never
+  /// a full URL.
+  storageKey String
+
+  /// The served content type. Stored rather than derived from the key: the
+  /// authorized `DOCUMENT` route handler must set it on the response, and
+  /// guessing it from an extension is how a mislabelled download happens.
+  contentType String
+
+  /// Bytes, as verified at finalize time — not as claimed by the uploader.
+  byteSize Int
+
+  /// NULL for `DOCUMENT`. A PDF has no raster dimensions, and a zero would read
+  /// as a real measurement rather than as an absent one.
+  width  Int?
+  height Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, messageId])
+  @@map("support_attachment")
+}
+
+/// SUB-03. The manual-claim pattern with payer and payee reversed: the MERCHANT
+/// is the payer, the PLATFORM OWNER is the judge.
+///
+/// DELIBERATELY NOT A DISCRIMINATED `PaymentClaim` (06-RESEARCH.md § Discretion
+/// Q1). Three structural reasons, each of which would cost an existing
+/// guarantee: `PaymentClaim.order` is a required composite FK and a
+/// subscription claim has no order, so `orderId` would have to go nullable —
+/// and a partially-required composite FK cannot use Prisma's default
+/// `SetNull`; the uniqueness scope differs (per-tenant there, global here, and
+/// one table cannot carry both); and `src/server/claims/actions.ts` is the
+/// single sanctioned writer of a claim's `CONFIRMED` status, enforced by a
+/// source-scanning test, so an admin-side confirm on that table would be
+/// exactly the second writer the ORD-02 control forbids.
+///
+/// Field names echo `PaymentClaim` on purpose, so the shared pattern is
+/// visible even though the tables are separate.
+model SubscriptionPaymentClaim {
+  id String @id @default(cuid())
+
+  /// `organization.id`. Tenant-scoped, and read from BOTH sides: the merchant
+  /// reads their own history through `scopedDb`, the platform owner reads the
+  /// whole ledger through `adminDb`. That is not a contradiction — the admin
+  /// surface's authorization comes from `requireAdminContext`, not from a
+  /// tenant predicate.
+  tenantId String
+
+  operator PaymentOperator
+
+  /// Exactly as the merchant typed it — this is what the platform owner
+  /// compares against the platform account's own SMS receipt.
+  reference String
+
+  /// DELIBERATELY GLOBAL UNIQUE, unlike `PaymentClaim`'s
+  /// `@@unique([tenantId, referenceNormalized])`.
+  ///
+  /// The difference is not an oversight, it follows from who the payee is.
+  /// A customer claim is paid to the MERCHANT, so two customers of two
+  /// different merchants may legitimately quote the same operator reference
+  /// and duplicate detection is a per-merchant concern. A subscription claim
+  /// is paid to the ONE platform account, so the same reference twice is the
+  /// same payment twice, whoever sent it. Same global-constraint reasoning as
+  /// `Order.trackingTokenHash` and `StoreSlugHistory.slug`.
+  ///
+  /// OBLIGATION THIS CREATES, recorded here so the handler is not written
+  /// casually (T-06-11): a cross-tenant duplicate surfaces as a Prisma `P2002`,
+  /// which is technically an existence oracle. It MUST be refused with one
+  /// generic message that never names, hints at, or varies by the other tenant
+  /// — the same posture `src/server/claims/actions.ts` takes for cross-tenant
+  /// claim ids. Plan 06-15 owns that handler.
+  referenceNormalized String @unique
+
+  /// Whole XAF, like every other money column in this schema.
+  amountXaf Int
+
+  /// The tier this payment is for, SNAPSHOTTED at submit time as a plain
+  /// string — not read from `Organization.planTier` at review time. Same
+  /// snapshot doctrine as `OrderItem.productName`/`.unitPriceXaf`: a later
+  /// plan change must never retroactively alter what a merchant already paid
+  /// for, and a join to the live row at read time is exactly how it would.
+  planTier String
+
+  /// R2 derivative PREFIX, never an `/original` key. NULL when the merchant
+  /// submitted no receipt image.
+  receiptKey String?
+
+  status          ClaimStatus @default(PENDING)
+  rejectionReason String?
+
+  submittedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+
+  /// The platform owner's `user.id`. NULL until reviewed.
+  reviewedByUserId String?
+
+  /// The period end this confirmation produced, copied onto
+  /// `Organization.subscriptionCurrentPeriodEnd` by the same write. NULL until
+  /// confirmed. Kept on the claim as well as on the organization because the
+  /// organization holds only the latest value, and reconstructing which
+  /// payment bought which window afterwards is impossible.
+  coversThrough DateTime?
+
+  @@unique([tenantId, id])
+  @@index([status, submittedAt]) // the admin ledger's own access path
+  @@index([tenantId, submittedAt]) // the merchant's own history
+  @@map("subscription_payment_claim")
 }
