@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Milestone v2.0 roadmap is written and requirement coverage is validated (46/46). Next action: `/gsd:plan-phase 6` — Phase 6 (Merchant Dashboard & Platform Admin) is v2.0's foundation phase, carried forward from v1.0 unchanged.
+**Current focus:** Phase 05.3 is now fully closed (Task 2 checkpoint approved 2026-09-13). Phase 6 context gathered and research complete; next action is `/gsd:plan-phase 6` to spawn the planner.
 
 ## Current Position
 
-Phase: 6 — Merchant Dashboard & Platform Admin (not started; v2.0 foundation phase, carried forward from v1.0)
+Phase: 6 — Merchant Dashboard & Platform Admin (context + research complete; not yet planned; v2.0 foundation phase, carried forward from v1.0)
 Plan: —
-Status: Roadmap approved — awaiting phase planning
-Last activity: 2026-09-13 — Milestone v2.0 roadmap created (Phases 6-15, 46/46 requirements mapped)
+Status: Research complete — ready for planner
+Last activity: 2026-09-13 — Phase 05.3 closed out (05.3-04 Task 2 approved: "All 6 check points good"); Phase 6 discuss-phase and phase-researcher both complete (06-CONTEXT.md, 06-RESEARCH.md)
+
+**Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
 **Milestone v2.0 phase sequence:** 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15
 Phases 9 → 10 → 11 → 12 (Inventory → Delivery → Customers → Analytics) are a hard ordering: the first three each edit the same `placeOrder` transaction and must land in that order, and Analytics must follow Delivery because delivery fees redefine "revenue". Phase 13 → 14 is a hard ordering: the public Marketplace has nothing real to render or test against until merchant listings exist. Phase 15 (Custom Domains) is technically independent and last by deliberate risk-isolation choice.
@@ -126,7 +128,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 |----------|------|--------|-------------|
 | Phase 03 (`03-16`) | Task 3 — blocking human-verify checkpoint requiring a real iPhone and Android device to confirm CHK-03's tap-to-dial USSD behavior. All other Phase 3 content (Waves 1-5, phase-gate Tasks 1-2, 720/720 tests) is done. | Open — user chose to move on 2026-09-01 | v1.0 → v2.0 transition, 2026-09-13 |
 | Phase 04 (`04-16`) | Wave 7 Tasks 2-3 — live-preview device pass and the Design-Distinctiveness stranger test, both blocking `checkpoint:human-verify` tasks. Wave 7 Task 1 (fully-automated gate) is confirmed clean. Phase's own closing gates (Requirements/Decision Coverage, verifier, code-review, `phase.complete`) have not run. | Open — user chose to move on, deliberately, mirroring Phase 3 | v1.0 → v2.0 transition, 2026-09-13 |
-| Phase 05.3 (`05.3-04`) | Task 2 — blocking `checkpoint:human-verify` gate, 6 manual UI behaviors (sidebar routing, template switch without reload, Editor showing new template, publish toast, dirty-draft leave-guard dialog, responsive layout). Task 1 (automated grep/D-B/suite gate) is complete and merged (`c2311c5`). | Open — user chose to start v2.0 work first, 2026-09-13 | v1.0 → v2.0 transition, 2026-09-13 |
+| Phase 05.3 (`05.3-04`) | Task 2 — blocking `checkpoint:human-verify` gate, 6 manual UI behaviors. | **Resolved 2026-09-13** — user approved all 6 checks ("All 6 check points good."). Phase 05.3 is closed; EDIT-02/EDIT-03 marked complete. | v1.0 → v2.0 transition, 2026-09-13 |
 | Phase 02 | No `02-VERIFICATION.md` was ever produced — Phases 1-2 were merged wave-by-wave without reaching `gsd-execute-phase`'s own verifier/code-review/`phase.complete` gate. Plan-checker independently confirmed all 13 CONTEXT.md decisions have implementing tasks despite the frontmatter-citation gate reporting 0/13. | Open, tracked since 2026-08-30 | v1.0 → v2.0 transition, 2026-09-13 |
 | Phase 05 (`05-22`) | Phase gate — the 50-template contact sheet and the six adversarial-pair stranger tests. Note that Phase 7 re-tiers all 50 templates (TMPL-04, 15/17/18); the contact sheet itself is tier-independent, but the picker screenshots it may be compared against are not. | Open | v1.0 → v2.0 transition, 2026-09-13 |
 

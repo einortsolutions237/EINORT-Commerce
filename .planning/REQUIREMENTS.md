@@ -40,8 +40,8 @@
 ### Storefront Editor
 
 - [ ] **EDIT-01**: Storefront content is modeled as Theme → Page → Section → Block, with section/block types defined in code and instances (order, settings, content) stored per tenant
-- [ ] **EDIT-02**: Merchants can customize their storefront (reorder sections, edit block content/settings, swap images and colors) through a live-preview editor
-- [ ] **EDIT-03**: Editor access/capability is gated by subscription tier, enforced server-side
+- [x] **EDIT-02**: Merchants can customize their storefront (reorder sections, edit block content/settings, swap images and colors) through a live-preview editor
+- [x] **EDIT-03**: Editor access/capability is gated by subscription tier, enforced server-side
 
 ### Product Catalog
 
@@ -239,8 +239,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | TMPL-05 | Phase 5 | Pending |
 | TMPL-06 | Phase 05.1 | Complete |
 | EDIT-01 | Phase 4 | Pending |
-| EDIT-02 | Phase 4 | Pending |
-| EDIT-03 | Phase 4 | Pending |
+| EDIT-02 | Phase 4 (restructured Phase 05.3) | Complete |
+| EDIT-03 | Phase 4 (restructured Phase 05.3) | Complete |
 | CAT-01 | Phase 3 | Pending |
 | CAT-02 | Phase 3 | Pending |
 | CAT-03 | Phase 3 | Pending |

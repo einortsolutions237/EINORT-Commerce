@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Template Segment Expansion** - 50 structurally distinct template variations across real merchant segments
 - [x] **Phase 05.1: Template Preview Rendering & Picker Redesign** (INSERTED) - Real rendered screenshot previews for all 50 templates (completed 2026-09-08)
 - [x] **Phase 05.2: Marketing Landing Page Redesign** (INSERTED) - A real public landing page at `/` (completed 2026-09-08)
-- [ ] **Phase 05.3: Storefront Editor Page Split** (INSERTED) - Separate Themes and Editor pages, matching Shopify's admin separation
+- [x] **Phase 05.3: Storefront Editor Page Split** (INSERTED) - Separate Themes and Editor pages, matching Shopify's admin separation (completed 2026-09-13)
 
 **Milestone v2.0 — Design Parity + Marketplace/Marketing Build-out:**
 
@@ -396,7 +396,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05.3-04-PLAN.md — Phase gate: dead-route grep gate, D-B scope-creep check, full automated suite, and the blocking six-item manual verification checkpoint
+- [x] 05.3-04-PLAN.md — Phase gate: dead-route grep gate, D-B scope-creep check, full automated suite, and the blocking six-item manual verification checkpoint (Task 2's six checks approved by the user 2026-09-13)
 
 ---
 
