@@ -41,15 +41,27 @@ const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
  * The directories under the rule, named explicitly.
  *
  * Explicit rather than "everything under src/server" on purpose: the rule is a
- * statement about the merchant surface and the entitlement surface, and a broad
- * glob would sweep in `src/server/tenant/resolve.ts`, whose
+ * statement about the merchant surface, the entitlement surface and the admin
+ * surface, and a broad glob would sweep in `src/server/tenant/resolve.ts`, whose
  * `resolveTenantBySlug(slug)` parameter is both legitimate and load-bearing —
  * the storefront's tenant genuinely arrives in the hostname. Listing the
  * directories keeps the prohibition true instead of merely wide. Every *file*
  * inside them is picked up automatically, so a module added later is covered
  * without editing this list.
+ *
+ * `src/server/admin` joined the list in plan 06-01, in the same commit as the
+ * modules it guards. It is the surface the rule matters MOST on, not least:
+ * `requireAdminContext(organizationId)` is the identical substitution bug, and
+ * the admin zone reads through `adminDb`, which is deliberately unscoped
+ * (`src/server/db/admin.ts`). On the merchant surface a leaked parameter still
+ * runs into a tenant predicate on every query; here there is no predicate
+ * underneath to catch it, so the signature IS the boundary.
  */
-const SCANNED_DIRS = ["src/server/merchant", "src/server/entitlements"] as const;
+const SCANNED_DIRS = [
+  "src/server/merchant",
+  "src/server/entitlements",
+  "src/server/admin",
+] as const;
 
 /**
  * Names that may never appear in an exported signature in those directories.
@@ -222,7 +234,12 @@ function exportedSignatures(code: string): ExportedSignature[] {
   return signatures;
 }
 
-const scannedFiles = SCANNED_DIRS.flatMap(sourceFilesUnder).sort();
+const filesByDir = SCANNED_DIRS.map((dir) => ({
+  dir,
+  files: sourceFilesUnder(dir),
+}));
+
+const scannedFiles = filesByDir.flatMap((entry) => entry.files).sort();
 
 const scanned = scannedFiles.map((file) => ({
   file: relative(".", file).replace(/\\/g, "/"),
@@ -234,7 +251,7 @@ const allSignatures = scanned.flatMap((entry) =>
 );
 
 describe("no tenant id parameter", () => {
-  it("actually scanned the merchant and entitlement modules", () => {
+  it("actually scanned the merchant, entitlement and admin modules", () => {
     for (const dir of SCANNED_DIRS) {
       expect(
         existsSync(join(repoRoot, dir)),
@@ -242,6 +259,23 @@ describe("no tenant id parameter", () => {
           "with zero coverage — update SCANNED_DIRS in " +
           "tests/unit/no-tenant-id-param.test.ts to the directory's new home.",
       ).toBe(true);
+    }
+
+    /*
+     * PER-DIRECTORY, not just in aggregate.
+     *
+     * A total count over all three directories stays comfortably non-zero even
+     * if one of them is emptied or renamed, so it would report full confidence
+     * over a surface it had stopped reading. Checking each directory on its own
+     * is what keeps a newly-added zone — `src/server/admin` is the current one —
+     * from being silently uncovered the moment it moves.
+     */
+    for (const { dir, files } of filesByDir) {
+      expect(
+        files.length,
+        `No .ts files were found under ${dir}. A vacuous pass is the one ` +
+          "failure mode a source-level guard must not have.",
+      ).toBeGreaterThan(0);
     }
 
     expect(
@@ -274,8 +308,8 @@ describe("no tenant id parameter", () => {
         ({ file, name, params }) =>
           `${file}: ${name}(${params.replace(/\s+/g, " ").trim()})`,
       ),
-      "TEN-04 violation — an exported function in the merchant/entitlement " +
-        "surface accepts a tenant identifier as a parameter.\n" +
+      "TEN-04 violation — an exported function in the merchant/entitlement/" +
+        "admin surface accepts a tenant identifier as a parameter.\n" +
         "  Tenant identity in the dashboard comes from " +
         "`session.session.activeOrganizationId` inside " +
         "`requireMerchantContext()` and from nowhere else. A parameter is a " +
@@ -283,8 +317,15 @@ describe("no tenant id parameter", () => {
         "POST without the form, so this reintroduces exactly the cross-tenant " +
         "substitution both TEN-04 and 02-RESEARCH.md § Pitfall 3 exist to " +
         "close.\n" +
+        "  If the offending file is under src/server/admin, this matters MORE " +
+        "there, not less: that zone reads through `adminDb`, which is " +
+        "deliberately unscoped (src/server/db/admin.ts), so there is no tenant " +
+        "predicate underneath to catch a substituted id. On the merchant " +
+        "surface a leaked parameter still meets a scoped query; here the " +
+        "signature IS the boundary.\n" +
         "  Take the id from the session inside the function instead, and pass " +
-        "only the change — never the target.",
+        "only the change — never the target. An admin surface looks at one " +
+        "store by handing an id to a QUERY, never to the identity function.",
     ).toEqual([]);
   });
 
@@ -316,6 +357,47 @@ describe("no tenant id parameter", () => {
       "`requireMerchantContext` must take NO parameters, ever. A " +
         "`requireMerchantContext(tenantId)` overload is the precise shape of " +
         "the bug this module exists to prevent.",
+    ).toBe("");
+  });
+
+  /**
+   * ADM-01 / plan 06-01. The exact analog of the assertion above, and NOT
+   * covered by the `FORBIDDEN` scan: that scan matches three spellings of a
+   * tenant id, so `requireAdminContext(userId)` or
+   * `requireAdminContext(role)` would sail through it while handing the caller
+   * the same authority to name whoever they like. The contract is zero
+   * parameters, so zero parameters is what is asserted.
+   */
+  it("resolves the platform admin from the session and nowhere else", () => {
+    const context = scanned.find(
+      (entry) => entry.file === "src/server/admin/context.ts",
+    );
+
+    expect(
+      context,
+      "src/server/admin/context.ts was not scanned. It is the only sanctioned " +
+        "way to learn who is calling the platform admin surface, so its " +
+        "absence means the rule above is guarding a surface that no longer " +
+        "has a gate.",
+    ).toBeDefined();
+
+    const gate = context?.signatures.find(
+      (signature) => signature.name === "requireAdminContext",
+    );
+
+    expect(
+      gate,
+      "`requireAdminContext` is not an exported signature in " +
+        "src/server/admin/context.ts.",
+    ).toBeDefined();
+
+    expect(
+      gate?.params.trim(),
+      "`requireAdminContext` must take NO parameters, ever. The admin surface " +
+        "looks at one store by passing an id to a query — never to the " +
+        "identity function. Collapsing the two makes the parameter the " +
+        "authorization, on the one surface in this codebase with no tenant " +
+        "predicate underneath to catch it.",
     ).toBe("");
   });
 });
