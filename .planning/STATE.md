@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 05.3 is now fully closed (Task 2 checkpoint approved 2026-09-13). Phase 6 context gathered and research complete; next action is `/gsd:plan-phase 6` to spawn the planner.
+**Current focus:** Phase 6 is fully through pre-execution planning (context, research, validation strategy, UI-SPEC approved, patterns mapped) — planner is running now. Phase 7's discuss-phase is also complete (07-CONTEXT.md); its research/planning has not started yet.
 
 ## Current Position
 
-Phase: 6 — Merchant Dashboard & Platform Admin (context + research complete; not yet planned; v2.0 foundation phase, carried forward from v1.0)
+Phase: 6 — Merchant Dashboard & Platform Admin (planner running; v2.0 foundation phase, carried forward from v1.0)
 Plan: —
-Status: Research complete — ready for planner
-Last activity: 2026-09-13 — Phase 05.3 closed out (05.3-04 Task 2 approved: "All 6 check points good"); Phase 6 discuss-phase and phase-researcher both complete (06-CONTEXT.md, 06-RESEARCH.md)
+Status: Planner dispatched — awaiting PLAN.md
+Last activity: 2026-09-13 — Phase 6 fully staged for planning (CONTEXT/RESEARCH/VALIDATION/UI-SPEC/PATTERNS all complete and committed); Phase 7 discuss-phase complete (07-CONTEXT.md: mechanical tier-shift + retroactive trial extension, both confirmed as pure downward relaxations with no merchant losing access)
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
