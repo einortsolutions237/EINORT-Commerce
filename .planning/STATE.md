@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
-status: planning
+status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-09-13T08:43:19.453Z"
-last_activity: "2026-09-13 — Phase 05.3 closed out (05.3-04 Task 2 approved: "All 6 check points good"); Phase 6 discuss-phase and phase-researcher both complete (06-CONTEXT.md, 06-RESEARCH.md)"
+last_updated: "2026-09-13T14:38:29.881Z"
+last_activity: 2026-09-13 -- Phase 6 planning complete
 progress:
   total_phases: 18
   completed_phases: 6
-  total_plans: 82
+  total_plans: 99
   completed_plans: 80
   percent: 33
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 
 Phase: 6 — Merchant Dashboard & Platform Admin (planner running; v2.0 foundation phase, carried forward from v1.0)
 Plan: —
-Status: Planner dispatched — awaiting PLAN.md
-Last activity: 2026-09-13 — Phase 6 fully staged (CONTEXT/RESEARCH/VALIDATION/UI-SPEC/PATTERNS complete); Phase 7 context+research complete, ready for planning (D-06 supersedes D-01: ships Option D tier reassignment, not the originally-recommended mechanical shift, which research found would leave the fashion-apparel segment with zero Professional templates); Phase 8 context complete but intentionally held before Phase 6 lands (its migration targets Phase 6's own new dashboard/Super Admin surfaces and Phase 7's final trial/tier copy)
+Status: Ready to execute
+Last activity: 2026-09-13 -- Phase 6 planning complete
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -113,6 +113,8 @@ Recent decisions affecting current work:
 - Decide once, before Phase 12: which `Order` states count as earned revenue and whether `unitsSold` is filtered the same way (ANLY-02). The existing `overviewMetrics` code is already inconsistent on this. The answer must be applied to Overview, Analytics, and Customers' "total spent" simultaneously.
 
 ### Blockers/Concerns
+
+- Phase 6 (Merchant Dashboard & Platform Admin): the automated `check.decision-coverage-plan` gate reported only 9/22 CONTEXT.md decisions (D-01..D-22) cited by ID in plan frontmatter — same false-positive pattern already documented for Phase 2 below (the gate only greps for literal `D-NN:` strings in specific fields, not semantic coverage). The plan-checker's independent full-content review explicitly confirmed all 22 decisions map to an implementing task; spot-checked 3 of the 13 flagged-uncovered items directly (D-01's separate `/admin` route appears in 5 plans, D-14's suspend-confirm-with-required-reason in 3 plans, D-22's PDF attachment support in 4 plans) — all genuinely implemented. Overridden and proceeded to execute-phase readiness 2026-09-13. Re-verify formally during Phase 6's verify-phase pass if this pattern recurs.
 
 - ~~Phase 3: MTN MoMo / Orange Money USSD merchant-code strings need re-verification~~ — **Resolved 2026-08-23** by `03-RESEARCH.md`'s "Payment Rails: the D-15 Blocker, Resolved" section, sourced directly from MTN Cameroon's and Orange Cameroun's own official documentation (HIGH confidence). Neither operator publishes a one-shot parametrized P2P string; both require an operator-issued merchant code for a parametrized tap-to-dial link. Manual-copy ships unconditionally as the floor regardless of merchant-code availability.
 - Phase 4 (Theme/Section/Block System): design-distinctiveness has no objective completion signal — the side-by-side "would a stranger think these are the same product" check must be built into this phase's definition of done explicitly.

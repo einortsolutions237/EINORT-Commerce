@@ -420,8 +420,52 @@ Plans:
   6. A merchant and the platform owner can exchange messages and file/image attachments in a persistent, per-merchant thread — visible in the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on new activity. No real-time/websocket infrastructure.
   7. A merchant can submit their monthly subscription payment (Mobile Money/Orange Money transaction reference + receipt image) through that same thread, and the platform owner can confirm or reject it there, activating/extending the subscription on confirmation — reusing Phase 3's claim-and-verify pattern with payer/payee reversed.
 
-**Plans**: TBD
+**Plans:** 17 plans across 7 waves
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — Admin trust boundary: `requireAdminContext()`, `adminAction()`, the out-of-band bootstrap script minting the admin account, D-05's server-side post-login role routing
+- [ ] 06-02-PLAN.md — Complete Phase 6 copy surface: two new string modules plus index keys, enforcing 06-UI-SPEC.md's two-audiences rule structurally
+- [ ] 06-03-PLAN.md — Full Phase 6 schema migration in one pass, plus the four files a new tenant-scoped model costs in this codebase, applied to the dev database
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 06-04-PLAN.md — `/admin` shell as chrome/composition over the existing token system; gold-accent budget contract test amended in the same commit that spends the gold
+- [ ] 06-05-PLAN.md — Extend the shipped Overview with a "Needs your attention" band and a fifth metric card — rebuilds nothing
+- [ ] 06-06-PLAN.md — Merchant-side support-thread domain, the reusable "post a system message" primitive every later v2.0 phase depends on, second Resend consumer
+- [ ] 06-07-PLAN.md — Resolve R-1 (`transitionOrder`'s `ScopedTx` typing, the phase's single highest-risk integration) and build the admin-side order-claim writer on the resolution
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 06-08-PLAN.md — `/admin` merchants list + per-merchant detail page, domain status derived (not stored) per D-21
+- [ ] 06-09-PLAN.md — Merchant-side support thread UI (three reusable transcript components + page) and D-07's persistent nav item, `REQUIRED_HREFS` extended in the same commit
+- [ ] 06-10-PLAN.md — Flat cross-tenant payment-claims ledger (D-18/D-19) on top of 06-07's admin claim writer, admin rail pending count wired
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 06-11-PLAN.md — Extend the presign→PUT→finalize upload triad to support-thread image attachments (two narrow doors), rendered in the transcript
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 06-12-PLAN.md — Platform side of the thread: flat unread-first inbox, per-merchant conversation, admin-side message writer, reusing 06-09's transcript components via a `viewer` prop
+- [ ] 06-15-PLAN.md — SUB-03 merchant half: claim writer, submit dialog on `/dashboard/plan`, claim card replacing the submit button while a claim is under review
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 06-13-PLAN.md — D-22's PDF attachment path as a genuinely separate, non-re-encoding storage/serving path (own allowlist, own finalize verification, own download doors) — resolves the D-22/UI-SPEC conflict rather than deferring it
+- [ ] 06-14-PLAN.md — First and only writer of `Organization.status`, its source-scanning guard, symmetric suspend/restore UI mounted at both entry points, Redis hostname-cache invalidation
+- [ ] 06-16-PLAN.md — SUB-03 platform half: the only writer of `SubscriptionPaymentClaim.status`, D-20's separate review page, inline read-only claim cards in both threads
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 06-17-PLAN.md — Phase gate: requirement-coverage guard, full automated suite, the two checkpoint:human-verify checks 06-VALIDATION.md names as automation-impossible (admin bootstrap correctness, full two-session thread round trip), documentation corrections
+
+Cross-cutting constraints:
+- `Organization.status` has exactly one writer (06-14) — every other plan that reads suspension state does so through `resolveEntitlements` or the derived domain-status function, never a second write path.
+- The support-thread "post a system message" primitive (06-06) is the only notification channel this milestone has — 06-14's suspension notice and 06-16's claim decisions both post through it rather than inventing their own.
+- Transcript UI components (06-09) are built once and reused via a `viewer` prop by 06-12's platform side, never forked.
 
 ### Phase 7: Trial & Template-Tier Business Rules
 
