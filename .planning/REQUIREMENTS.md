@@ -26,14 +26,14 @@
 - [ ] **ONB-02**: Onboarding captures business name, industry/segment, logo upload, and brand colors
 - [ ] **ONB-03**: Uploaded logos and product images pass through automatic enhancement/cropping so a low-quality photo doesn't visibly wreck the storefront
 - [ ] **ONB-04**: Completing onboarding produces a live, published storefront on an EINORT subdomain within minutes, pre-populated with the selected flagship template and the merchant's own branding
-- [ ] **ONB-05**: Every merchant gets a 30-day full-feature trial of their selected plan, enforced server-side, starting at signup *(updated 2026-09-13 for milestone v2.0 — was 10 days; Master Product Specification V3 names 30 days a "critical commercial rule." Code change: `TRIAL_DAYS` in `src/server/entitlements/resolve.ts`, plus every trial-day copy reference across onboarding/dashboard/pricing. Needs a roadmap phase — not yet scheduled.)*
+- [ ] **ONB-05**: Every merchant gets a 30-day full-feature trial of their selected plan, enforced server-side, starting at signup *(updated 2026-09-13 for milestone v2.0 — was 10 days; Master Product Specification V3 names 30 days a "critical commercial rule." Code change: `TRIAL_DAYS` in `src/server/entitlements/resolve.ts`, plus every trial-day copy reference across onboarding/dashboard/pricing. **Scheduled 2026-09-13: Phase 7 (Trial & Template-Tier Business Rules).** Phase 2's original 10-day mapping remains in the traceability table as the historical record of what shipped.)*
 
 ### Storefront Templates
 
 - [ ] **TMPL-01**: One fashion/apparel flagship template is built to genuinely polished, portfolio-quality standard, anchored on the supplied zinc-monochrome DTC visual reference
 - [ ] **TMPL-02**: The flagship template's patterns (layout structure, section types, motion language, typography system) form the pattern library that other segment templates inherit from
 - [ ] **TMPL-03**: At least 3 additional merchant segments (from: electronics, beauty/cosmetics, grocery/food, furniture/home, general retail) get their own structurally distinct layout — not just a recolored copy of the flagship
-- [ ] **TMPL-04**: The full template library reaches 50 visually distinct variations (15 Starter / 17 Business / 18 Professional tier split) by recombining the segment layouts' sections/blocks with different imagery, color, and copy — not 50 independently designed templates *(updated 2026-09-13 for milestone v2.0 — was 10/15/25; same 50 total and same 6 segment categories, only the tier boundaries move, per Master Product Specification V3. Code change: re-tier all 50 already-built templates' plan-access assignment and update entitlement/plan-access tests. Needs a roadmap phase — not yet scheduled.)*
+- [ ] **TMPL-04**: The full template library reaches 50 visually distinct variations (15 Starter / 17 Business / 18 Professional tier split) by recombining the segment layouts' sections/blocks with different imagery, color, and copy — not 50 independently designed templates *(updated 2026-09-13 for milestone v2.0 — was 10/15/25; same 50 total and same 6 segment categories, only the tier boundaries move, per Master Product Specification V3. Code change: re-tier all 50 already-built templates' plan-access assignment and update entitlement/plan-access tests. **Scheduled 2026-09-13: Phase 7 (Trial & Template-Tier Business Rules).** Phase 5's original 10/15/25 mapping remains in the traceability table as the historical record of what shipped.)*
 - [ ] **TMPL-05**: Template distinctiveness is checked explicitly (side-by-side comparison) before the library is considered done — genericness is treated as a failure condition, not a subjective nice-to-have
 - [x] **TMPL-06**: The template picker (onboarding and the storefront editor's "Change template" action) shows a real rendered preview image per template, not a placeholder geometric thumbnail, in a grid layout comparable to mainstream theme-store quality (owner-supplied Shopify reference)
 
@@ -91,13 +91,13 @@
 
 ## v2.0 Milestone Requirements
 
-New requirements for milestone v2.0 (Design Parity + Marketplace/Marketing Build-out), added 2026-09-13. Driven by Master Product Specification V3 and a design-reference prototype snapshot — see `.planning/design-references/EINORT-V3-MASTER-SPEC-AND-PROTOTYPE-V6.md` and `.planning/research/SUMMARY.md`. Not yet mapped to phases — the roadmapper maps these below.
+New requirements for milestone v2.0 (Design Parity + Marketplace/Marketing Build-out), added 2026-09-13. Driven by Master Product Specification V3 and a design-reference prototype snapshot — see `.planning/design-references/EINORT-V3-MASTER-SPEC-AND-PROTOTYPE-V6.md` and `.planning/research/SUMMARY.md`. **Mapped to phases 2026-09-13** — see the Traceability table below and `.planning/ROADMAP.md`.
 
 ### Design System & Visual Migration
 
 - [ ] **DSGN-01**: A central design token/component layer (buttons, cards, badges, modals, page headers, status badges, pricing cards, empty states, data tables) is extracted and reused across dashboard surfaces, extending the already-shipped blue/gold/zinc token retrofit (`260823-gu4`) rather than replacing it
 - [ ] **DSGN-02**: Existing real surfaces (Auth, Onboarding, Dashboard Overview, Products, Orders, Storefront Themes + Editor, Settings) are visually migrated toward the design-reference prototype's layout/interaction patterns while their real data, server actions, and auth boundaries stay unchanged
-- [ ] **DSGN-03**: Responsive behavior is verified at 320/375/390/430/768/1024/1280/1440/1920px on every migrated and new surface
+- [ ] **DSGN-03**: Responsive behavior is verified at 320/375/390/430/768/1024/1280/1440/1920px on every migrated and new surface *(mapped to Phase 8 for traceability; the "new surface" half is a standing phase-gate obligation inherited by Phases 9-15, since those surfaces do not exist when Phase 8 runs — see ROADMAP.md Phase 8 notes)*
 
 ### Marketplace (public discovery)
 
@@ -210,8 +210,11 @@ Explicitly excluded. Documented to prevent scope creep.
 | Selling/registering domains on the merchant's behalf, running DNS/nameservers for merchants, email hosting on custom domains, wildcard custom domains | Each is a different, larger business (registrar accreditation, mail hosting, DNS-01 nameserver takeover) that this platform does not need to become |
 | Session/funnel/cohort analytics, conversion-rate as a headline metric, forecasting/trend prediction | No session/pageview pipeline exists; at this order volume these are noise presented as insight |
 | Per-merchant third-party analytics embeds (GA4/Meta Pixel snippets) | A tenant-controlled `<script>` tag in a shared codebase is a stored-XSS-shaped hole across every storefront |
+| Saved customer address book | No shopper authentication exists — an address book is either unreachable or reachable by typing a stranger's phone number, leaking their home address. `Order.deliveryAddress` (snapshot) plus a merchant-visible last-known address covers what CUST-02 needs |
 
 ## Traceability
+
+### v1.0 requirements
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -264,19 +267,92 @@ Explicitly excluded. Documented to prevent scope creep.
 | ADM-04 | Phase 6 | Pending |
 | ADM-05 | Phase 6 | Pending |
 
+**Phase 6 reconciliation (2026-09-13):** the eight rows above mapped to Phase 6 (SUB-03, DASH-01/02, ADM-01..05) were committed during v1.0 but never planned or executed. Milestone v2.0 **keeps Phase 6 exactly as-is — same number, same requirements, same success criteria** — and runs it first, as v2.0's foundation phase. Nothing was renumbered, moved, or dropped. Rationale: Phase 6 builds the merchant dashboard shell that every new v2.0 dashboard surface plugs into, the pilot-scoped Super Admin that MMKT-06's moderation page lives inside, and the ADM-05 support thread that is the only merchant↔platform notification channel that exists (`resend` is declared but unwired). New v2.0 phases therefore start at Phase 7.
+
+### v2.0 milestone requirements
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| ONB-05 (30-day trial) | Phase 7 | Pending |
+| TMPL-04 (15/17/18 tier split) | Phase 7 | Pending |
+| DSGN-01 | Phase 8 | Pending |
+| DSGN-02 | Phase 8 | Pending |
+| DSGN-03 | Phase 8 | Pending |
+| INV-01 | Phase 9 | Pending |
+| INV-02 | Phase 9 | Pending |
+| INV-03 | Phase 9 | Pending |
+| INV-04 | Phase 9 | Pending |
+| DLV-01 | Phase 10 | Pending |
+| DLV-02 | Phase 10 | Pending |
+| DLV-03 | Phase 10 | Pending |
+| DLV-04 | Phase 10 | Pending |
+| DLV-05 | Phase 10 | Pending |
+| CUST-01 | Phase 11 | Pending |
+| CUST-02 | Phase 11 | Pending |
+| CUST-03 | Phase 11 | Pending |
+| CUST-04 | Phase 11 | Pending |
+| ANLY-01 | Phase 12 | Pending |
+| ANLY-02 | Phase 12 | Pending |
+| ANLY-03 | Phase 12 | Pending |
+| ANLY-04 | Phase 12 | Pending |
+| ANLY-05 | Phase 12 | Pending |
+| ANLY-06 | Phase 12 | Pending |
+| MMKT-01 | Phase 13 | Pending |
+| MMKT-02 | Phase 13 | Pending |
+| MMKT-03 | Phase 13 | Pending |
+| MMKT-04 | Phase 13 | Pending |
+| MMKT-05 | Phase 13 | Pending |
+| MMKT-06 | Phase 13 | Pending |
+| MMKT-07 | Phase 13 | Pending |
+| MMKT-08 | Phase 13 | Pending |
+| MKPL-01 | Phase 14 | Pending |
+| MKPL-02 | Phase 14 | Pending |
+| MKPL-03 | Phase 14 | Pending |
+| MKPL-04 | Phase 14 | Pending |
+| MKPL-05 | Phase 14 | Pending |
+| MKPL-06 | Phase 14 | Pending |
+| MKPL-07 | Phase 14 | Pending |
+| DOM-03 | Phase 15 | Pending |
+| DOM-04 | Phase 15 | Pending |
+| DOM-05 | Phase 15 | Pending |
+| DOM-06 | Phase 15 | Pending |
+| DOM-07 | Phase 15 | Pending |
+| DOM-08 | Phase 15 | Pending |
+| DOM-09 | Phase 15 | Pending |
+
+**ONB-05 and TMPL-04 appear in both tables on purpose.** Their v1.0 rows (Phase 2, Phase 5) record what actually shipped — a 10-day trial and a 10/15/25 tier split. Their v2.0 rows (Phase 7) record where the revised values are implemented. Neither is duplicated *work*: Phase 7 changes the two values in place on top of what Phases 2 and 5 built.
+
 **Coverage:**
-- v1 requirements: 46 total (44 from roadmap creation + SUB-03 and ADM-05, added 2026-08-23 per user request for a merchant↔platform support-messaging thread and the subscription-payment-claim flow it was always going to need)
-- Mapped to phases: 46/46 ✓
+
+- v1.0 requirements: 46 total — mapped 46/46 ✓ (unchanged by this milestone)
+- v2.0 requirements: 46 total (44 new — DSGN-01..03, MKPL-01..07, MMKT-01..08, CUST-01..04, INV-01..04, DLV-01..05, DOM-03..09, ANLY-01..06 — plus the 2 updated-in-place: ONB-05, TMPL-04) — mapped 46/46 ✓
 - Unmapped: 0
+- Orphaned (mapped to no phase): 0
+- Duplicated within a milestone (same requirement in two phases of the same milestone): 0
 
 **Phase distribution:**
+
+*v1.0:*
 - Phase 1 (Multi-Tenant Foundations & Domain Resolution): 10 requirements
 - Phase 2 (Merchant Auth, Entitlements & Trial): 4 requirements
 - Phase 3 (Product Catalog & Order/Payment-Claim State Machine): 13 requirements
 - Phase 4 (Theme/Section/Block System & Flagship Template): 8 requirements
 - Phase 5 (Template Segment Expansion): 3 requirements
+- Phase 05.1 (Template Preview Rendering & Picker Redesign): 1 requirement
+- Phase 05.2 (Marketing Landing Page Redesign): 1 requirement
 - Phase 6 (Merchant Dashboard & Platform Admin): 8 requirements
+
+*v2.0 (Phase 6 executes first, carrying its v1.0 mappings — no v2.0 requirements are assigned to it):*
+- Phase 7 (Trial & Template-Tier Business Rules): 2 requirements
+- Phase 8 (Design System & Visual Migration): 3 requirements
+- Phase 9 (Inventory): 4 requirements
+- Phase 10 (Delivery): 5 requirements
+- Phase 11 (Customers): 4 requirements
+- Phase 12 (Analytics): 6 requirements
+- Phase 13 (Marketplace Marketing): 8 requirements
+- Phase 14 (Marketplace): 7 requirements
+- Phase 15 (Custom Domains): 7 requirements
 
 ---
 *Requirements defined: 2026-08-16*
-*Last updated: 2026-09-13 — milestone v2.0 started: updated ONB-05 (10→30-day trial) and TMPL-04 (10/15/25→15/17/18 tier split) in place; added 44 new requirements (DSGN-01..03, MKPL-01..07, MMKT-01..08, CUST-01..04, INV-01..04, DLV-01..05, DOM-03..09, ANLY-01..06), not yet mapped to phases; promoted PLAT-V2-01 (custom domains) from deferred to active; added 12 new Out of Scope rows from v2.0 research*
+*Last updated: 2026-09-13 — milestone v2.0 roadmapped: all 46 v2.0 requirements (44 new + ONB-05 and TMPL-04 updated in place) mapped to Phases 7-15; Phase 6 reconciled and kept unchanged as v2.0's foundation phase; added one Out of Scope row (saved customer address book) surfaced during roadmapping*

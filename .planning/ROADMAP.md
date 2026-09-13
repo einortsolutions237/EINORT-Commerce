@@ -4,6 +4,14 @@
 
 EINORT-Commerce goes from an empty repository to a working, trustworthy, Cameroon-first storefront-builder in six phases. The first two phases build the invisible foundation every surface depends on — structurally enforced multi-tenant data isolation with working subdomain resolution, then session-based merchant auth with server-enforced subscription entitlements and trial. Phase 3 builds the single most load-bearing feature in the product: a merchant can list a product and a customer can complete a full purchase through WhatsApp order, manual Mobile Money/Orange Money claim, or Cash on Delivery, with an auditable order state machine and oversell-proof stock. Phase 4 closes the core value loop — the schema-driven Theme→Page→Section→Block system and the portfolio-quality fashion flagship template, wired into onboarding so a merchant genuinely gets a live, branded, professional-looking storefront within minutes. Phase 5 proves the recombination system scales to real segment diversity (electronics, beauty, grocery, furniture, general retail) without collapsing into "same layout, different color." Phase 6 closes the loop for both operators: the merchant dashboard for running the business day-to-day, and the pilot-scoped Super Admin surface for the platform owner.
 
+### Milestone v2.0 — Design Parity + Marketplace/Marketing Build-out
+
+Milestone v2.0 (added 2026-09-13) continues the same phase sequence rather than restarting it. **Phase 6 is not renumbered and its requirement mappings are unchanged** — it was already committed in v1.0's traceability table (DASH-01, DASH-02, ADM-01..05, SUB-03) but was never planned or executed, and it is exactly the foundation the rest of this milestone needs: the merchant dashboard shell every new v2.0 dashboard surface plugs into, the pilot-scoped Super Admin that MMKT-06's listing-moderation page lives inside, and the ADM-05 support thread that is this product's only merchant↔platform notification channel. It therefore executes first in v2.0, carrying its v1.0 requirement mappings forward untouched. All *new* v2.0 phases start at Phase 7. Nothing already-committed is dropped or renumbered.
+
+The nine new phases follow the research's dependency-driven order and nothing else. Phase 7 lands the two Master Spec V3 commercial-rule changes (30-day trial, 15/17/18 template tiers) early and alone, because they are small, block nothing, and every later phase would otherwise render copy it would have to re-edit. Phase 8 extracts the shared design-token/component layer and visually migrates the already-real surfaces, so the six new dashboard areas that follow compose from one design system instead of each inventing its own. Phases 9-12 (Inventory → Delivery → Customers → Analytics) are a **non-negotiable ordering**: Inventory, Delivery, and Customers each edit the same safety-critical `placeOrder` transaction and must land in that order so each edit hits a settled base, and Analytics must follow Delivery because delivery fees redefine what "revenue" means. Phases 13-14 (Marketplace Marketing → Marketplace) are likewise ordered: the public marketplace has nothing real to render or test against until merchant listings exist. Phase 15 (Custom Domains) is deliberately last despite depending on nothing — it is the only area touching 100% of request traffic and the only one with external DNS/TLS wall-clock risk, so a regression there cannot contaminate six in-flight areas.
+
+Granularity is `standard` (5-8 phases). This milestone runs to nine new phases anyway: the money-path trio cannot be compressed without violating the `placeOrder` sequencing above, and each remaining area is a self-contained capability with its own independently verifiable user outcome. Compressing further would trade a real correctness guarantee for a smaller number.
+
 ## Phases
 
 **Phase Numbering:**
@@ -13,12 +21,68 @@ EINORT-Commerce goes from an empty repository to a working, trustworthy, Cameroo
 
 Decimal phases appear between their surrounding integers in numeric order.
 
+**Milestone v1.0:**
+
 - [x] **Phase 1: Multi-Tenant Foundations & Domain Resolution** - Structurally enforced tenant isolation and working subdomain resolution, from signup onward (completed 2026-08-17)
 - [x] **Phase 2: Merchant Auth, Entitlements & Trial** - Session-scoped merchant login with server-enforced plan limits and a 10-day trial (completed 2026-08-23)
 - [ ] **Phase 3: Product Catalog & Order/Payment-Claim State Machine** - A customer can browse, buy, and pay by claim; a merchant can list products and confirm payment
 - [ ] **Phase 4: Theme/Section/Block System & Flagship Template** - Onboarding produces a live, branded, portfolio-quality storefront; merchants can customize it
-- [ ] **Phase 5: Template Segment Expansion** - 50 structurally distinct template variations (10 Starter / 15 Business / 25 Professional) across real merchant segments
-- [ ] **Phase 6: Merchant Dashboard & Platform Admin** - Merchants run their business day-to-day; the platform owner operates the pilot fleet
+- [ ] **Phase 5: Template Segment Expansion** - 50 structurally distinct template variations across real merchant segments
+- [x] **Phase 05.1: Template Preview Rendering & Picker Redesign** (INSERTED) - Real rendered screenshot previews for all 50 templates (completed 2026-09-08)
+- [x] **Phase 05.2: Marketing Landing Page Redesign** (INSERTED) - A real public landing page at `/` (completed 2026-09-08)
+- [ ] **Phase 05.3: Storefront Editor Page Split** (INSERTED) - Separate Themes and Editor pages, matching Shopify's admin separation
+
+**Milestone v2.0 — Design Parity + Marketplace/Marketing Build-out:**
+
+- [ ] **Phase 6: Merchant Dashboard & Platform Admin** - Merchants run their business day-to-day; the platform owner operates the pilot fleet *(carried forward from v1.0's traceability table unchanged; executes first in v2.0 as its foundation phase)*
+- [ ] **Phase 7: Trial & Template-Tier Business Rules** - The 30-day trial and the 15/17/18 template tier split are true everywhere the product states them
+- [ ] **Phase 8: Design System & Visual Migration** - One shared component layer, and every existing surface migrated onto it and verified responsive
+- [ ] **Phase 9: Inventory** - Merchants see and correct real stock through exactly one auditable writer
+- [ ] **Phase 10: Delivery** - Customers see what delivery costs before they pay; merchants control it by zone
+- [ ] **Phase 11: Customers** - Merchants recognize returning buyers and see their full order history
+- [ ] **Phase 12: Analytics** - One page that answers "how did the business do", agreeing with every other number in the product
+- [ ] **Phase 13: Marketplace Marketing** - Merchants pay for a second subscription and put chosen products forward as moderated listings
+- [ ] **Phase 14: Marketplace** - Shoppers discover products across merchants and land on the merchant's own storefront to buy
+- [ ] **Phase 15: Custom Domains** - Merchants put their store on a domain they own, with HTTPS and a clean teardown
+
+## Key Decisions Pending Resolution (Milestone v2.0)
+
+Two structural blockers must be **decided before the phases that depend on them are planned in detail** — not discovered mid-phase. Both were independently flagged by all four research passes (`STACK.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md`), which is the strongest convergence signal in the research set.
+
+### KD-V2-01: The `marketplaceDb` fourth data-access client
+
+**Status:** Unresolved. **Must be decided and built at the start of Phase 13**, not deferred into Phase 14.
+
+The public Marketplace browse surface is the codebase's first cross-tenant read with *no tenant identity at all* — anonymous, apex-hosted, no session and no `Host`-derived tenant. None of the three existing DB clients can legally serve it: `scopedDb` requires a `tenantId`, `platformDb` is a five-table registry allowlist, and `adminDb` is unscoped and ESLint-fenced to `src/server/admin/**` (a zone also forbidden from importing tenant-scoped modules). The research's unanimous recommendation is a fourth client: a read-only Prisma Client Extension, ESLint-fenced bidirectionally to `src/server/marketplace/**`, exposing only read operations over an explicit model+column `select` allowlist, with a non-overridable published-and-active predicate **computed at query time, never read from a stored flag** (MKPL-05 states this as a requirement).
+
+**Why it must be decided at the start of Phase 13, not Phase 14:** Marketplace Marketing designs the `MarketplaceListing` schema, and that schema's shape (which columns exist, which indexes are non-tenant-prefixed, whether display data is referenced or duplicated) is determined by how listings will later be read. Designing the schema without knowing the read client's shape is the exact rework this decision exists to prevent.
+
+**The wrong shortcut, named explicitly:** widening `adminDb`'s ESLint fence to include marketplace code. It reads as a two-line config diff and is the milestone's #1 flagged risk — it makes the platform-owner-only unscoped client reachable from an anonymous, crawler-hit, public route.
+
+**Resolve via:** `/gsd:plan-phase 13 --research-phase` — validate the extension mechanics (read-only enforcement, predicate injection) against a running Prisma 7 client before committing. `ARCHITECTURE.md` rates its exact shape MEDIUM confidence (extrapolated from `scopedDb`, not externally verified); the *problem* it solves is HIGH confidence and read directly from source.
+
+### KD-V2-02: The second-subscription entitlement model shape
+
+**Status:** Unresolved. **Must be decided before Phase 13's schema design begins** — this is a decision, not an implementation detail.
+
+Marketplace Marketing (MMKT-01) is a second, independently-priced, independently-expiring subscription. Today `resolveEntitlements(org, now)` is a pure function of scalar fields on one `Organization` row (`planTier`, `subscriptionStatus`, `trialEndsAt`). A second product with its own price, capacity, status, and expiry has nowhere to live in that shape.
+
+**The choice:** a dedicated `MarketplaceSubscription` model versus a generalized `Subscription` table (with `Organization.marketplaceAddonUntil` as a narrower third option `ARCHITECTURE.md` sketches).
+
+**Why it must precede schema design:** whichever shape wins changes `resolveEntitlements`'s signature, which touches `merchantAction`, `requireMerchantContext`, and every entitlement-gated Server Action in the codebase. Both `FEATURES.md` and `ARCHITECTURE.md` call this the single largest hidden cost in the entire milestone — invisible from the feature description.
+
+**Coupled sub-decision (MMKT-07):** the chosen model must make it possible for a merchant whose *Storefront* plan has lapsed to still pause or withdraw their own *Marketplace* listings. `merchantAction({mode:"write"})` currently blocks all writes on `canWrite: false`, which would silently orphan public content the merchant can no longer control. The research's fix is a third `merchantAction` mode (`"retract"`), allowlisted to footprint-reducing actions only.
+
+**Resolve via:** `/gsd:plan-phase 13 --research-phase`, in the phase context document, before any migration is written.
+
+### Resolved at roadmap time (recorded so nobody "re-fixes" them)
+
+| Question | Resolution |
+|----------|------------|
+| **Moderation with no moderator** (`PITFALLS.md` Pitfall 16, `ARCHITECTURE.md` Anti-Pattern 6). The research recommended *omitting* `PENDING_REVIEW`/`REJECTED` from `ListingStatus` because Platform Admin is deferred and no moderator surface would exist. | **Superseded by requirements.** MMKT-03/MMKT-04/MMKT-06 explicitly require the Pending Review state, a rejection reason, and a platform-side moderation page inside the pilot-scoped Super Admin. Phase 6 builds that Super Admin, so the moderator exists before Phase 13 needs it. Build the full lifecycle. Do **not** "correct" the enum back to four members on the strength of the research document. |
+| **Where DSGN-01..03 lives** — its own phase, or threaded through each phase's UI work. | **Its own phase (Phase 8), early.** DSGN-01's component layer is a *dependency* of six later phases that each build new dashboard surfaces; threading it through means the first of those phases invents the primitives and the other five either inherit half-formed conventions or get retrofitted. DSGN-02 targets only surfaces that already exist and has no dependency on any later phase, so it can complete early and completely. The one part that genuinely cannot finish in Phase 8 is DSGN-03's responsive verification of *new* surfaces — handled as a standing phase-gate obligation inherited by Phases 9-15 (see Phase 8's detail). |
+| **Shopper accounts on Customers or Marketplace** (`PITFALLS.md` Pitfall 8). | Already closed in REQUIREMENTS.md's Out of Scope table. Checkout stays guest-only; `Customer` is an index over orders, never an identity with a login. Recorded here because the feature being *named* "Customers" is what makes people build it anyway. |
+| **Marketplace cart/checkout** (`PITFALLS.md` Pitfall 15). | MKPL-06 makes this a requirement-level prohibition, not a preference. The cart cookie's host-scoping (no `Domain` attribute) is what structurally prevents cross-tenant cart leakage; an apex-hosted cart would reintroduce that leak as a feature. |
 
 ## Phase Details
 
@@ -74,7 +138,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
 
   1. Merchant can log in and reach a dashboard whose tenant identity is derived solely from the authenticated session, never from client-supplied input.
-  2. Every merchant is on a 10-day full-feature trial starting at signup, enforced server-side per-request — after expiry, tier limits actually apply, not just a banner.
+  2. Every merchant is on a 10-day full-feature trial starting at signup, enforced server-side per-request — after expiry, tier limits actually apply, not just a banner. *(Superseded 2026-09-13: ONB-05 was updated to 30 days for milestone v2.0. The implementation change lands in Phase 7, which owns ONB-05's v2.0 mapping. This criterion records what Phase 2 shipped, not what the product now promises.)*
   3. Starter/Business/Professional plan differences exist only as server-enforced entitlement checks (product limits, staff limits, feature access) on one shared codebase — no separate codebase or client-only gating per tier.
   4. Plan limits and trial state are checked server-side on every relevant write, and attempting to exceed a limit is blocked even if the UI is bypassed.
 
@@ -212,14 +276,14 @@ Plans:
 
 ### Phase 5: Template Segment Expansion
 
-**Goal**: Merchants outside the fashion segment get their own structurally distinct storefront, and the template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional) that a stranger would not mistake for one another.
+**Goal**: Merchants outside the fashion segment get their own structurally distinct storefront, and the template library reaches 50 visually distinct variations that a stranger would not mistake for one another.
 **Mode:** mvp
 **Depends on**: Phase 4
 **Requirements**: TMPL-03, TMPL-04, TMPL-05
 **Success Criteria** (what must be TRUE):
 
   1. At least 3 additional merchant segments (from electronics, beauty/cosmetics, grocery/food, furniture/home, general retail) each get their own structurally distinct layout skeleton — not a recolored copy of the flagship.
-  2. The full template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional) by recombining the segment layouts' sections/blocks with different imagery, color, and copy, not 50 independently designed templates.
+  2. The full template library reaches 50 visually distinct variations by recombining the segment layouts' sections/blocks with different imagery, color, and copy, not 50 independently designed templates. *(Shipped as 10 Starter / 15 Business / 25 Professional. TMPL-04's tier split was revised to 15/17/18 on 2026-09-13 for milestone v2.0; the re-tiering lands in Phase 7, which owns TMPL-04's v2.0 mapping. The 50 total and the six segment categories are unchanged.)*
   3. Template distinctiveness is checked explicitly via side-by-side comparison ("would a stranger think these are the same product") before the library is considered done — genericness is treated as a failure condition.
 
 **Plans**: 22 plans (6 waves)
@@ -334,7 +398,13 @@ Plans:
 
 - [ ] 05.3-04-PLAN.md — Phase gate: dead-route grep gate, D-B scope-creep check, full automated suite, and the blocking six-item manual verification checkpoint
 
+---
+
+## Milestone v2.0 Phase Details
+
 ### Phase 6: Merchant Dashboard & Platform Admin
+
+> **v2.0 reconciliation (2026-09-13):** This phase was defined and requirement-mapped during v1.0 but never planned or executed. It is **not renumbered and its requirements are unchanged** — DASH-01, DASH-02, ADM-01..05, and SUB-03 keep their existing "Phase 6" traceability rows. It becomes milestone v2.0's foundation phase and executes first, because three later v2.0 phases depend on what it builds: Phase 8 migrates the dashboard surfaces this phase creates, Phase 13's MMKT-06 moderation page lives inside this phase's pilot-scoped Super Admin, and Phases 9-15 use the ADM-05 support thread as their notification channel (`resend` is still unwired — no module under `src/` imports it, so an in-app thread message plus a dashboard badge is the only real channel that exists).
 
 **Goal**: A merchant can run their business day-to-day from a dashboard that surfaces what needs attention, and the platform owner can operate and support the pilot fleet of stores from a pilot-scoped Super Admin surface — including a direct messaging channel to every merchant and the ability to verify their subscription payments through it.
 **Mode:** mvp
@@ -353,19 +423,232 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 7: Trial & Template-Tier Business Rules
+
+**Goal**: The two Master Spec V3 commercial rules — a 30-day trial and a 15/17/18 template tier split — are true everywhere the product enforces or states them, with no surface still quoting the old numbers.
+**Mode:** mvp
+**Depends on**: Phase 6 (the dashboard/plan surfaces that quote trial days and template access)
+**Requirements**: ONB-05, TMPL-04
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. A merchant who signs up today gets a 30-day full-feature trial, enforced server-side, and every trial figure they read — onboarding, the dashboard trial banner, the plan/pricing screens — says 30 days. No surface still says 10.
+  2. Merchants already mid-trial are handled by one stated, deliberate rule (extended to 30 days from signup, or left on their existing end date) rather than by whatever the constant change happens to do.
+  3. A Starter merchant can open exactly 15 templates, a Business merchant 32, and a Professional merchant all 50; locked templates stay visible-but-dimmed in the picker rather than disappearing (Phase 5's SORT-NEVER-FILTER rule survives the re-tiering).
+  4. The entitlement and plan-access test suites assert the new figures, so a later edit that reintroduces a 10-day trial or a 10/15/25 split fails the build rather than shipping quietly.
+
+**Plans**: TBD
+
+**Notes for planning:** Both changes are small and touch known code — `TRIAL_DAYS` in `src/server/entitlements/resolve.ts`, `PlanLimits.templates` and the 50 templates' tier assignment in the theming registry, plus the centralized copy in `src/lib/strings/**` (no user-facing string may be inlined — the prose-literal contract tests will fail the build). Deliberately sequenced before Phase 8 so the visual migration renders final copy instead of numbers it would have to re-edit.
+
+### Phase 8: Design System & Visual Migration
+
+**Goal**: Every merchant-facing surface that already exists looks like one deliberately designed product matching the V3 design reference, and a reusable component layer exists that all six remaining v2.0 phases build their new screens from.
+**Mode:** mvp
+**Depends on**: Phase 6 (the dashboard and Super Admin surfaces this phase migrates must exist first), Phase 7 (so the migration renders the final 30-day / 15-17-18 copy)
+**Requirements**: DSGN-01, DSGN-02, DSGN-03
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. A merchant moving between Auth, Onboarding, Dashboard Overview, Products, Orders, Storefront Themes/Editor, and Settings sees one consistent visual language — the same buttons, cards, badges, page headers, status badges, empty states, and tables — instead of per-page one-offs.
+  2. Every migrated surface still does exactly what it did before the migration: same data, same server actions, same auth boundaries, same entitlement gating — demonstrated by the existing test suite passing without being weakened.
+  3. A merchant can complete every migrated flow on a 320px phone through a 1920px desktop with no horizontal scroll, clipped control, or unreachable action, verified at all nine named breakpoints (320/375/390/430/768/1024/1280/1440/1920).
+  4. A developer building a new dashboard page in a later phase composes it from the shared component layer instead of inventing new primitives — the layer is complete enough that doing the wrong thing takes more effort than doing the right thing.
+
+**Plans**: TBD
+**UI hint**: yes
+
+**Notes for planning:**
+- DSGN-01 **extends** the already-shipped blue/gold/slate/zinc token retrofit (quick task `260823-gu4`) and the `DashboardCard` primitive from `260903-ugl`/`260906-egn` — it does not replace them. The storefront palette is a separate scope (`[data-surface="storefront"]`) and `tests/unit/surface-token-isolation.test.ts` will fail the build if the two are mixed.
+- **DSGN-03 carries a standing obligation into every later phase.** Its requirement covers "every migrated *and new* surface", but new surfaces do not exist yet. Phase 8 owns the responsive contract, the breakpoint checklist, and full verification of the migrated surfaces; Phases 9-15 each inherit the same checklist as a phase-gate item for the surfaces they add. DSGN-03 is mapped to Phase 8 for traceability, not because responsiveness stops being checked after it.
+- The v2.0 design reference is the merchant-platform blue/gold/slate direction (see project memory `project_einort_merchant_platform_design_reference`) — distinct from the zinc-monochrome storefront flagship reference.
+
+### Phase 9: Inventory
+
+**Goal**: A merchant can see and correct what they actually have in stock, and every number in the product's stock column changes through exactly one auditable path.
+**Mode:** mvp
+**Depends on**: Phase 8
+**Requirements**: INV-01, INV-02, INV-03, INV-04
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. Merchant can open a stock-levels view across every variant in their catalog and filter it down to low-stock and out-of-stock items.
+  2. Merchant can set a variant's stock to an exact number or adjust it by an amount, pick a reason for the change, and see the new level immediately.
+  3. Merchant can open a variant's adjustment history and see every manual change with its reason, amount, actor, and time — nothing is ever silently overwritten.
+  4. Merchant sets one store-wide low-stock threshold and the dashboard flags items at or below it without them going looking.
+  5. Two customers checking out the last unit at the same time still cannot both succeed, and no combination of checkout and manual adjustment can produce a stock number the adjustment ledger cannot explain.
+
+**Plans**: TBD
+**UI hint**: yes
+
+**Notes for planning:** This phase is deliberately first in the money-path sequence because it *reduces* risk for Phases 10 and 11: `ProductVariant.stock` currently has two uncoordinated writers (`src/server/orders/stock.ts`'s conditional-decrement hold and `src/server/catalog/actions.ts`'s variant matrix), and INV-02's single-writer consolidation must land before Delivery and Customers each edit `placeOrder`. Do the consolidation in the phase's first plan, in isolation, with the isolation suite green — not concurrently with any `placeOrder` change. Enforce it with a source-scanning contract test modeled on `tests/unit/single-order-state-writer.test.ts`. Ship the levels list paginated from day one (two unbounded `findMany`s are already logged in `CONCERNS.md`; do not add a third).
+
+### Phase 10: Delivery
+
+**Goal**: A customer knows what delivery will actually cost before they commit to paying, and the merchant controls those costs by zone without ever being able to be overridden from the browser.
+**Mode:** mvp
+**Depends on**: Phase 9
+**Requirements**: DLV-01, DLV-02, DLV-03, DLV-04, DLV-05
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. Merchant can define named delivery zones with a flat fee each — starting from editable Douala presets — plus a pickup-in-store option.
+  2. Merchant can set a free-delivery threshold and a delivery-promise line, and a customer whose order clears the threshold sees delivery become free.
+  3. Customer picks their zone at checkout and sees the delivery fee and the resulting order total *before* any payment instructions appear.
+  4. The amount the customer is told to transfer, the amount recorded on the order, and the amount the merchant sees are the same number, computed server-side inside the order transaction — a tampered client cannot change the fee.
+  5. Renaming or repricing a zone later never changes the zone name or fee shown on an already-placed order.
+
+**Plans**: TBD
+**UI hint**: yes
+
+**Notes for planning:** Must precede Analytics — delivery fees change what "revenue" means, and re-deciding whether the sales chart shows GMV or product revenue *after* the chart ships is expensive. The checkout input schema must accept `deliveryZoneId` only and **never** a `deliveryFeeXaf` field; the fee is recomputed from a pure `quoteDelivery(settings, zone, subtotalXaf)` (mirroring `resolveEntitlements`'s zero-I/O shape) inside the existing `placeOrder` transaction. Open question for the phase context: whether a WhatsApp-channel order carries a delivery fee in its pre-filled message or negotiates it in chat — that path bypasses the payment state machine entirely.
+
+### Phase 11: Customers
+
+**Goal**: A merchant can recognize a returning buyer, see everything that buyer has ever ordered, and reach them in one tap — without anybody ever having to create an account.
+**Mode:** mvp
+**Depends on**: Phase 10
+**Requirements**: CUST-01, CUST-02, CUST-03, CUST-04
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. Placing an order automatically creates or matches a customer on the normalized phone number — the merchant never types a customer in by hand, and the same number never produces two customers.
+  2. Merchant can search their customer list by name or phone and open a profile showing that customer's full order history and total spent.
+  3. Merchant can start a WhatsApp chat or place a call to a customer in one tap from that profile.
+  4. Orders placed before this phase still appear everywhere they appeared before and are never dropped, even when their phone number cannot be matched to a customer.
+  5. A customer giving a corrected name on a new order never rewrites the name recorded on an older one.
+
+**Plans**: TBD
+**UI hint**: yes
+
+**Notes for planning:** **Key Decision, recorded now so it is not rediscovered mid-phase: this phase adds no shopper account, login, or password-reset surface.** Checkout stays guest-only; `Customer` is an index *over* orders, never the source of an order's identity. `Order.customerName`/`.customerPhone`/`.deliveryAddress` stay and stay authoritative — a nullable `Order.customerId` is added *alongside* them (which is also what CUST-04 requires). Do not build a saved-address book: with no authentication, it is either unreachable or reachable by typing a stranger's phone number. Reuse the existing normalizer in `src/server/checkout/actions.ts`; do not write a second one. Watch the retry hazard: `placeOrder` retries exactly once on a `P2002` on the order number, and the new `[tenantId, phoneNormalized]` unique constraint can `P2002` under two concurrent first-orders from the same phone — handle it locally, never by widening the outer retry (which would re-run the stock hold).
+
+### Phase 12: Analytics
+
+**Goal**: A merchant can answer "how did the business actually do this period, and how does that compare to last period" from one page whose numbers agree with every other number the product shows them.
+**Mode:** mvp
+**Depends on**: Phase 11
+**Requirements**: ANLY-01, ANLY-02, ANLY-03, ANLY-04, ANLY-05, ANLY-06
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. Merchant picks a period and sees revenue, order count, average order value, and units sold, each with a comparison against the previous period.
+  2. Headline revenue counts only confirmed and fulfilled orders, with pending/at-risk money shown separately and clearly labeled — and the dashboard Overview card, the Analytics page, a customer's total spent, and the CSV export all show the same number for the same period.
+  3. Merchant sees a day-by-day chart and a top-10 products table (by revenue and by units), grouped by the canonical product and labeled with its current display name.
+  4. Merchant sees their orders broken down by state and by channel (WhatsApp / manual transfer / cash on delivery).
+  5. Merchant can export the period's analytics as CSV, and no figure anywhere on the page is silently truncated by a row cap.
+
+**Plans**: TBD
+**UI hint**: yes
+
+**Notes for planning:** Extract one shared metrics module (`EARNED_STATES`/`OPEN_STATES`, currently module-private in `src/server/dashboard/queries.ts`) **first**, and make Overview consume it — redefining revenue in a second place is exactly how the Overview card and the Analytics page end up disagreeing in front of a merchant. The existing `unitsSold` figure is not state-filtered the same way revenue is; ANLY-02 resolves that inconsistency and the chosen definition must be recorded as a decision, not assumed. `$queryRaw`/`$executeRaw` are banned repository-wide, so `date_trunc`/`generate_series`/window functions are off the table: add `Order.placedOnDay` for index-backed `groupBy` and bucket in TypeScript, reusing `dashboard/buckets.ts` and `DOUALA_UTC_OFFSET_MINUTES`. `REVENUE_WINDOW_ROW_CAP = 5000` must not survive into a 90- or 365-day window. ANLY-06 forbids any raw or cross-tenant query — `groupBy`/`aggregate` are covered by the tenant extension.
+
+### Phase 13: Marketplace Marketing
+
+**Goal**: A merchant can pay for a separate Marketplace Marketing subscription, put chosen catalog products forward as listings, and stay in control of those listings' fate — while the platform owner keeps the last word on what goes public.
+**Mode:** mvp
+**Depends on**: Phase 6 (the pilot-scoped Super Admin that MMKT-06's moderation page lives inside, and the ADM-05 thread), Phase 8, Phase 12
+**Blocked on decisions**: **KD-V2-01** (`marketplaceDb` shape — decide and build at the start of this phase, because the listing schema depends on how listings will later be read) and **KD-V2-02** (second-subscription entitlement model — decide *before* schema design). See "Key Decisions Pending Resolution" above.
+**Requirements**: MMKT-01, MMKT-02, MMKT-03, MMKT-04, MMKT-05, MMKT-06, MMKT-07, MMKT-08
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. Merchant can activate Marketplace Marketing as a subscription separate from their Storefront plan, seeing an explicit "this is a second, additional charge" disclosure before committing — and the two subscriptions can expire independently of each other.
+  2. Merchant selects existing catalog products into listings through a picker (never a form that creates listing-only content) and is stopped at their tier's capacity of 10/25/50.
+  3. A submitted listing sits in Pending Review until the platform owner approves or rejects it from the Super Admin moderation page; a rejected listing shows the merchant the reason; a merchant can never move their own listing to Active.
+  4. A merchant whose Storefront plan has lapsed, or whose trial has expired into read-only, can still pause or withdraw their own listings — they are never locked out of retracting content that is still public.
+  5. Merchant sees per-listing view and click-through counts, and a listing whose Marketplace subscription period has ended stops being active on its own, with no cron job or manual flag flip involved.
+
+**Plans**: TBD
+**UI hint**: yes
+**Research flag**: recommended — run `/gsd:plan-phase 13 --research-phase`. Both KD-V2-01 and KD-V2-02 are genuinely open design questions rather than implementation details.
+
+**Notes for planning:**
+- Model the lifecycle in the codebase's established idiom: a `LISTING_TRANSITIONS` legality table keyed by **`(actor, from, to)`** (not `(channel, from, to)` — a merchant and the platform have different rights, and self-approval must be structurally impossible), one sanctioned writer paired with an append-only event row, and a source-scanning contract test modeled on `tests/unit/single-order-state-writer.test.ts`.
+- MMKT-05: expiry is **derived at read time** from the subscription period. A stored `EXPIRED` status flipped by a cron drifts from `resolveEntitlements` and fails open during any cron outage — suspended stores stay visible, re-subscribed merchants stay hidden. Export a visibility predicate builder from the entitlements module and pin it to `resolveEntitlements` with a unit test.
+- A listing is a **live pointer**, not a snapshot. Do not copy the product's name, price, or images onto it (the `OrderItem` snapshot instinct is the wrong instinct here) — marketplace and storefront prices would visibly drift and "remove listing" would start to behave like "delete product". A denormalized sort key that is *allowed* to lag is the one acceptable exception, and only if the detail page reads the live price.
+- `MarketplaceListing`'s public-browse indexes will deliberately **not** lead with `tenantId`, breaking the schema's usual rule for the same reason `StoreSlugHistory.slug` does. Document it in the schema comment or the next reader will "fix" it. Insert new models into `TENANT_SCOPED_MODELS` in FK dependency order — that array drives the seed fixture's batched transaction and must never be re-sorted.
+
+### Phase 14: Marketplace
+
+**Goal**: A shopper who has never heard of any individual merchant can find a product on EINORT's public marketplace and land on that merchant's own storefront to buy it.
+**Mode:** mvp
+**Depends on**: Phase 13 (there is nothing real to render, search, or test against until listings exist)
+**Blocked on decisions**: **KD-V2-01** must already be resolved and built (see Phase 13).
+**Requirements**: MKPL-01, MKPL-02, MKPL-03, MKPL-04, MKPL-05, MKPL-06, MKPL-07
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. Shopper can browse a public marketplace home with category, featured, and recently-added rails, page through a category, and keyword-search active listings.
+  2. Shopper opens a listing and sees the merchant's live current price, name, and images — never a stale stored copy — and the primary button takes them to that product on the merchant's own storefront.
+  3. Shopper can open a merchant profile showing store identity (logo, name, segment, city) and its active listing count.
+  4. A paused, rejected, expired, or suspended-merchant listing disappears from every marketplace surface the moment its underlying condition changes, with no scheduled job required to make that true.
+  5. There is no cart, no checkout, and no payment anywhere on the marketplace — every purchase completes on the merchant's own storefront — and no merchant can claim `marketplace` or its sibling reserved words as a store subdomain.
+
+**Plans**: TBD
+**UI hint**: yes
+**Research flag**: recommended — validate the `marketplaceDb` extension mechanics (read-only enforcement, predicate injection) against a running Prisma 7 client early; `ARCHITECTURE.md` rates the proposed shape MEDIUM confidence.
+
+**Notes for planning:**
+- MKPL-07's reserved-slug addition (`marketplace`, and siblings such as `discover`, `explore`, `market`, `listings`) must land **before** the marketplace ships — a merchant can claim `marketplace.einort.com` today. One edit to `src/server/tenant/reserved-slugs.ts` closes all three layers (`classifyHost`, the write-path hook, the slug checker).
+- The public marketplace route tree must contain **no session read, no `requireMerchantContext`, and no `scopedDb`** — enforce with a contract test. Anonymous browsing must never redirect to a login.
+- Use explicit `select` allowlists, never `include:`, on every cross-tenant read — otherwise every column added to `Product` in a future phase ships to anonymous visitors the day it is added.
+- The marketplace is an apex surface and gets the apex palette; `data-surface="storefront"` is applied only by `s/[slug]/layout.tsx`. Merchant branding takes over after the deep link, not before.
+- Cross-tenant `%q%` search cannot use a B-tree index. `pg_trgm` + a GIN index (declared via Prisma's `raw("gin_trgm_ops")`, or a raw migration file — the `$queryRaw` ban applies to application code, not `prisma/migrations/**`) keeps MKPL-02 viable without dedicated search infrastructure.
+
+### Phase 15: Custom Domains
+
+**Goal**: A merchant can put their store on a domain they own, with working HTTPS, and take it down again cleanly — without anyone else ever being able to claim it out from under them.
+**Mode:** mvp
+**Depends on**: Nothing technically (fully independent of Phases 7-14). Sequenced last deliberately.
+**Requirements**: DOM-03, DOM-04, DOM-05, DOM-06, DOM-07, DOM-08, DOM-09
+**Milestone**: v2.0
+**Success Criteria** (what must be TRUE):
+
+  1. A merchant on a plan that includes custom domains can add one domain and see the exact DNS records to create, each with a copy button, alongside a live status (Pending / Verifying / Active / Misconfigured) and a manual re-check they can come back to hours later.
+  2. A domain only becomes Active after EINORT's own DNS ownership challenge passes — never on the hosting provider's say-so alone — and HTTPS then works on it without the merchant doing anything further.
+  3. Both the apex and `www` work with one redirecting to the other, and the store's original einort.com subdomain keeps resolving (redirecting to the custom domain) so links already shared never break.
+  4. Merchant can remove or replace their domain and the store stops serving on it everywhere at once — cache, database, and hosting provider — with nothing left dangling.
+  5. A released domain cannot be immediately re-claimed by a different merchant, and suspending a store takes its custom domain down at the same instant it takes its subdomain down.
+
+**Plans**: TBD
+**UI hint**: yes
+**Research flag**: recommended — highest external-dependency risk in the milestone.
+
+**Notes for planning:**
+- **Why last:** this is the only v2.0 area that touches the request path for 100% of traffic, and the only one with external wall-clock dependencies (DNS propagation is 24-48h, a real test domain and a provider token are needed). Isolating it at the tail keeps a regression here from contaminating six other in-flight areas. PROJECT.md has always treated custom domains as cuttable. It has no technical dependency on Phases 7-14 and could be pulled forward if the schedule demanded it.
+- **DOM-05 is the security core of this phase.** The hosting provider's TXT challenge fires only on conflict with another account on that provider — an unclaimed domain "verifies" with zero proof of ownership, which is a first-writer-wins takeover. Generate EINORT's own random per-`(tenantId, hostname)` TXT token, verify it with `dns/promises` using an explicit resolver and exact string equality, and only then call the provider. Add scheduled re-verification: verify-once-trust-forever leaves an expired or transferred domain mapped to the old tenant indefinitely.
+- **Keep `src/proxy.ts` at zero I/O.** `classifyHost` gains a fourth, still-pure `custom` kind (a syntactic check only) and the proxy rewrites to a sentinel path segment; resolution happens in the storefront layout behind its own Redis namespace, exactly where slug resolution already happens. Spike the sentinel-segment rewrite against a running Next 16 app before committing to it — `ARCHITECTURE.md` rates it MEDIUM confidence.
+- **DOM-08's teardown is ordered, not parallel:** Redis cache entry → database mapping → provider project domain → provider account domain. The first two are the security-relevant steps and must complete first. Suspension currently evicts one cache key; after this phase it must evict 1 + N.
+- Confirm before scheduling: the hosting plan tier (domain cap and cron frequency ceiling), and whether `einort.com`'s apex is already on the provider's nameservers — wildcard `*.einort.com` TLS requires it, and if it is not already true, the existing subdomain storefronts have a latent infrastructure gap independent of custom domains. Start the Public Suffix List submission for `einort.com` during this phase; its review time is unbounded and cannot be a gating dependency.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 05.1 → 05.2 → 05.3 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Multi-Tenant Foundations & Domain Resolution | 7/7 | Complete   | 2026-08-17 |
-| 2. Merchant Auth, Entitlements & Trial | 7/7 | Complete   | 2026-08-23 |
-| 3. Product Catalog & Order/Payment-Claim State Machine | 6/16 | In Progress|  |
-| 4. Theme/Section/Block System & Flagship Template | 15/16 | In Progress|  |
-| 5. Template Segment Expansion | 9/22 | In Progress|  |
-| 05.1. Template Preview Rendering & Picker Redesign | 9/9 | Complete   | 2026-09-08 |
-| 05.2. Marketing Landing Page Redesign | 1/1 | Complete   | 2026-09-08 |
-| 05.3. Storefront Editor Page Split | 3/4 | In Progress | - |
-| 6. Merchant Dashboard & Platform Admin | 0/TBD | Not started | - |
+Milestone v2.0 begins at Phase 6. Phases 9 → 10 → 11 → 12 are a hard ordering (each of Inventory, Delivery, and Customers edits the same `placeOrder` transaction; Analytics must follow Delivery). Phase 13 → 14 is a hard ordering (the public marketplace needs real listings). Phase 15 is independent and last by choice.
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Multi-Tenant Foundations & Domain Resolution | v1.0 | 7/7 | Complete | 2026-08-17 |
+| 2. Merchant Auth, Entitlements & Trial | v1.0 | 7/7 | Complete | 2026-08-23 |
+| 3. Product Catalog & Order/Payment-Claim State Machine | v1.0 | 6/16 | In Progress | - |
+| 4. Theme/Section/Block System & Flagship Template | v1.0 | 15/16 | In Progress | - |
+| 5. Template Segment Expansion | v1.0 | 9/22 | In Progress | - |
+| 05.1. Template Preview Rendering & Picker Redesign | v1.0 | 9/9 | Complete | 2026-09-08 |
+| 05.2. Marketing Landing Page Redesign | v1.0 | 1/1 | Complete | 2026-09-08 |
+| 05.3. Storefront Editor Page Split | v1.0 | 3/4 | In Progress | - |
+| 6. Merchant Dashboard & Platform Admin | v2.0 | 0/TBD | Not started | - |
+| 7. Trial & Template-Tier Business Rules | v2.0 | 0/TBD | Not started | - |
+| 8. Design System & Visual Migration | v2.0 | 0/TBD | Not started | - |
+| 9. Inventory | v2.0 | 0/TBD | Not started | - |
+| 10. Delivery | v2.0 | 0/TBD | Not started | - |
+| 11. Customers | v2.0 | 0/TBD | Not started | - |
+| 12. Analytics | v2.0 | 0/TBD | Not started | - |
+| 13. Marketplace Marketing | v2.0 | 0/TBD | Not started | - |
+| 14. Marketplace | v2.0 | 0/TBD | Not started | - |
+| 15. Custom Domains | v2.0 | 0/TBD | Not started | - |
+
+---
+*Milestone v2.0 phases added 2026-09-13. Phase 6 reconciled (kept, not renumbered) as v2.0's foundation phase; its v1.0 requirement mappings are unchanged.*

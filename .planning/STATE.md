@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: planning
-last_updated: "2026-09-12T23:24:40.273Z"
-last_activity: 2026-09-12
+last_updated: "2026-09-13T00:00:00.000Z"
+last_activity: 2026-09-13
 progress:
-  total_phases: 0
+  total_phases: 10
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,20 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 05.3 (storefront editor page split) Wave 3 (05.3-04) Task 1 (automated gate) complete; Task 2 (blocking human-verify checkpoint, 6 manual UI checks) awaiting the developer
+**Current focus:** Milestone v2.0 roadmap is written and requirement coverage is validated (46/46). Next action: `/gsd:plan-phase 6` — Phase 6 (Merchant Dashboard & Platform Admin) is v2.0's foundation phase, carried forward from v1.0 unchanged.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 6 — Merchant Dashboard & Platform Admin (not started; v2.0 foundation phase, carried forward from v1.0)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-12 — Milestone v2.0 started
+Status: Roadmap approved — awaiting phase planning
+Last activity: 2026-09-13 — Milestone v2.0 roadmap created (Phases 6-15, 46/46 requirements mapped)
+
+**Milestone v2.0 phase sequence:** 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15
+Phases 9 → 10 → 11 → 12 (Inventory → Delivery → Customers → Analytics) are a hard ordering: the first three each edit the same `placeOrder` transaction and must land in that order, and Analytics must follow Delivery because delivery fees redefine "revenue". Phase 13 → 14 is a hard ordering: the public Marketplace has nothing real to render or test against until merchant listings exist. Phase 15 (Custom Domains) is technically independent and last by deliberate risk-isolation choice.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed (v2.0): 0
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -80,6 +83,8 @@ Last activity: 2026-09-12 — Milestone v2.0 started
 - Phase 05.1 inserted after Phase 5: Template Preview Rendering & Picker Redesign: replace zero-byte CSS-wireframe template thumbnails with real rendered screenshot previews for all 50 templates, and redesign the shared TemplatePicker/TemplateTile grid to Shopify-Discover-Themes-quality layout. Must land before Phase 5's Wave 6 (05-22), which builds a 50-thumbnail contact sheet using this same component for the design-distinctiveness stranger test. (URGENT)
 - Phase 05.2 inserted after Phase 5: Marketing Landing Page Redesign: replace the bare-bones root page (src/app/page.tsx, previously documented as deliberately deferred marketing-site scope) with a real, professional public landing page for EINORT-Commerce, modeled on Shopify's own marketing site quality bar -- deep research, real copywriting, honest (non-fabricated) trust signals, and a full UI-SPEC. Ran in parallel with Phase 05.1's remaining execution -- zero file overlap. Completed 2026-09-08. (URGENT)
 - Phase 05.3 inserted after Phase 5 (and after 05.2 in document order): Storefront Editor Page Split: split the single-screen storefront editor into two separate pages (a Themes page for browsing/switching templates, a full-screen Editor page for section/block editing), matching the navigational separation in Shopify's own admin. Layout/structure only -- no new capabilities (Header/Template/Footer grouping, add/remove sections, and undo/redo all explicitly deferred to a future phase). Runs in parallel with Phase 05.1's Wave 5. (URGENT)
+- **2026-09-13 — Milestone v2.0 roadmapped (Phases 6-15).** Numbering continues from v1.0 rather than resetting. **Phase 6 was reconciled, not renumbered:** it was defined and requirement-mapped during v1.0 (SUB-03, DASH-01/02, ADM-01..05) but never planned or executed, and it is exactly the foundation v2.0 needs — the merchant dashboard shell every new v2.0 surface plugs into, the pilot-scoped Super Admin that MMKT-06's moderation page lives inside, and the ADM-05 support thread that is the only merchant↔platform notification channel that exists. It keeps its number, its requirements, and its success criteria, and runs first in v2.0. New v2.0 phases start at Phase 7. Nine new phases: 7 (Trial & Template-Tier Business Rules), 8 (Design System & Visual Migration), 9 (Inventory), 10 (Delivery), 11 (Customers), 12 (Analytics), 13 (Marketplace Marketing), 14 (Marketplace), 15 (Custom Domains). Ordering follows the research's dependency analysis exactly; the money-path trio (9-11) and the Marketing→Marketplace pair (13-14) are hard orderings, and Domains is last by deliberate risk isolation.
+- **2026-09-13 — DSGN-01..03 given their own early phase (8) rather than being threaded through each later phase's UI work.** The component layer is a dependency of six phases that each build new dashboard surfaces; threading it means the first of those invents the primitives and the rest inherit half-formed conventions. DSGN-03's "new surface" half cannot finish in Phase 8 (those surfaces don't exist yet) and is carried as a standing phase-gate obligation into Phases 9-15.
 
 ### Decisions
 
@@ -94,16 +99,23 @@ Recent decisions affecting current work:
 - [Phase 05.1-07]: Deferred the r2.ts dynamic import inside main(), called after the cheaper guards, to avoid @/env's createEnv() throwing before the script's own .env.local/.env loading loop runs — ES module static imports evaluate fully before an importing module's own top-level statements run, regardless of textual position, so a static import of r2.ts (which imports @/env) always crashed before the env-loading loop could run
 - [Phase 05.2-01]: Reused strings.signup.loginLink verbatim for the final-CTA secondary link instead of declaring a duplicate string in marketing.ts, per the UI-SPEC checker's non-blocking nit
 - [Phase 05.2-01]: Hero image slot resolves TEMPLATE_PREVIEWS['flagship-fashion'] server-side; renders copy-only today (manifest ships empty) with no placeholder ever shipped, auto-upgrading once 05.1-09 lands
+- [v2.0 roadmap]: Phase 11 (Customers) adds **no shopper account, login, or password-reset surface** — checkout stays guest-only, `Customer` is an index over orders, and `Order`'s snapshot identity columns stay authoritative. Recorded explicitly because the feature being *named* "Customers" is what makes people build it anyway (PITFALLS.md Pitfall 8).
+- [v2.0 roadmap]: MMKT-03/04/06 **supersede** the research's recommendation to omit `PENDING_REVIEW`/`REJECTED` from the listing lifecycle. The research assumed no moderator surface would exist; MMKT-06 creates one inside Phase 6's pilot-scoped Super Admin, which lands before Phase 13. Build the full lifecycle — do not "correct" the enum back to four members on the strength of ARCHITECTURE.md Anti-Pattern 6.
 
 ### Pending Todos
 
-None yet.
+- **KD-V2-01 — `marketplaceDb` fourth data-access client.** Unresolved. Must be decided and built at the **start of Phase 13** (not deferred to Phase 14), because the `MarketplaceListing` schema's shape depends on how listings will later be read. The public marketplace is the codebase's first cross-tenant read with no tenant identity at all, and none of the three existing DB clients can legally serve it. The wrong shortcut — widening `adminDb`'s ESLint fence — is the milestone's #1 flagged risk. Resolve via `/gsd:plan-phase 13 --research-phase`. Full write-up in ROADMAP.md § Key Decisions Pending Resolution.
+- **KD-V2-02 — second-subscription entitlement model shape.** Unresolved. Must be decided **before Phase 13's schema design**, not during it. Dedicated `MarketplaceSubscription` model vs. a generalized `Subscription` table. Whichever wins changes `resolveEntitlements`'s signature, which touches `merchantAction`, `requireMerchantContext`, and every entitlement-gated Server Action in the codebase — named by both FEATURES.md and ARCHITECTURE.md as the milestone's single largest hidden cost. Coupled sub-decision: MMKT-07 needs a merchant with a lapsed Storefront plan to still be able to retract public listings, which today's `merchantAction({mode:"write"})` gate blocks. Resolve via `/gsd:plan-phase 13 --research-phase`.
+- Confirm before Phase 15 is planned in detail: the hosting plan tier (custom-domain cap and cron frequency ceiling), and whether `einort.com`'s apex is already on the provider's nameservers — wildcard `*.einort.com` TLS requires it, and if it isn't already true the existing subdomain storefronts have a latent infrastructure gap independent of custom domains.
+- Decide once, before Phase 12: which `Order` states count as earned revenue and whether `unitsSold` is filtered the same way (ANLY-02). The existing `overviewMetrics` code is already inconsistent on this. The answer must be applied to Overview, Analytics, and Customers' "total spent" simultaneously.
 
 ### Blockers/Concerns
 
 - ~~Phase 3: MTN MoMo / Orange Money USSD merchant-code strings need re-verification~~ — **Resolved 2026-08-23** by `03-RESEARCH.md`'s "Payment Rails: the D-15 Blocker, Resolved" section, sourced directly from MTN Cameroon's and Orange Cameroun's own official documentation (HIGH confidence). Neither operator publishes a one-shot parametrized P2P string; both require an operator-issued merchant code for a parametrized tap-to-dial link. Manual-copy ships unconditionally as the floor regardless of merchant-code availability.
 - Phase 4 (Theme/Section/Block System): design-distinctiveness has no objective completion signal — the side-by-side "would a stranger think these are the same product" check must be built into this phase's definition of done explicitly.
 - Phase 2 (Merchant Auth, Entitlements & Trial): automated decision-coverage gate reported 0/13 CONTEXT.md decisions (D-01–D-13) cited in plan `must_haves`/`truths` frontmatter — overridden and proceeded to execute-phase on 2026-08-17. The plan-checker's independent semantic review confirmed all 13 decisions have implementing tasks; manual grep confirmed D-04–D-09/10, D-12 are cited by ID in task `<action>` bodies (just not in the scanned frontmatter fields). D-01/D-02/D-03 are only cited as a range ("D-01 through D-05"); D-11 and D-13 have no ID citation found anywhere. Re-verify these five during Phase 2's verify-phase pass. **Still open as of 2026-08-30** — a cross-phase GSD skill audit confirmed no `02-VERIFICATION.md` was ever produced (Phases 1 and 2 were merged wave-by-wave without ever reaching `gsd-execute-phase`'s own verifier/code-review/`phase.complete` gate). Queued to close via `gsd-execute-phase 2` as part of the post-Phase-3 retroactive audit pass (alongside `gsd-secure-phase` and `gsd-code-review --depth=deep` on Phases 1-3).
+- **Isolation-suite runtime, v2.0.** The model-generic isolation suite already runs 22-27 minutes, and v2.0 registers roughly 5-7 new tenant-scoped models. Without the already-identified fix (per-`describe` reseed for read-only assertions, plus a `test:isolation:smoke` split for per-task gates), every v2.0 plan ends with a 40+ minute test gate. PITFALLS.md recommends scheduling this **before the first v2.0 schema phase** — i.e. as early work inside Phase 9, which is the first phase to register new models.
+- **`TENANT_SCOPED_MODELS` insertion order is load-bearing.** It is in FK dependency order and `tests/setup/seed-two-tenants.ts` drives its batched `$transaction` off it. Every v2.0 phase adding a model must insert it in the right position and must never re-sort the array.
 
 ## Deferred Items
 
@@ -115,9 +127,11 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 | Phase 04 (`04-16`) | Wave 7 Tasks 2-3 — live-preview device pass and the Design-Distinctiveness stranger test, both blocking `checkpoint:human-verify` tasks. Wave 7 Task 1 (fully-automated gate) is confirmed clean. Phase's own closing gates (Requirements/Decision Coverage, verifier, code-review, `phase.complete`) have not run. | Open — user chose to move on, deliberately, mirroring Phase 3 | v1.0 → v2.0 transition, 2026-09-13 |
 | Phase 05.3 (`05.3-04`) | Task 2 — blocking `checkpoint:human-verify` gate, 6 manual UI behaviors (sidebar routing, template switch without reload, Editor showing new template, publish toast, dirty-draft leave-guard dialog, responsive layout). Task 1 (automated grep/D-B/suite gate) is complete and merged (`c2311c5`). | Open — user chose to start v2.0 work first, 2026-09-13 | v1.0 → v2.0 transition, 2026-09-13 |
 | Phase 02 | No `02-VERIFICATION.md` was ever produced — Phases 1-2 were merged wave-by-wave without reaching `gsd-execute-phase`'s own verifier/code-review/`phase.complete` gate. Plan-checker independently confirmed all 13 CONTEXT.md decisions have implementing tasks despite the frontmatter-citation gate reporting 0/13. | Open, tracked since 2026-08-30 | v1.0 → v2.0 transition, 2026-09-13 |
+| Phase 05 (`05-22`) | Phase gate — the 50-template contact sheet and the six adversarial-pair stranger tests. Note that Phase 7 re-tiers all 50 templates (TMPL-04, 15/17/18); the contact sheet itself is tier-independent, but the picker screenshots it may be compared against are not. | Open | v1.0 → v2.0 transition, 2026-09-13 |
 
 ## Session Continuity
 
-Last session: 2026-09-08T15:12:37.000Z
-Stopped at: Completed 05.3-01-PLAN.md (Phase 05.3 Wave 1 fully closed out; Wave 2 unblocked, not yet dispatched)
+Last session: 2026-09-13
+Stopped at: Milestone v2.0 roadmap written — ROADMAP.md (Phases 6-15 with success criteria, two Key Decisions flagged as blockers), REQUIREMENTS.md traceability (46/46 v2.0 requirements mapped, Phase 6 reconciled unchanged), STATE.md updated. No code touched.
 Resume file: None
+Next command: `/gsd:plan-phase 6`
