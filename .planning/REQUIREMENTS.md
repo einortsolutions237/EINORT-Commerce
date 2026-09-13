@@ -26,14 +26,14 @@
 - [ ] **ONB-02**: Onboarding captures business name, industry/segment, logo upload, and brand colors
 - [ ] **ONB-03**: Uploaded logos and product images pass through automatic enhancement/cropping so a low-quality photo doesn't visibly wreck the storefront
 - [ ] **ONB-04**: Completing onboarding produces a live, published storefront on an EINORT subdomain within minutes, pre-populated with the selected flagship template and the merchant's own branding
-- [ ] **ONB-05**: Every merchant gets a 10-day full-feature trial of their selected plan, enforced server-side, starting at signup
+- [ ] **ONB-05**: Every merchant gets a 30-day full-feature trial of their selected plan, enforced server-side, starting at signup *(updated 2026-09-13 for milestone v2.0 — was 10 days; Master Product Specification V3 names 30 days a "critical commercial rule." Code change: `TRIAL_DAYS` in `src/server/entitlements/resolve.ts`, plus every trial-day copy reference across onboarding/dashboard/pricing. Needs a roadmap phase — not yet scheduled.)*
 
 ### Storefront Templates
 
 - [ ] **TMPL-01**: One fashion/apparel flagship template is built to genuinely polished, portfolio-quality standard, anchored on the supplied zinc-monochrome DTC visual reference
 - [ ] **TMPL-02**: The flagship template's patterns (layout structure, section types, motion language, typography system) form the pattern library that other segment templates inherit from
 - [ ] **TMPL-03**: At least 3 additional merchant segments (from: electronics, beauty/cosmetics, grocery/food, furniture/home, general retail) get their own structurally distinct layout — not just a recolored copy of the flagship
-- [ ] **TMPL-04**: The full template library reaches 50 visually distinct variations (10 Starter / 15 Business / 25 Professional tier split) by recombining the segment layouts' sections/blocks with different imagery, color, and copy — not 50 independently designed templates
+- [ ] **TMPL-04**: The full template library reaches 50 visually distinct variations (15 Starter / 17 Business / 18 Professional tier split) by recombining the segment layouts' sections/blocks with different imagery, color, and copy — not 50 independently designed templates *(updated 2026-09-13 for milestone v2.0 — was 10/15/25; same 50 total and same 6 segment categories, only the tier boundaries move, per Master Product Specification V3. Code change: re-tier all 50 already-built templates' plan-access assignment and update entitlement/plan-access tests. Needs a roadmap phase — not yet scheduled.)*
 - [ ] **TMPL-05**: Template distinctiveness is checked explicitly (side-by-side comparison) before the library is considered done — genericness is treated as a failure condition, not a subjective nice-to-have
 - [x] **TMPL-06**: The template picker (onboarding and the storefront editor's "Change template" action) shows a real rendered preview image per template, not a placeholder geometric thumbnail, in a grid layout comparable to mainstream theme-store quality (owner-supplied Shopify reference)
 
@@ -89,6 +89,78 @@
 - [ ] **ADM-04**: Platform admin scope stays pilot-sized (the items in this section) — the broader ~20-module admin surface referenced in prior planning docs is explicitly deferred
 - [ ] **ADM-05**: A merchant and the platform owner have a persistent, in-app messaging thread per merchant (text plus file/image attachments), surfaced in both the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on a new message. No real-time/websocket infrastructure — async, check-in-when-you-can, matching the manual-first pattern already established for payment claims. This is also the channel SUB-03's subscription-payment-claim flow runs through.
 
+## v2.0 Milestone Requirements
+
+New requirements for milestone v2.0 (Design Parity + Marketplace/Marketing Build-out), added 2026-09-13. Driven by Master Product Specification V3 and a design-reference prototype snapshot — see `.planning/design-references/EINORT-V3-MASTER-SPEC-AND-PROTOTYPE-V6.md` and `.planning/research/SUMMARY.md`. Not yet mapped to phases — the roadmapper maps these below.
+
+### Design System & Visual Migration
+
+- [ ] **DSGN-01**: A central design token/component layer (buttons, cards, badges, modals, page headers, status badges, pricing cards, empty states, data tables) is extracted and reused across dashboard surfaces, extending the already-shipped blue/gold/zinc token retrofit (`260823-gu4`) rather than replacing it
+- [ ] **DSGN-02**: Existing real surfaces (Auth, Onboarding, Dashboard Overview, Products, Orders, Storefront Themes + Editor, Settings) are visually migrated toward the design-reference prototype's layout/interaction patterns while their real data, server actions, and auth boundaries stay unchanged
+- [ ] **DSGN-03**: Responsive behavior is verified at 320/375/390/430/768/1024/1280/1440/1920px on every migrated and new surface
+
+### Marketplace (public discovery)
+
+- [ ] **MKPL-01**: Shoppers can browse a public Marketplace home with category, featured, and recently-added rails, and paginated category browse
+- [ ] **MKPL-02**: Shoppers can keyword-search active listings (substring match, no ranking)
+- [ ] **MKPL-03**: A listing detail page re-reads the canonical product/variant live (never a stored snapshot) and its primary CTA lands on the merchant's own storefront product page
+- [ ] **MKPL-04**: A merchant/store profile page shows store identity (logo, name, segment, city) and its active listing count
+- [ ] **MKPL-05**: Marketplace read access uses a dedicated, read-only, ESLint-fenced data-access client (`marketplaceDb`) — never the unscoped admin client or an ad hoc query — with a mandatory published-and-active visibility predicate computed at query time, not a stored flag
+- [ ] **MKPL-06**: The Marketplace never becomes a checkout — no cart, no split payments, no vendor payouts; every purchase completes on the merchant's own storefront
+- [ ] **MKPL-07**: `marketplace` (and related reserved words) are added to the platform's reserved-slug list so no merchant can claim them as a store subdomain
+
+### Marketplace Marketing (merchant add-on)
+
+- [ ] **MMKT-01**: A merchant can activate Marketplace Marketing as a separate, optionally-priced subscription from their Storefront plan, with an explicit "this is a second charge" disclosure
+- [ ] **MMKT-02**: A merchant selects existing catalog products into Marketplace listings through a picker — never a form that creates new listing-only content — up to their plan's capacity (10/25/50)
+- [ ] **MMKT-03**: Listings move through an explicit lifecycle (Selected → Pending Review → Active → Paused/Rejected → Expired) with exactly one module permitted to write listing state, mirroring the existing order-state-machine pattern, keyed by actor (merchant vs. platform) so a merchant cannot self-approve
+- [ ] **MMKT-04**: A rejected listing shows the merchant a reason
+- [ ] **MMKT-05**: Listing expiry is derived at read time from the subscription period, never a persisted status a cron must flip
+- [ ] **MMKT-06**: A platform-side moderation page, inside the pilot-scoped Super Admin, lets the platform owner approve or reject Pending Review listings with a reason
+- [ ] **MMKT-07**: A merchant can always pause or withdraw their own listing even if their Storefront plan has lapsed or entered a read-only/expired-trial state — a dedicated allowance, since Marketplace Marketing is a separate subscription from Storefront
+- [ ] **MMKT-08**: Per-listing view and click-through counts are visible to the merchant
+
+### Customers
+
+- [ ] **CUST-01**: A Customer record is created automatically from checkout, keyed on the normalized phone number — merchants never manually create customers
+- [ ] **CUST-02**: Merchants can search customers by name or phone and view a detail page with full order history
+- [ ] **CUST-03**: A customer's WhatsApp/call contact actions are one click from their profile, reusing the existing deep-link helper
+- [ ] **CUST-04**: Historical orders that can't be linked to a normalized phone remain visible (nullable `customerId`) rather than blocking the migration or being dropped
+
+### Inventory
+
+- [ ] **INV-01**: Merchants see a stock-levels view across all variants, filterable to low-stock and out-of-stock
+- [ ] **INV-02**: Exactly one server-side writer handles all non-order stock changes (both "set to" and "adjust by"), enforced by a source-scanning contract test mirroring the existing single-order-state-writer pattern, so it can never race the checkout stock hold
+- [ ] **INV-03**: Every manual stock change is recorded in an append-only, reason-coded adjustment ledger
+- [ ] **INV-04**: A store-wide low-stock threshold drives a dashboard indicator
+
+### Delivery
+
+- [ ] **DLV-01**: Merchants can define named delivery zones with a flat fee each, seeded with Douala presets, plus a pickup-in-store option
+- [ ] **DLV-02**: A free-delivery threshold can be set and is evaluated against the server-recomputed subtotal
+- [ ] **DLV-03**: The delivery fee is shown to the customer before payment instructions render, and is re-read server-side (never accepted from the client) inside the same transaction that finalizes the order
+- [ ] **DLV-04**: The chosen zone's name and fee are snapshotted onto the order at placement — a later zone rename/reprice never rewrites past orders
+- [ ] **DLV-05**: A merchant can set delivery-promise text shown to customers
+
+### Domains (custom domains — extends the existing Domains category)
+
+- [ ] **DOM-03**: A merchant on a plan that includes custom domains can add one custom domain to their store
+- [ ] **DOM-04**: The dashboard shows the exact DNS records to create (with copy buttons) and a live status (Pending/Verifying/Active/Misconfigured) with a manual re-check
+- [ ] **DOM-05**: A domain is only trusted as verified after EINORT's own DNS ownership challenge succeeds — the hosting provider's own "verified" flag is never trusted alone
+- [ ] **DOM-06**: TLS is provisioned and renewed automatically once DNS verifies
+- [ ] **DOM-07**: Both apex and `www` are handled, with one redirecting to the other; the original EINORT subdomain keeps resolving (redirecting to the custom domain once active) so existing shared links never break
+- [ ] **DOM-08**: A merchant can remove or replace their custom domain; removal cleanly tears down the mapping across every system it touched (cache, database, hosting provider)
+- [ ] **DOM-09**: A released custom domain is never immediately re-claimable by a different merchant without a holder-history record, mirroring the existing store-slug-release protection
+
+### Analytics
+
+- [ ] **ANLY-01**: A dedicated Analytics page shows revenue, order count, average order value, and units sold for a selectable period, with a previous-period comparison
+- [ ] **ANLY-02**: Headline revenue counts only CONFIRMED and FULFILLED orders; a separate, clearly labeled "pending/at-risk" figure covers the remaining open states — this single definition is shared by the dashboard Overview, the Analytics page, the Customers "total spent" figure, and CSV export, replacing the current inconsistency where units-sold isn't filtered the same way revenue is
+- [ ] **ANLY-03**: A daily time-series chart and a top-10-products table (by revenue and by units) are shown, grouped by the canonical product id and resolved to its live display name
+- [ ] **ANLY-04**: Orders are broken down by state and by channel (WhatsApp / manual transfer / COD)
+- [ ] **ANLY-05**: Analytics data can be exported as CSV
+- [ ] **ANLY-06**: Every analytics aggregation is tenant-scoped through the existing scoped data-access client — never a cross-tenant or raw-SQL query
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -107,8 +179,8 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ### Platform
 
-- **PLAT-V2-01**: Custom domain connection (fast-follow if 30-day time allows; otherwise deferred)
-- **PLAT-V2-02**: Full platform admin suite (analytics, fraud/abuse, theme library management, feature flags, broadcast notifications, full observability, usage dashboards)
+- ~~**PLAT-V2-01**: Custom domain connection~~ — **promoted to active scope 2026-09-13** as `DOM-03` through `DOM-09` in milestone v2.0
+- **PLAT-V2-02**: Full platform admin suite (analytics, fraud/abuse, theme library management, feature flags, broadcast notifications, full observability, usage dashboards) — still deferred in v2.0; only one minimal moderation page (`MMKT-06`) is added to the pilot-scoped Super Admin
 - **PLAT-V2-03**: AI-assisted product descriptions / storefront copy
 
 ## Out of Scope
@@ -126,6 +198,18 @@ Explicitly excluded. Documented to prevent scope creep.
 | Dedicated search infrastructure (Meilisearch/Elasticsearch/etc.) | Not needed at pilot catalogue size; async indexing pathway noted as a future add, not built now |
 | Real-time collaborative editing on the storefront editor | No pilot-stage need; adds complexity with no payoff at this scale |
 | Free-form drag-and-drop / unrestricted HTML page building | Conflicts architecturally with the schema-driven Theme→Page→Section→Block design that keeps templates non-generic |
+| Live payment gateway/PSP integration (again) | Master Product Specification V3 asked for "at least one real payment integration" — rejected a second time, same reasoning as the original v4.0 rejection above; manual transfer stays the only path |
+| Full Platform Admin surface (again) | Deferred a second time this milestone — only `MMKT-06`'s one minimal moderation page is added |
+| Marketplace cart / unified checkout | Forbidden by Master Spec V3; would make the platform merchant-of-record with no payment gateway to settle it |
+| Cross-store shopper reviews/ratings on the Marketplace | Needs shopper identity and moderation capacity that don't exist; one fake-review scandal at pilot scale is unrecoverable |
+| Shopper accounts/logins on the Marketplace or Customers | Checkout is deliberately guest-only; a login surface adds a third tenant-identity channel and a password-reset/SMS burden with no revenue attached |
+| Personalized marketplace recommendations, price comparison across merchants | No behavioral data or shopper identity to drive it; price comparison also incentivizes merchant churn |
+| CPC bidding / auction placement / ad budgets for Marketplace Marketing | Needs metered billing, budget pacing, and fraud detection — no payment gateway exists to run it on |
+| Multi-warehouse inventory, purchase orders/supplier management, COGS/margin reporting | ERP-shaped completeness with no pilot-stage payoff; merchants buy stock informally and won't maintain cost data |
+| Carrier API integration, weight-based delivery rate tables, live driver tracking, map picker with lat/long | No carrier in this market exposes a usable API; delivery is a moto driver coordinated by phone/WhatsApp |
+| Selling/registering domains on the merchant's behalf, running DNS/nameservers for merchants, email hosting on custom domains, wildcard custom domains | Each is a different, larger business (registrar accreditation, mail hosting, DNS-01 nameserver takeover) that this platform does not need to become |
+| Session/funnel/cohort analytics, conversion-rate as a headline metric, forecasting/trend prediction | No session/pageview pipeline exists; at this order volume these are noise presented as insight |
+| Per-merchant third-party analytics embeds (GA4/Meta Pixel snippets) | A tenant-controlled `<script>` tag in a shared codebase is a stored-XSS-shaped hole across every storefront |
 
 ## Traceability
 
@@ -195,4 +279,4 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ---
 *Requirements defined: 2026-08-16*
-*Last updated: 2026-08-23 — added SUB-03 and ADM-05 (merchant↔platform support messaging + subscription-payment-claim flow), mapped to Phase 6*
+*Last updated: 2026-09-13 — milestone v2.0 started: updated ONB-05 (10→30-day trial) and TMPL-04 (10/15/25→15/17/18 tier split) in place; added 44 new requirements (DSGN-01..03, MKPL-01..07, MMKT-01..08, CUST-01..04, INV-01..04, DLV-01..05, DOM-03..09, ANLY-01..06), not yet mapped to phases; promoted PLAT-V2-01 (custom domains) from deferred to active; added 12 new Out of Scope rows from v2.0 research*
