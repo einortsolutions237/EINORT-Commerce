@@ -481,7 +481,11 @@ Cross-cutting constraints:
   3. A Starter merchant can open exactly 15 templates, a Business merchant 32, and a Professional merchant all 50; locked templates stay visible-but-dimmed in the picker rather than disappearing (Phase 5's SORT-NEVER-FILTER rule survives the re-tiering).
   4. The entitlement and plan-access test suites assert the new figures, so a later edit that reintroduces a 10-day trial or a 10/15/25 split fails the build rather than shipping quietly.
 
-**Plans**: TBD
+**Plans**: 3 plans (3 waves)
+Plans:
+- [ ] 07-01-PLAN.md — 30-day trial: TRIAL_DAYS=30, its load-bearing comments, and every trial figure a merchant reads (ONB-05)
+- [ ] 07-02-PLAN.md — Re-tier all 50 templates to 15/17/18 per D-06, with the 15/32/50 documented counts, copy and frozen-table invariant (TMPL-04)
+- [ ] 07-03-PLAN.md — Phase gate: full suite + build, honest isolation-suite reporting, and the manual copy/tier walkthrough checkpoint
 
 **Notes for planning:** Both changes are small and touch known code — `TRIAL_DAYS` in `src/server/entitlements/resolve.ts`, `PlanLimits.templates` and the 50 templates' tier assignment in the theming registry, plus the centralized copy in `src/lib/strings/**` (no user-facing string may be inlined — the prose-literal contract tests will fail the build). Deliberately sequenced before Phase 8 so the visual migration renders final copy instead of numbers it would have to re-edit.
 
