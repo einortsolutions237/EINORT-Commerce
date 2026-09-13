@@ -541,6 +541,90 @@ const MODEL_FIXTURES: Record<
     draftUpdatedAt: FIXTURE_EPOCH,
     createdAt: FIXTURE_EPOCH,
   }),
+
+  /**
+   * ADM-05 (Phase 6). One message per tenant, with a `body` that names its own
+   * tenant — the isolation battery's failure diff then reads
+   * `"Beta Store support message"` vs `"Alpha Store support message"` and
+   * points straight at the leak, which is the whole reason this file uses
+   * fixed identifiers rather than random ones.
+   *
+   * `author: MERCHANT` with a non-null `authorUserId` is the common case; the
+   * NULL-actor SYSTEM contract is exercised by the `OrderEvent` fixture above
+   * and by plan 06-11's own tests.
+   *
+   * `readByPlatformAt: null` is deliberate: an unread merchant message is the
+   * row the admin inbox's `@@index([author, readByPlatformAt, createdAt])`
+   * scan is built for, so the fixture's baseline is the state that index
+   * exists to serve.
+   */
+  SupportMessage: (tenant) => ({
+    id: `${tenant.id}-support-message-1`,
+    author: "MERCHANT",
+    authorUserId: tenant.userId,
+    body: `${tenant.name} support message`,
+    readByMerchantAt: FIXTURE_EPOCH,
+    readByPlatformAt: null,
+    subscriptionClaimId: null,
+    createdAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * D-10. Hangs off its OWN tenant's message — the composite FK is
+   * `(tenantId, messageId)`, so a builder naming the other tenant's message
+   * would be a Postgres rejection at seed time rather than a test failure.
+   *
+   * `kind: IMAGE` with non-null `width`/`height` and an `image/webp`
+   * content type is the Sharp-re-encoded derivative case. The `DOCUMENT` case
+   * (D-22) has NULL dimensions and is plan 06-13's to seed; this fixture only
+   * has to prove tenant scoping, and one row per tenant is what the generic
+   * battery needs.
+   */
+  SupportAttachment: (tenant) => ({
+    id: `${tenant.id}-support-attachment-1`,
+    messageId: `${tenant.id}-support-message-1`,
+    kind: "IMAGE",
+    storageKey: `${tenant.id}/support/message-1`,
+    contentType: "image/webp",
+    byteSize: 24_576,
+    width: 1024,
+    height: 768,
+    createdAt: FIXTURE_EPOCH,
+  }),
+
+  /**
+   * SUB-03. A DIFFERENT `referenceNormalized` per tenant, and here that is a
+   * SEEDABILITY requirement rather than a test-design preference.
+   *
+   * Unlike `PaymentClaim` above — whose key is `@@unique([tenantId,
+   * referenceNormalized])` — this column is GLOBALLY `@unique`, because the
+   * payee is the one platform account. Two tenants sharing a value would make
+   * the fixture itself unseedable: the batch would fail on the constraint
+   * before a single isolation assertion ran, and the failure would read as a
+   * broken seed rather than as the deliberate difference it is. Deriving both
+   * from `tenant.slug` makes the collision structurally impossible and keeps
+   * the difference obvious in a diff (`ALPHASTORESUB0001` vs
+   * `BETASTORESUB0001`).
+   *
+   * `planTier` is the submit-time snapshot (never joined from the live
+   * `Organization.planTier`), and `coversThrough` is NULL because the fixture
+   * baseline is an unreviewed PENDING claim.
+   */
+  SubscriptionPaymentClaim: (tenant) => ({
+    id: `${tenant.id}-subscription-claim-1`,
+    operator: "MTN_MOMO",
+    reference: `${tenant.slug}-sub-0001`,
+    referenceNormalized: normalizeReference(`${tenant.slug}-sub-0001`),
+    amountXaf: 15_000,
+    planTier: "business",
+    receiptKey: null,
+    status: "PENDING",
+    rejectionReason: null,
+    submittedAt: FIXTURE_EPOCH,
+    reviewedAt: null,
+    reviewedByUserId: null,
+    coversThrough: null,
+  }),
 };
 
 /** `StoreSlugHistory` -> `storeSlugHistory`. */

@@ -67,6 +67,20 @@ const REGISTERED_MODELS: readonly Prisma.ModelName[] = [
   // of the list is the correct position and nothing above needs to move.
   "StorefrontTheme",
   "StorefrontPage",
+  // ADM-05 / SUB-03 (Phase 6). APPENDED, never interleaved: nothing above this
+  // line moved, because the seed's batched `$transaction` is driven off this
+  // insertion order and re-sorting breaks everything after the misplaced entry.
+  //
+  // `SupportMessage` before `SupportAttachment` is the load-bearing part —
+  // the attachment carries a composite FK `(tenantId, messageId)` to the
+  // message, and Postgres checks foreign keys immediately rather than at
+  // commit, so a child batched ahead of its parent aborts the whole fixture.
+  "SupportMessage",
+  "SupportAttachment",
+  // No FK parent: `tenantId` is a bare string and the claim references no
+  // other row, so it sits last for the same reason `MerchantPaymentSettings`,
+  // `StorefrontTheme` and `StorefrontPage` already do.
+  "SubscriptionPaymentClaim",
 ];
 
 export const TENANT_SCOPED_MODELS: Set<string> = new Set(REGISTERED_MODELS);

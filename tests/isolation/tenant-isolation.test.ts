@@ -118,6 +118,8 @@ interface ModelProbe {
 const B_PRODUCT_ID = `${TENANT_B.id}-product-1`;
 const B_VARIANT_ID = `${TENANT_B.id}-variant-1`;
 const B_ORDER_ID = `${TENANT_B.id}-order-1`;
+/** ADM-05: `SupportAttachment.message` is a composite FK, same as the above. */
+const B_SUPPORT_MESSAGE_ID = `${TENANT_B.id}-support-message-1`;
 
 /**
  * `ProductImage` is unique on `(tenantId, productId, position)`, and all probe
@@ -291,6 +293,58 @@ const MODEL_PROBES: Record<string, ModelProbe> = {
     // to do with tenant isolation. Every other probe in this map picks a
     // constraint-free column for the same reason.
     mutation: () => ({ draft: { version: 1, sections: [], probe: "mutated" } }),
+  },
+
+  SupportMessage: {
+    // No unique key beyond `(tenantId, id)`, so the nonce only has to keep the
+    // probe rows distinct from one another.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      author: "MERCHANT",
+      body: `Probe message ${nonce}`,
+    }),
+    // `body` carries no constraint — safe under the unfiltered `updateMany`
+    // this battery runs after inserting several probe rows.
+    mutation: () => ({ body: "probe-mutated" }),
+  },
+
+  SupportAttachment: {
+    // Hangs off TENANT B's message: the FK is `(tenantId, messageId)` and every
+    // create here runs as tenant B, so naming tenant A's message would be a
+    // Postgres rejection for the right reason at the wrong moment.
+    //
+    // Note the deliberate ordering dependency this creates with the battery
+    // itself: the `SupportMessage` describe block above runs `deleteMany({})`
+    // as tenant B, which cascades onto these rows. That is harmless because
+    // `beforeEach` reseeds the whole fixture before every test, so no test ever
+    // observes another test's cascade.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      messageId: B_SUPPORT_MESSAGE_ID,
+      kind: "IMAGE",
+      storageKey: `probe/${nonce}`,
+      contentType: "image/webp",
+      byteSize: 1024,
+      width: 100,
+      height: 100,
+    }),
+    mutation: () => ({ byteSize: 2048 }),
+  },
+
+  SubscriptionPaymentClaim: {
+    // `referenceNormalized` is GLOBALLY `@unique` (SUB-03 — one platform
+    // payee), not per-tenant like `PaymentClaim`'s. So every probe row needs
+    // its own value, and the nonce is what guarantees that across the whole
+    // battery rather than merely within one tenant.
+    newRow: (nonce) => ({
+      id: `probe-${nonce}`,
+      operator: "MTN_MOMO",
+      reference: `probe-${nonce}`,
+      referenceNormalized: normalizeReference(`probe-${nonce}`),
+      amountXaf: 15_000,
+      planTier: "business",
+    }),
+    mutation: () => ({ rejectionReason: "probe-mutated" }),
   },
 };
 
