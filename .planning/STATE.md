@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-09-13T14:52:49.602Z"
-last_activity: 2026-09-13 -- Phase 7 planning complete
+stopped_at: Phase 6 Wave 2 merged to master
+last_updated: "2026-09-14T16:35:00.000Z"
+last_activity: 2026-09-14 -- Phase 6 Wave 2 (06-04..06-07) executed and merged
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 80
+  completed_plans: 84
   percent: 33
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 6 is executing now (Wave 1 of 7 in flight — plans 06-01/02/03 running in parallel worktrees). Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
+**Current focus:** Phase 6 is executing now (Waves 1-2 of 7 complete and merged to master — plans 06-01 through 06-07). Wave 3 (06-08/09/10) is next. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
 
 ## Current Position
 
 Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
-Plan: Wave 1 of 7 (06-01, 06-02, 06-03 in flight)
+Plan: Wave 2 of 7 complete (06-04, 06-05, 06-06, 06-07 merged to master); Wave 3 (06-08, 06-09, 06-10) next
 Status: Executing Phase 6
-Last activity: 2026-09-13 -- Phase 6 Wave 1 dispatched; Phase 7 planning complete (3 plans, 3 waves, verified, queued behind Phase 6)
+Last activity: 2026-09-14 -- Wave 2 executed and merged (all 4 plans), post-merge gate green: lint/typecheck/build/670 unit tests, 1055/1060 isolation tests (5 pre-existing environmental Neon-latency flakes in claims.test.ts and stock-race.test.ts, confirmed unrelated to this wave's changes — see 06-07-SUMMARY.md)
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -123,6 +123,7 @@ Recent decisions affecting current work:
 - Phase 2 (Merchant Auth, Entitlements & Trial): automated decision-coverage gate reported 0/13 CONTEXT.md decisions (D-01–D-13) cited in plan `must_haves`/`truths` frontmatter — overridden and proceeded to execute-phase on 2026-08-17. The plan-checker's independent semantic review confirmed all 13 decisions have implementing tasks; manual grep confirmed D-04–D-09/10, D-12 are cited by ID in task `<action>` bodies (just not in the scanned frontmatter fields). D-01/D-02/D-03 are only cited as a range ("D-01 through D-05"); D-11 and D-13 have no ID citation found anywhere. Re-verify these five during Phase 2's verify-phase pass. **Still open as of 2026-08-30** — a cross-phase GSD skill audit confirmed no `02-VERIFICATION.md` was ever produced (Phases 1 and 2 were merged wave-by-wave without ever reaching `gsd-execute-phase`'s own verifier/code-review/`phase.complete` gate). Queued to close via `gsd-execute-phase 2` as part of the post-Phase-3 retroactive audit pass (alongside `gsd-secure-phase` and `gsd-code-review --depth=deep` on Phases 1-3).
 - **Isolation-suite runtime, v2.0.** The model-generic isolation suite already runs 22-27 minutes, and v2.0 registers roughly 5-7 new tenant-scoped models. Without the already-identified fix (per-`describe` reseed for read-only assertions, plus a `test:isolation:smoke` split for per-task gates), every v2.0 plan ends with a 40+ minute test gate. PITFALLS.md recommends scheduling this **before the first v2.0 schema phase** — i.e. as early work inside Phase 9, which is the first phase to register new models.
 - **`TENANT_SCOPED_MODELS` insertion order is load-bearing.** It is in FK dependency order and `tests/setup/seed-two-tenants.ts` drives its batched `$transaction` off it. Every v2.0 phase adding a model must insert it in the right position and must never re-sort the array.
+- **Known pre-existing environmental flakiness in `tests/isolation/stock-race.test.ts` and two `tests/isolation/claims.test.ts` cases**, confirmed 2026-09-14 during Phase 6 Wave 2's post-merge gate: `stock-race.test.ts`'s concurrent-transaction tests intermittently fail with a Neon `"Unable to start a transaction in the given time"` pool-timeout error — reproduced identically on unmodified master, so it is not a regression from any Wave 2 change. Two `claims.test.ts` tests (the heaviest fixtures — two full merchant sign-ups, and a reject→reopen→reject cycle) exceed Vitest's default 30s per-test timeout under this environment's real Neon round-trip latency; both pass cleanly with `--testTimeout=60000`. Neither needs a code fix; both are latency/pool-capacity characteristics of running isolation tests against a real remote Neon branch. Worth revisiting alongside the already-tracked "Isolation-suite runtime, v2.0" item below (a per-test timeout bump or connection-pool tuning, not a logic change).
 
 ## Deferred Items
 
@@ -138,7 +139,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-13T08:43:19.447Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-UI-SPEC.md
-Next command: `/gsd:plan-phase 6`
+Last session: 2026-09-14T16:35:00.000Z
+Stopped at: Phase 6 Wave 2 merged to master; Wave 3 (06-08, 06-09, 06-10) not yet dispatched
+Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-07-SUMMARY.md
+Next command: `/gsd:execute-phase 6` (resume at Wave 3) or dispatch 06-08/06-09/06-10 directly
