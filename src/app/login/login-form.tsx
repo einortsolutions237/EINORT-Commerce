@@ -56,15 +56,23 @@ export function LoginForm() {
       /**
        * Success is a navigation, never a transient notification
        * (02-UI-SPEC.md § Success). `router.push`, not a full-page navigation
-       * — `/dashboard` is same-origin apex, and a hard navigation would
+       * — both destinations are same-origin apex, and a hard navigation would
        * throw away the client router for no reason.
+       *
+       * THE DESTINATION IS THE SERVER'S TO CHOOSE, NOT THIS FORM'S (D-05).
+       * `redirectTo` is computed inside `signInMerchant` from the session it
+       * just created. This component cannot know `platformRole` — the field is
+       * `input: false` and never reaches the browser — and hardcoding
+       * `/dashboard` here is what walked the platform owner into
+       * `/onboarding/create-store` (06-RESEARCH.md Pitfall 5). Do not
+       * reintroduce a literal path on this line.
        *
        * `redirecting` holds the button in its submitting state across the
        * hand-off so it cannot flash back to "Sign in" while the browser is
        * already leaving.
        */
       setRedirecting(true);
-      router.push("/dashboard");
+      router.push(result.redirectTo);
       return;
     }
 
