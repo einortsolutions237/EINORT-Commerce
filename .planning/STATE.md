@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: Phase 6 Wave 3 merged to master
-last_updated: "2026-09-14T18:35:00.000Z"
-last_activity: 2026-09-14 -- Phase 6 Wave 3 (06-08..06-10) executed and merged
+stopped_at: Phase 6 Wave 4 (06-11, support-thread image attachments) executed, not yet merged to master
+last_updated: "2026-09-14T22:15:00.000Z"
+last_activity: "2026-09-14 -- 06-11 executed (all 3 tasks): threads/subscriptions upload namespaces + thread image preset, two narrow mint doors, merchant-authenticated re-authorizing finalize route, transactional SupportMessage+SupportAttachment persistence, shared sent/staged attachment grid wired into the composer and message bubble. Post-task gate green: lint/typecheck/build/685 unit tests; tests/isolation/claim-submission.test.ts (12/12) re-run clean to confirm the untouched claim-upload path. ADM-05 marked complete."
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 87
-  percent: 33
+  completed_plans: 92
+  percent: 34
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 6 is executing now (Waves 1-3 of 7 complete and merged to master — plans 06-01 through 06-10). Wave 4 (06-11, attachment upload path) is next. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
+**Current focus:** Phase 6 is executing now (Waves 1-3 of 7 merged to master — plans 06-01 through 06-10; Wave 4/06-11 executed in-worktree, pending merge). Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
 
 ## Current Position
 
 Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
-Plan: Wave 3 of 7 complete (06-08, 06-09, 06-10 merged to master); Wave 4 (06-11) next
+Plan: Wave 4 of 7 (06-11) executed, all 3 tasks complete, pending merge to master
 Status: Executing Phase 6
-Last activity: 2026-09-14 -- Wave 3 executed and merged (all 3 plans: admin merchants list/detail, merchant-side support thread UI, global claims ledger), post-merge gate green: lint/typecheck/build/678 unit tests, 1063/1068 isolation tests (same 5 pre-existing environmental Neon-latency flakes as Wave 2's run, identical test names and errors — confirmed unrelated to this wave's changes)
+Last activity: 2026-09-14 -- 06-11 executed (support-thread image attachments: threads/subscriptions namespaces, thread preset, two narrow mint doors, merchant-authenticated finalize route, transactional attachment persistence, sent/staged attachment grid), post-task gate green: lint/typecheck/build/685 unit tests, tests/isolation/claim-submission.test.ts 12/12
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -59,6 +59,7 @@ Phases 9 → 10 → 11 → 12 (Inventory → Delivery → Customers → Analytic
 | Phase 05.1 P08 | ~75min | 2 tasks | 3 files |
 | Phase 05.3 P01 | ~35min | 3 tasks | 5 files |
 | Phase 06-merchant-dashboard-platform-admin P10 | 55min | 2 tasks | 6 files |
+| Phase 06-merchant-dashboard-platform-admin P11 | ~35min | 3 tasks | 22 files |
 
 ## Quick Tasks Completed
 
@@ -107,6 +108,8 @@ Recent decisions affecting current work:
 - [v2.0 roadmap]: MMKT-03/04/06 **supersede** the research's recommendation to omit `PENDING_REVIEW`/`REJECTED` from the listing lifecycle. The research assumed no moderator surface would exist; MMKT-06 creates one inside Phase 6's pilot-scoped Super Admin, which lands before Phase 13. Build the full lifecycle — do not "correct" the enum back to four members on the strength of ARCHITECTURE.md Anti-Pattern 6.
 - [Phase 06-merchant-dashboard-platform-admin]: 06-10: /admin/claims Status chip reuses OrderStateChip against the order's live channel/state (not a new ClaimStatus chip) -- required adding orderChannel/orderState to AdminClaimRow, and keeps the 5-use --gold-accent budget intact
 - [Phase 06-merchant-dashboard-platform-admin]: 06-10: merchant-side RejectDialog (dashboard/claims/reject-dialog.tsx) reused directly on /admin/claims, not recomposed -- verified genuinely surface-agnostic (no tenant context, no merchant-only action) before importing
+- [Phase 06-merchant-dashboard-platform-admin]: 06-11: thread-finalize route serves the merchant door only -- the admin door's mint half exists (requestAdminThreadAttachmentUpload) per Task 1's acceptance criteria but is inert until 06-12/06-15 build the consuming admin UI and their own admin-authenticated finalize route, matching finalize/route.ts's existing precedent of deferring the claims namespace to its own file rather than a branch
+- [Phase 06-merchant-dashboard-platform-admin]: 06-11: message-bubble.tsx cannot statically import anything from src/server/images/** (server-only) because it is reachable from composer.tsx's client tree -- the resolved attachment URL is threaded down as a resolveAttachmentUrl closure prop from message-list.tsx (a server component) instead; verified empirically via a clean npm run build
 
 ### Pending Todos
 
@@ -142,7 +145,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-14T18:35:00.000Z
-Stopped at: Phase 6 Wave 3 merged to master; Wave 4 (06-11, support-thread attachment upload path) not yet dispatched
-Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-10-SUMMARY.md
-Next command: `/gsd:execute-phase 6` (resume at Wave 4) or dispatch 06-11 directly
+Last session: 2026-09-14T22:15:00.000Z
+Stopped at: Phase 6 Wave 4 (06-11, support-thread image attachments) executed in-worktree; awaiting merge to master
+Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-11-SUMMARY.md
+Next command: Merge the 06-11 worktree to master, then `/gsd:execute-phase 6` (resume at Wave 5) or dispatch the next wave's plans directly
