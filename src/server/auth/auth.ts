@@ -286,6 +286,21 @@ export const auth = betterAuth({
               required: false,
               defaultValue: "none",
             },
+            /**
+             * SUB-03 (Phase 6): the end of the subscription period the platform
+             * owner's most recent confirmed `SubscriptionPaymentClaim` paid
+             * for. Same shape as `trialEndsAt` above — nullable, so no
+             * `defaultValue` — and it joins this block precisely to inherit the
+             * four-step `input: false` verification documented above the
+             * plan/trial fields (T-06-09). The only writer is the admin confirm
+             * path; there is deliberately no request body that can set a
+             * merchant's own paid-through date.
+             */
+            subscriptionCurrentPeriodEnd: {
+              type: "date",
+              input: false,
+              required: false,
+            },
             planSelectedAt: {
               type: "date",
               input: false,

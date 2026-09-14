@@ -58,4 +58,6 @@ export {
   OrderChannel,
   OrderState,
   PaymentOperator,
+  SupportAttachmentKind,
+  SupportAuthor,
 } from "@/generated/prisma/enums";
