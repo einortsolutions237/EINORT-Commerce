@@ -187,3 +187,18 @@ export type SupportMessageCreateInput =
  */
 export type SupportAttachmentCreateManyInput =
   Prisma.SupportAttachmentCreateManyInput;
+
+/**
+ * `SubscriptionPaymentClaim` (SUB-03), written by
+ * `submitSubscriptionPaymentClaim` in `src/server/subscription/claims.ts` and
+ * by nothing else. `src/server/admin/subscription-claims.ts` (plan 06-16) only
+ * ever UPDATES a claim the merchant already created — the same
+ * writer/reviewer split `PaymentClaim` and `src/server/claims/actions.ts`
+ * already establish.
+ *
+ * The `Unchecked` variant for the same Pitfall 1/4 reason as every entry
+ * above: the row is written with scalar columns only, never through a nested
+ * relation write.
+ */
+export type SubscriptionPaymentClaimCreateInput =
+  Prisma.SubscriptionPaymentClaimUncheckedCreateInput;

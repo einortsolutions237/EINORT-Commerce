@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import { Check, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
+import { SubscriptionClaimCard } from "@/components/subscription-claim-card";
 import { strings } from "@/lib/strings";
 import { cn } from "@/lib/utils";
 import { platformDb } from "@/server/db/platform";
 import { PLAN_TIERS, PLANS } from "@/server/entitlements/plans";
+import { publicUrlFor } from "@/server/images/r2";
 import { requireMerchantContext } from "@/server/merchant/context";
+import { latestSubscriptionClaimFor } from "@/server/subscription/claims";
 
 import { PlanSwitchForm, type PlanSwitchCard } from "./plan-switch-form";
+import { SubmitPaymentDialog } from "./submit-payment-dialog";
 
 /**
  * `/dashboard/plan` (D-06) — the in-trial plan switcher, and the expired-trial
@@ -88,6 +93,71 @@ export default async function DashboardPlanPage() {
     price: `${priceFormatter.format(PLANS[tier].monthlyPriceXaf)} XAF`,
   }));
 
+  /**
+   * SUB-03 (plan 06-15) — resolved once, above the branch, for the same
+   * reason `planTiers` is: both the in-trial switcher and the expired-trial
+   * read-only display render the current plan's payment CTA/claim card, and
+   * a single read here is what keeps the two branches from ever disagreeing
+   * about which claim is the merchant's latest.
+   *
+   * `receiptUrl` is resolved server-side (`publicUrlFor` is `server-only`
+   * and cannot be called from `submit-payment-dialog.tsx`'s client island) —
+   * `full.webp` is the `thread`/`subscriptions` preset's one derivative
+   * label, the same suffix `src/components/support/message-list.tsx`
+   * appends for a support-thread attachment.
+   */
+  const latestClaim = await latestSubscriptionClaimFor(ctx.tenantId);
+  const receiptUrl =
+    latestClaim?.receiptKey != null
+      ? publicUrlFor(`${latestClaim.receiptKey}/full.webp`)
+      : null;
+
+  /**
+   * The one region this plan adds to the current plan's card. A `PENDING`
+   * claim replaces the submit trigger with the read-only card plus the
+   * Support link (§ A3's "Blocked resubmit" row) — never a disabled button,
+   * which would explain nothing. A `REJECTED` claim shows the card AND a
+   * resubmit trigger, pre-selecting the rejected claim's own operator. Any
+   * other state (no claim yet, or the latest claim is already `CONFIRMED` —
+   * a merchant pays again next month) renders the plain trigger.
+   */
+  const paymentSection = (
+    <div className="flex flex-col gap-3">
+      {latestClaim !== null &&
+      (latestClaim.status === "PENDING" ||
+        latestClaim.status === "REJECTED") ? (
+        <SubscriptionClaimCard
+          status={latestClaim.status}
+          operator={latestClaim.operator}
+          reference={latestClaim.reference}
+          amountXaf={latestClaim.amountXaf}
+          rejectionReason={latestClaim.rejectionReason}
+          submittedAt={latestClaim.submittedAt}
+          coversThrough={latestClaim.coversThrough}
+          receiptUrl={receiptUrl}
+        />
+      ) : null}
+
+      {latestClaim?.status === "PENDING" ? (
+        <Link
+          href="/dashboard/support"
+          className="w-fit text-sm leading-normal font-medium text-foreground underline underline-offset-3"
+        >
+          {strings.plan.subscriptionClaim.awaitingLink}
+        </Link>
+      ) : (
+        <SubmitPaymentDialog
+          planTier={ctx.plan.tier}
+          amountXaf={PLANS[ctx.plan.tier].monthlyPriceXaf}
+          resubmit={latestClaim?.status === "REJECTED"}
+          defaultOperator={
+            latestClaim?.status === "REJECTED" ? latestClaim.operator : null
+          }
+        />
+      )}
+    </div>
+  );
+
   if (ctx.trial.state === "expired") {
     return (
       /* The page owns its column now — see the return below. */
@@ -120,19 +190,27 @@ export default async function DashboardPlanPage() {
          * expired, the only self-service action is the D-10 'contact us'
          * placeholder — there is no in-app plan-switch path out of read-only
          * in this phase, consistent with the real subscribe flow being
-         * deferred."* Quick task `260831-vd2` added the display and nothing
-         * else: no button, no click target, no upgrade call to action. The
-         * WhatsApp contact link above stays the only functional control in
-         * this state.
+         * deferred."* Quick task `260831-vd2` added the display with no
+         * switcher wired into it, and none is added here either: no tier
+         * card in this grid ever grows a `Switch to {plan}` button, expired
+         * or not.
          *
-         * A redirect to a subscription-payment page is NOT a missing piece to
-         * be helpfully filled in here — it is deferred to Phase 6, which owns
-         * the platform receiving number and the subscription-claim flow that
-         * such a page would need. No placeholder route either.
+         * `260831-vd2` also left a note that a subscription-payment redirect
+         * was deferred to Phase 6, "which owns the platform receiving number
+         * and the subscription-claim flow." This IS that plan (06-15):
+         * `paymentSection` below renders in the CURRENT tier's card only —
+         * SUB-03's `Submit payment` CTA, or the read-only claim card while
+         * one is awaiting review or was rejected. That CTA pays the account
+         * back into subscribed standing; it is deliberately not a plan
+         * SWITCH, which stays exactly as unreachable post-expiry as the
+         * paragraph above still requires.
          *
          * And the display is a courtesy, never the control: `switchPlan`'s
          * `merchantAction({ mode: "write" })` refuses the write server-side
-         * for an expired trial regardless of what this page renders.
+         * for an expired trial regardless of what this page renders, and
+         * `submitSubscriptionPayment`'s own `mode: "read"` is exactly why the
+         * payment CTA keeps working here where a `"write"` gate would not
+         * (see that action's header).
          *
          * No `strings.plan.dashboard.heading` sub-heading sits above this grid,
          * and that omission is deliberate. The expired heading already anchors
@@ -175,6 +253,8 @@ export default async function DashboardPlanPage() {
                     {strings.plan.priceSuffix}
                   </span>
                 </p>
+
+                {isCurrent ? paymentSection : null}
               </div>
             );
           })}
@@ -244,6 +324,7 @@ export default async function DashboardPlanPage() {
         currentTier={ctx.plan.tier}
         memberCount={memberCount}
         cards={cards}
+        currentPlanExtra={paymentSection}
       />
     </div>
   );
