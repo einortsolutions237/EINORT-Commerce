@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: Completed 06-10-PLAN.md (global claims ledger + admin rail badge) in worktree agent-a9c5dae20ae9aaa37 -- awaiting merge alongside sibling Wave 3 plans 06-08/06-09
-last_updated: "2026-09-14T17:24:08.346Z"
-last_activity: "2026-09-14 -- Wave 2 executed and merged (all 4 plans), post-merge gate green: lint/typecheck/build/670 unit tests, 1055/1060 isolation tests (5 pre-existing environmental Neon-latency flakes in claims.test.ts and stock-race.test.ts, confirmed unrelated to this wave's changes — see 06-07-SUMMARY.md)"
+stopped_at: Phase 6 Wave 3 merged to master
+last_updated: "2026-09-14T18:35:00.000Z"
+last_activity: 2026-09-14 -- Phase 6 Wave 3 (06-08..06-10) executed and merged
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 88
+  completed_plans: 87
   percent: 33
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 6 is executing now (Waves 1-2 of 7 complete and merged to master — plans 06-01 through 06-07). Wave 3 (06-08/09/10) is next. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
+**Current focus:** Phase 6 is executing now (Waves 1-3 of 7 complete and merged to master — plans 06-01 through 06-10). Wave 4 (06-11, attachment upload path) is next. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
 
 ## Current Position
 
 Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
-Plan: Wave 2 of 7 complete (06-04, 06-05, 06-06, 06-07 merged to master); Wave 3 (06-08, 06-09, 06-10) next
+Plan: Wave 3 of 7 complete (06-08, 06-09, 06-10 merged to master); Wave 4 (06-11) next
 Status: Executing Phase 6
-Last activity: 2026-09-14 -- Wave 2 executed and merged (all 4 plans), post-merge gate green: lint/typecheck/build/670 unit tests, 1055/1060 isolation tests (5 pre-existing environmental Neon-latency flakes in claims.test.ts and stock-race.test.ts, confirmed unrelated to this wave's changes — see 06-07-SUMMARY.md)
+Last activity: 2026-09-14 -- Wave 3 executed and merged (all 3 plans: admin merchants list/detail, merchant-side support thread UI, global claims ledger), post-merge gate green: lint/typecheck/build/678 unit tests, 1063/1068 isolation tests (same 5 pre-existing environmental Neon-latency flakes as Wave 2's run, identical test names and errors — confirmed unrelated to this wave's changes)
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -142,7 +142,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-14T17:23:32.529Z
-Stopped at: Completed 06-10-PLAN.md (global claims ledger + admin rail badge) in worktree agent-a9c5dae20ae9aaa37 -- awaiting merge alongside sibling Wave 3 plans 06-08/06-09
+Last session: 2026-09-14T18:35:00.000Z
+Stopped at: Phase 6 Wave 3 merged to master; Wave 4 (06-11, support-thread attachment upload path) not yet dispatched
 Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-10-SUMMARY.md
-Next command: `/gsd:execute-phase 6` (resume at Wave 3) or dispatch 06-08/06-09/06-10 directly
+Next command: `/gsd:execute-phase 6` (resume at Wave 4) or dispatch 06-11 directly

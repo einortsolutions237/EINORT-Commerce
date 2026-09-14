@@ -78,8 +78,8 @@
 
 ### Merchant Dashboard
 
-- [ ] **DASH-01**: Merchant dashboard shows orders (with the Payment Claims queue surfaced prominently), products/inventory, and basic sales numbers (revenue, order count, products sold)
-- [ ] **DASH-02**: Dashboard answers "how is the business performing, what needs attention, what's next" at a glance
+- [x] **DASH-01**: Merchant dashboard shows orders (with the Payment Claims queue surfaced prominently), products/inventory, and basic sales numbers (revenue, order count, products sold)
+- [x] **DASH-02**: Dashboard answers "how is the business performing, what needs attention, what's next" at a glance
 
 ### Platform Admin (Super Admin)
 
@@ -259,8 +259,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | SUB-01 | Phase 2 | Complete |
 | SUB-02 | Phase 2 | Complete |
 | SUB-03 | Phase 6 | Pending |
-| DASH-01 | Phase 6 | Pending |
-| DASH-02 | Phase 6 | Pending |
+| DASH-01 | Phase 6 | Complete |
+| DASH-02 | Phase 6 | Complete |
 | ADM-01 | Phase 6 | Pending |
 | ADM-02 | Phase 6 | Complete |
 | ADM-03 | Phase 6 | Pending |
