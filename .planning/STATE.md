@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: Phase 6 Wave 2 merged to master
-last_updated: "2026-09-14T16:35:00.000Z"
-last_activity: 2026-09-14 -- Phase 6 Wave 2 (06-04..06-07) executed and merged
+stopped_at: Completed 06-10-PLAN.md (global claims ledger + admin rail badge) in worktree agent-a9c5dae20ae9aaa37 -- awaiting merge alongside sibling Wave 3 plans 06-08/06-09
+last_updated: "2026-09-14T17:24:08.346Z"
+last_activity: "2026-09-14 -- Wave 2 executed and merged (all 4 plans), post-merge gate green: lint/typecheck/build/670 unit tests, 1055/1060 isolation tests (5 pre-existing environmental Neon-latency flakes in claims.test.ts and stock-race.test.ts, confirmed unrelated to this wave's changes — see 06-07-SUMMARY.md)"
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 84
+  completed_plans: 88
   percent: 33
 ---
 
@@ -58,6 +58,7 @@ Phases 9 → 10 → 11 → 12 (Inventory → Delivery → Customers → Analytic
 | Phase 05.2 P01 | ~20min | 3 tasks | 4 files |
 | Phase 05.1 P08 | ~75min | 2 tasks | 3 files |
 | Phase 05.3 P01 | ~35min | 3 tasks | 5 files |
+| Phase 06-merchant-dashboard-platform-admin P10 | 55min | 2 tasks | 6 files |
 
 ## Quick Tasks Completed
 
@@ -104,6 +105,8 @@ Recent decisions affecting current work:
 - [Phase 05.2-01]: Hero image slot resolves TEMPLATE_PREVIEWS['flagship-fashion'] server-side; renders copy-only today (manifest ships empty) with no placeholder ever shipped, auto-upgrading once 05.1-09 lands
 - [v2.0 roadmap]: Phase 11 (Customers) adds **no shopper account, login, or password-reset surface** — checkout stays guest-only, `Customer` is an index over orders, and `Order`'s snapshot identity columns stay authoritative. Recorded explicitly because the feature being *named* "Customers" is what makes people build it anyway (PITFALLS.md Pitfall 8).
 - [v2.0 roadmap]: MMKT-03/04/06 **supersede** the research's recommendation to omit `PENDING_REVIEW`/`REJECTED` from the listing lifecycle. The research assumed no moderator surface would exist; MMKT-06 creates one inside Phase 6's pilot-scoped Super Admin, which lands before Phase 13. Build the full lifecycle — do not "correct" the enum back to four members on the strength of ARCHITECTURE.md Anti-Pattern 6.
+- [Phase 06-merchant-dashboard-platform-admin]: 06-10: /admin/claims Status chip reuses OrderStateChip against the order's live channel/state (not a new ClaimStatus chip) -- required adding orderChannel/orderState to AdminClaimRow, and keeps the 5-use --gold-accent budget intact
+- [Phase 06-merchant-dashboard-platform-admin]: 06-10: merchant-side RejectDialog (dashboard/claims/reject-dialog.tsx) reused directly on /admin/claims, not recomposed -- verified genuinely surface-agnostic (no tenant context, no merchant-only action) before importing
 
 ### Pending Todos
 
@@ -139,7 +142,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-14T16:35:00.000Z
-Stopped at: Phase 6 Wave 2 merged to master; Wave 3 (06-08, 06-09, 06-10) not yet dispatched
-Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-07-SUMMARY.md
+Last session: 2026-09-14T17:23:32.529Z
+Stopped at: Completed 06-10-PLAN.md (global claims ledger + admin rail badge) in worktree agent-a9c5dae20ae9aaa37 -- awaiting merge alongside sibling Wave 3 plans 06-08/06-09
+Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-10-SUMMARY.md
 Next command: `/gsd:execute-phase 6` (resume at Wave 3) or dispatch 06-08/06-09/06-10 directly
