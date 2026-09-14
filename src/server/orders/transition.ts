@@ -9,6 +9,7 @@ import { scopedCreateData, type ScopedTx } from "@/server/db/tenant-scoped";
 
 import { InvalidTransitionError } from "./errors";
 import { canTransition } from "./state-machine";
+import type { OrderWriteTx } from "./write-client";
 
 /**
  * ORD-01 + ORD-05 — the ONLY writer of `Order.state` in this codebase.
@@ -49,19 +50,40 @@ import { canTransition } from "./state-machine";
  * legal move made earlier in the caller's transaction is rolled back when a
  * later call throws, which could not happen if each call committed alone.)
  *
- * `tx` is a `ScopedTx`, never a `ScopedDb`. An extended client hands its
- * transaction callback an extended `tx` (prisma/prisma#19565, proved against a
- * real Postgres in `tests/isolation/tenant-isolation.test.ts`), so the
- * tenant-scope extension still injects `tenantId` into everything below. The
- * frequently-cited prisma/prisma#17948 — extension handlers issuing their own
- * side queries that escape the transaction — does not apply: `scopedDb`'s
- * extension mutates `args` and calls `query(a)`, and never opens a query of its
- * own.
+ * `tx` is a TRANSACTION client, never a top-level one. An extended client hands
+ * its transaction callback an extended `tx` (prisma/prisma#19565, proved against
+ * a real Postgres in `tests/isolation/tenant-isolation.test.ts`), so when the
+ * caller opened the transaction on `scopedDb` the tenant-scope extension still
+ * injects `tenantId` into everything below. The frequently-cited
+ * prisma/prisma#17948 — extension handlers issuing their own side queries that
+ * escape the transaction — does not apply: `scopedDb`'s extension mutates `args`
+ * and calls `query(a)`, and never opens a query of its own.
  *
- * That scoping is also the cross-tenant defence here. There is no `tenantId`
- * parameter and no tenant check written out below, because the `where` clause
- * of the read is rewritten by the extension: pass another tenant's order id and
- * `findUniqueOrThrow` finds nothing and throws, rather than transitioning it.
+ * ---------------------------------------------------------------------------
+ * `tx` IS `OrderWriteTx`, NOT `ScopedTx`, AND THAT CHANGES WHO GUARDS THE TENANT.
+ * ---------------------------------------------------------------------------
+ * ADM-02 (plan 06-07) gives the platform owner the same one-tap confirm and
+ * reject the merchant has, over any tenant's claim. The admin zone reads through
+ * `adminDb`, cannot construct a `ScopedTx`, and — under `eslint.config.mjs` —
+ * cannot even NAME that type. Rather than duplicate this function (the one thing
+ * `tests/unit/single-order-state-writer.test.ts` exists to prevent), the
+ * parameter was widened to `OrderWriteTx`: the structural minimum of delegate
+ * operations enumerated from the body below. Read
+ * `src/server/orders/write-client.ts` before touching either.
+ *
+ * The consequence is that the cross-tenant defence is now conditional on WHO
+ * OPENED THE TRANSACTION, and both halves are deliberate:
+ *
+ *   - Opened on `scopedDb`: unchanged from before. The `where` of the read is
+ *     rewritten by the extension, so another tenant's order id is a miss and a
+ *     miss throws — the row is never visible, not filtered out after the fact.
+ *
+ *   - Opened on `adminDb`: there is no predicate, and there is not supposed to
+ *     be. `Order.id` is a cuid, so the `where` below selects exactly one row or
+ *     none; reaching another tenant's order is the authorised act, and the
+ *     authorisation happened at `requireAdminContext()` before this function was
+ *     ever called. What is NOT optional on that path is the audit row's tenant —
+ *     see `order.tenantId` below.
  */
 
 /**
@@ -204,16 +226,19 @@ export interface TransitionOrderArgs {
 }
 
 export async function transitionOrder(
-  tx: ScopedTx,
+  tx: OrderWriteTx,
   args: TransitionOrderArgs,
 ): Promise<void> {
-  // Scoped by the extension: another tenant's id is a miss, and a miss throws.
-  // `select` is narrow on purpose — this function needs three columns, and
+  // On a scoped transaction this is scoped by the extension: another tenant's
+  // id is a miss, and a miss throws. On an admin transaction the cuid is the
+  // whole selector and crossing tenants is the authorised act — see the header.
+  //
+  // `select` is narrow on purpose — this function needs four columns, and
   // reading the whole row would invite a later edit to start making decisions
   // on data the transition rules are not a function of.
   const order = await tx.order.findUniqueOrThrow({
     where: { id: args.orderId },
-    select: { id: true, state: true, channel: true },
+    select: { id: true, state: true, channel: true, tenantId: true },
   });
 
   // ORD-01 + D-02/D-03. The graph and the channel rule, in one call.
@@ -277,22 +302,45 @@ export async function transitionOrder(
     },
   });
 
-  // ORD-05, in the SAME transaction as the state change above. A SEPARATE
-  // `create` and deliberately NOT a nested write off the `order.update`: the
-  // tenant-scope extension hooks client operations, not the generated SQL, so a
-  // nested create never passes through it and would land with no `tenantId`
-  // stamp (Pitfall 1/4). `scopedCreateData` is the compile-time half of the
-  // same rule — it omits `tenantId` from the payload precisely because the
-  // extension supplies it and a caller-supplied one would be overwritten
-  // (TEN-08).
+  /*
+   * ORD-05, in the SAME transaction as the state change above. A SEPARATE
+   * `create` and deliberately NOT a nested write off the `order.update`: the
+   * tenant-scope extension hooks client operations, not the generated SQL, so a
+   * nested create never passes through it and would land with no `tenantId`
+   * stamp (Pitfall 1/4).
+   *
+   * -------------------------------------------------------------------------
+   * `tenantId` COMES FROM THE ORDER ROW. IT IS NEVER A PARAMETER, AND IT IS NOT
+   * THE EXTENSION'S STAMP EITHER.
+   * -------------------------------------------------------------------------
+   * This is the one line the `OrderWriteTx` widening actually required, and
+   * removing it breaks the admin path silently-then-loudly rather than
+   * obviously. `OrderEvent.tenantId` is `NOT NULL` with no default, and the row
+   * carries a composite foreign key to `Order(tenantId, id)`. On a transaction
+   * opened against `adminDb` nothing injects the column, so `scopedCreateData`'s
+   * deliberately `tenantId`-less payload would be a NOT NULL violation; a
+   * GUESSED tenant would be a foreign-key violation. The only correct value is
+   * the one on the order this event describes, which was read three statements
+   * ago inside this same transaction.
+   *
+   * It is equally correct on the merchant path, and provably not a TEN-08
+   * regression. The read above was itself scoped, so `order.tenantId` IS the
+   * caller's tenant; and `scopedDb`'s extension spreads its own `tenantId` LAST
+   * into a create payload, so even if the two ever disagreed the extension's
+   * value — not this one — is what reaches the database. The value is derived
+   * from a row, never accepted from a caller: `TransitionOrderArgs` has no
+   * tenant field and must never grow one, because a tenant a CALLER supplies is
+   * exactly the substitution `scopedCreateData`'s own header warns about.
+   */
   await tx.orderEvent.create({
-    data: scopedCreateData<OrderEventCreateInput>({
+    data: {
+      tenantId: order.tenantId,
       orderId: order.id,
       fromState: order.state,
       toState: args.to,
       actor: args.actor,
       actorUserId: args.actorUserId ?? null,
       reason: args.reason ?? null,
-    }),
+    } satisfies OrderEventCreateInput,
   });
 }

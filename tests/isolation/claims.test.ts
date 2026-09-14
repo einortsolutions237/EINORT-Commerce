@@ -111,6 +111,12 @@ const { confirmClaim, rejectClaim, reopenClaim } = await import(
   "@/server/claims/actions"
 );
 const { normalizeReference } = await import("@/server/claims/reference");
+const { listClaimsForReview } = await import("@/server/claims/queries");
+const {
+  adminConfirmOrderClaim,
+  adminRejectOrderClaim,
+  listOrderClaimsForAdmin,
+} = await import("@/server/admin/claims");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -448,7 +454,26 @@ describe("ORD-02 — nothing auto-confirms a payment", () => {
    * could be written" (T-03-65).
    */
   const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
-  const SANCTIONED_CONFIRMER = "src/server/claims/actions.ts";
+  /**
+   * TWO sanctioned confirmers, not one — extended by plan 06-07.
+   *
+   * `src/server/admin/claims.ts` is a SECOND legitimate place a claim is set
+   * to `CONFIRMED`: ADM-02 gives the platform owner the same one-tap confirm
+   * over any tenant's claim, and `confirmClaim` cannot be reused for it
+   * (Pitfall 3 — that action resolves its tenant from `requireMerchantContext()`,
+   * which the owner does not have). This is NOT the same relaxation as
+   * `Order.state`'s single-writer guard, which stays genuinely single —
+   * `src/server/admin/claims.ts` calls the ONE `transitionOrder` rather than
+   * writing `Order.state` itself. `PaymentClaim.status`, by contrast, has no
+   * shared writer function to delegate to without reaching across the
+   * merchant/admin fence into a `merchantAction`, so admin/claims.ts writes it
+   * directly — exactly once per surface, still an allowlist of two named
+   * files rather than an unbounded set.
+   */
+  const SANCTIONED_CONFIRMERS = [
+    "src/server/claims/actions.ts",
+    "src/server/admin/claims.ts",
+  ];
   const SKIPPED_DIRS = new Set(["generated"]);
   const CONFIRMED_WRITE = /status\s*:\s*"CONFIRMED"/;
 
@@ -485,22 +510,25 @@ describe("ORD-02 — nothing auto-confirms a payment", () => {
     ),
   );
 
-  it("actually scanned the source tree and still detects the sanctioned writer", () => {
+  it("actually scanned the source tree and still detects both sanctioned writers", () => {
     // The positive control. A scan that found nothing, or a detector that no
     // longer recognises a claim confirmation, would both report "no second
     // confirmer" with total confidence and zero coverage.
     expect(scannedFiles.length).toBeGreaterThan(0);
-    expect(confirmers).toContain(SANCTIONED_CONFIRMER);
+    for (const sanctioned of SANCTIONED_CONFIRMERS) {
+      expect(confirmers).toContain(sanctioned);
+    }
   });
 
-  it("has no module outside the claims actions that confirms a claim", () => {
+  it("has no module outside the two sanctioned confirmers that confirms a claim", () => {
     expect(
-      confirmers.filter((file) => file !== SANCTIONED_CONFIRMER),
+      confirmers.filter((file) => !SANCTIONED_CONFIRMERS.includes(file)),
       "ORD-02 violation — something other than " +
-        `${SANCTIONED_CONFIRMER} sets a payment claim to CONFIRMED.\n` +
+        `${SANCTIONED_CONFIRMERS.join(" or ")} sets a payment claim to CONFIRMED.\n` +
         "  A claim is a customer's ASSERTION that they paid. Confirming one is " +
-        "the merchant's judgement and the only thing standing between a " +
-        "self-report and a confirmed sale (T-03-65).",
+        "the merchant's or the platform owner's judgement, and only theirs — " +
+        "the only thing standing between a self-report and a confirmed sale " +
+        "(T-03-65).",
     ).toEqual([]);
   });
 
@@ -731,6 +759,144 @@ describe("ORD-03 tenant isolation (T-03-66)", () => {
     expect((await readOrder(merchantB.tenantId, foreign.orderId)).state).toBe(
       "PAYMENT_CLAIMED",
     );
+  });
+});
+
+describe("admin order-claim writer (ADM-02, plan 06-07)", () => {
+  /*
+   * No session, no `signUpAndCarrySession` — `adminConfirmOrderClaim`/
+   * `adminRejectOrderClaim` are plain functions, not `merchantAction`s. Their
+   * authorization boundary (`requireAdminContext()`) is one layer up, at the
+   * `adminAction`-wrapped Server Actions plan 06-10 builds; this file proves
+   * what the functions THEMSELVES do once called, exactly as it proves
+   * `transitionOrder`'s guards directly in the ORD-02 describe block above.
+   * `actorUserId` below is a fixture id standing in for the one
+   * `platformRole: "admin"` account — no such account needs to exist for
+   * these functions to run, because nothing here calls
+   * `requireAdminContext()`.
+   */
+  const ADMIN_USER_ID = "admin-fixture-user-id";
+
+  it("confirms a claim with the merchant path's exact consequences", async () => {
+    const fixture = await claimAwaitingReview(TENANT_A.id);
+    const stockBefore = await readStock(TENANT_A.id, fixture.variantId);
+    const eventsBefore = await countEvents(TENANT_A.id, fixture.orderId);
+
+    await expect(
+      adminConfirmOrderClaim({
+        claimId: fixture.claimId,
+        actorUserId: ADMIN_USER_ID,
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    const claim = await readClaim(TENANT_A.id, fixture.claimId);
+    expect(claim.status).toBe("CONFIRMED");
+    expect(claim.reviewedByUserId).toBe(ADMIN_USER_ID);
+
+    const order = await readOrder(TENANT_A.id, fixture.orderId);
+    expect(order.state).toBe("CONFIRMED");
+    expect(order.confirmedAt).not.toBeNull();
+
+    expect(await countEvents(TENANT_A.id, fixture.orderId)).toBe(
+      eventsBefore + 1,
+    );
+    const events = await readEvents(TENANT_A.id, fixture.orderId);
+    // `actor` is still "MERCHANT" — see admin/claims.ts's header on why —
+    // and `actorUserId` is the ADMIN's id, never a merchant's.
+    expect(events.at(-1)).toMatchObject({
+      toState: "CONFIRMED",
+      actor: "MERCHANT",
+      actorUserId: ADMIN_USER_ID,
+    });
+
+    // D-04: confirmation moves no stock, same as the merchant path.
+    expect(await readStock(TENANT_A.id, fixture.variantId)).toBe(stockBefore);
+  });
+
+  it("refuses a second admin confirmation and adds no second event", async () => {
+    const fixture = await claimAwaitingReview(TENANT_A.id);
+
+    await expect(
+      adminConfirmOrderClaim({
+        claimId: fixture.claimId,
+        actorUserId: ADMIN_USER_ID,
+      }),
+    ).resolves.toEqual({ ok: true });
+    const afterFirst = await countEvents(TENANT_A.id, fixture.orderId);
+
+    const second = await adminConfirmOrderClaim({
+      claimId: fixture.claimId,
+      actorUserId: ADMIN_USER_ID,
+    });
+    expect(second.ok).toBe(false);
+
+    expect(await countEvents(TENANT_A.id, fixture.orderId)).toBe(afterFirst);
+  });
+
+  it("rejects a claim with the merchant path's exact consequences", async () => {
+    const fixture = await claimAwaitingReview(TENANT_B.id, { quantity: 2 });
+    const stockBefore = await readStock(TENANT_B.id, fixture.variantId);
+    const reason = "The reference does not match any payment we received.";
+
+    await expect(
+      adminRejectOrderClaim({
+        claimId: fixture.claimId,
+        reason,
+        actorUserId: ADMIN_USER_ID,
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    const claim = await readClaim(TENANT_B.id, fixture.claimId);
+    expect(claim.status).toBe("REJECTED");
+    expect(claim.rejectionReason).toBe(reason);
+    expect(claim.reviewedByUserId).toBe(ADMIN_USER_ID);
+
+    const order = await readOrder(TENANT_B.id, fixture.orderId);
+    expect(order.state).toBe("DISPUTED");
+    expect(order.stockHeld).toBe(false);
+
+    const events = await readEvents(TENANT_B.id, fixture.orderId);
+    expect(events.at(-1)).toMatchObject({
+      toState: "DISPUTED",
+      actor: "MERCHANT",
+      actorUserId: ADMIN_USER_ID,
+      reason,
+    });
+
+    // D-04: the held units go back on sale, by the ordered quantity — same
+    // as `rejectClaim`.
+    expect(await readStock(TENANT_B.id, fixture.variantId)).toBe(
+      stockBefore + fixture.quantity,
+    );
+  });
+
+  it("lists both tenants' claims for the admin, while the merchant queue stays scoped", async () => {
+    const inA = await claimAwaitingReview(TENANT_A.id, {
+      amountClaimedXaf: 111_100,
+    });
+    const inB = await claimAwaitingReview(TENANT_B.id, {
+      amountClaimedXaf: 222_200,
+    });
+
+    const adminView = await listOrderClaimsForAdmin({ status: "PENDING" });
+    const adminIds = adminView.map((row) => row.id);
+
+    // THE ONE ASSERTION THAT CATCHES A DROPPED TENANT FILTER. A cross-tenant
+    // read that accidentally scoped itself would still find tenant A's own
+    // claim and this line alone would not notice — it has to find BOTH.
+    expect(adminIds).toContain(inA.claimId);
+    expect(adminIds).toContain(inB.claimId);
+
+    const rowA = adminView.find((row) => row.id === inA.claimId);
+    expect(rowA?.tenantId).toBe(TENANT_A.id);
+    expect(rowA?.amountClaimedXaf).toBe(111_100);
+
+    // And the mirror: the merchant-side queue, unwidened, sees only its own
+    // tenant's claim — the admin ledger existing must not have loosened it.
+    const merchantAView = await listClaimsForReview(TENANT_A.id);
+    const merchantAIds = merchantAView.map((row) => row.id);
+    expect(merchantAIds).toContain(inA.claimId);
+    expect(merchantAIds).not.toContain(inB.claimId);
   });
 });
 
