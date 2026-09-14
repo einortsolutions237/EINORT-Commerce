@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 
+import { AttentionBand } from "@/components/dashboard/attention-band";
 import { strings } from "@/lib/strings";
-import { overviewMetrics, recentOrders } from "@/server/dashboard/queries";
+import {
+  activeProductCount,
+  attentionCounts,
+  overviewMetrics,
+  recentOrders,
+} from "@/server/dashboard/queries";
 import { requireMerchantContext } from "@/server/merchant/context";
 
 import { OverviewMetrics } from "./overview-metrics";
@@ -78,9 +84,11 @@ export default async function DashboardPage() {
 
   const now = new Date();
   const since = new Date(now.getTime() - OVERVIEW_WINDOW_DAYS * 86_400_000);
-  const [metrics, orders] = await Promise.all([
+  const [metrics, orders, attention, productCount] = await Promise.all([
     overviewMetrics(ctx.tenantId, since),
     recentOrders(ctx.tenantId),
+    attentionCounts(ctx.tenantId),
+    activeProductCount(ctx.tenantId),
   ]);
 
   return (
@@ -116,11 +124,15 @@ export default async function DashboardPage() {
         <span className="sr-only">{strings.dashboard.viewStoreLabel}</span>
       </a>
 
+      <AttentionBand counts={attention} />
+
       <OverviewMetrics
         revenueXaf={metrics.revenueXaf}
         openOrders={metrics.openOrders}
         unitsSold={metrics.unitsSold}
         newCustomers={metrics.newCustomers}
+        activeProductCount={productCount}
+        productCap={ctx.plan.limits.products}
       />
 
       <RevenueBars buckets={metrics.revenueByDay} totalXaf={metrics.revenueXaf} />
