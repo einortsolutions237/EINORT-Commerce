@@ -306,6 +306,63 @@ describe.runIf(existsSync(THEMING_SCHEMA_PATH))(
   },
 );
 
+/**
+ * ---------------------------------------------------------------------------
+ * ADM-05 / SUB-03 — THE threads/subscriptions NAMESPACE PAIR (plan 06-11).
+ * ---------------------------------------------------------------------------
+ * Added together, in one plan, so plan 06-15's subscription-receipt upload
+ * calls an existing door instead of editing this registry a second time — see
+ * `objectKeyFor`'s own header comment for the full reasoning. The same guard
+ * that already covers `products`/`claims`/`logos` covers these two for free,
+ * since `objectKeyFor` does not branch on `kind` at all; the assertions below
+ * exist so a future edit that narrows the guard's character classes or the
+ * `UploadKind` union cannot silently stop covering either namespace.
+ */
+describe("the threads and subscriptions namespaces (ADM-05 / SUB-03)", () => {
+  it("builds the documented layout for a thread attachment upload", () => {
+    expect(objectKeyFor("tenant-a", "threads", REAL_UUID)).toBe(
+      `tenants/tenant-a/threads/${REAL_UUID}/original`,
+    );
+  });
+
+  it("builds the documented layout for a subscription receipt upload", () => {
+    expect(objectKeyFor("tenant-a", "subscriptions", REAL_UUID)).toBe(
+      `tenants/tenant-a/subscriptions/${REAL_UUID}/original`,
+    );
+  });
+
+  it("refuses a malformed upload id in either namespace", () => {
+    for (const kind of ["threads", "subscriptions"] satisfies UploadKind[]) {
+      for (const uploadId of ["..", "../../other", "abc/def", "abc123", ""]) {
+        expect(() => objectKeyFor("tenant-a", kind, uploadId)).toThrow();
+      }
+    }
+  });
+
+  it("refuses a tenant id that could break out of the prefix, in either namespace", () => {
+    for (const kind of ["threads", "subscriptions"] satisfies UploadKind[]) {
+      for (const tenantId of ["", "..", "../other", "a/b", "a\\b"]) {
+        expect(() => objectKeyFor(tenantId, kind, VALID_ID)).toThrow();
+      }
+    }
+  });
+
+  it("always anchors the key under the caller's own tenant prefix, in either namespace", () => {
+    for (const kind of ["threads", "subscriptions"] satisfies UploadKind[]) {
+      const key = objectKeyFor("cm3xk9p2q0000abcd1234efgh", kind, VALID_ID);
+      expect(key.startsWith("tenants/cm3xk9p2q0000abcd1234efgh/")).toBe(true);
+    }
+  });
+
+  it("yields a derivative prefix, never an /original key, for either namespace", () => {
+    for (const kind of ["threads", "subscriptions"] satisfies UploadKind[]) {
+      const prefix = derivativePrefixFor(objectKeyFor("tenant-a", kind, REAL_UUID));
+      expect(prefix).toBe(`tenants/tenant-a/${kind}/${REAL_UUID}`);
+      expect(prefix.endsWith("/original")).toBe(false);
+    }
+  });
+});
+
 describe("ALLOWED_UPLOAD_CONTENT_TYPES", () => {
   it("is exactly the three raster types R2 will be asked to sign for", () => {
     expect([...ALLOWED_UPLOAD_CONTENT_TYPES]).toEqual([

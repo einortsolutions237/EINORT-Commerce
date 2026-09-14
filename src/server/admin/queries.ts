@@ -288,6 +288,31 @@ export async function listMerchantsForAdmin(
 }
 
 /**
+ * True when `merchantId` names a real organization — nothing more.
+ *
+ * ADM-05 / SUB-03 (plan 06-11): `requestAdminThreadAttachmentUpload`
+ * (`src/server/images/thread-upload.ts`) validates its caller-supplied target
+ * tenant id against this before minting a presigned grant under that tenant's
+ * prefix. An unvalidated id would let a typo — or a probe — mint a write
+ * grant under a prefix nobody owns; `objectKeyFor` would happily compose the
+ * key regardless, because it only checks the STRING is shaped like a tenant
+ * id, never that the tenant behind it exists.
+ *
+ * A dedicated existence check rather than reusing `merchantDetailForAdmin`:
+ * that function's owner/count/published joins exist to fill a detail page and
+ * would be pure waste on a hot upload-mint path that needs one boolean.
+ */
+export async function merchantExistsForAdmin(
+  merchantId: string,
+): Promise<boolean> {
+  const org = await adminDb.organization.findUnique({
+    where: { id: merchantId },
+    select: { id: true },
+  });
+  return org !== null;
+}
+
+/**
  * One store, in full, for `/admin/merchants/[id]` — `null` when `merchantId`
  * matches no row, so the page can call `notFound()` and render the same
  * response an unauthorized caller gets (D-06).

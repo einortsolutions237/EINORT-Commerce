@@ -78,13 +78,28 @@ export function isAllowedContentType(
 }
 
 /**
- * The three storage namespaces.
+ * The five storage namespaces.
  *
  * `logos` is unused in Phase 3 and must not be deleted as dead code: D-07 makes
  * Phase 4's ONB-03 merchant logo a reuse of this exact pipeline, so the slot
  * exists now to guarantee the second caller adds a row rather than a module.
+ *
+ * `threads` and `subscriptions` arrive TOGETHER in Phase 6 (plan 06-11), and
+ * that pairing is deliberate rather than incidental: `threads` carries ADM-05
+ * support-message image attachments and `subscriptions` carries SUB-03
+ * subscription-payment receipts (plan 06-15). Both reuse the same `thread`
+ * image preset and the same two-narrow-doors mint module
+ * (`src/server/images/thread-upload.ts`), and adding both namespace rows in
+ * one edit is what lets the second consumer — the receipt upload — call an
+ * existing door instead of editing this file again in a later wave. The same
+ * reasoning the `logos` row above already states for its own slot.
  */
-export type UploadKind = "products" | "claims" | "logos";
+export type UploadKind =
+  | "products"
+  | "claims"
+  | "logos"
+  | "threads"
+  | "subscriptions";
 
 /** 8–64 chars of lowercase alphanumerics and hyphens — the shape of `crypto.randomUUID()`. */
 const UPLOAD_ID_PATTERN = /^[a-z0-9-]{8,64}$/;

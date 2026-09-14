@@ -172,3 +172,18 @@ export type StorefrontPageCreateInput =
  */
 export type SupportMessageCreateInput =
   Prisma.SupportMessageUncheckedCreateInput;
+
+/**
+ * One `SupportAttachment` row inside a `createMany` batch (D-10 / D-22),
+ * written by `postMerchantMessage` in `src/server/support/messages.ts` and by
+ * nothing else.
+ *
+ * `CreateManyInput` and NOT `UncheckedCreateInput`, exactly as
+ * `ProductImageCreateManyInput` above: `createMany` takes an array of a
+ * distinct, flatter type, and it is one of the batch operations the scope
+ * extension DOES intercept. The row names its message by the `messageId`
+ * scalar rather than through a nested relation write, for the same Pitfall
+ * 1/4 reason as every entry above.
+ */
+export type SupportAttachmentCreateManyInput =
+  Prisma.SupportAttachmentCreateManyInput;
