@@ -27,8 +27,10 @@
  * language.
  */
 
+import { adminCopy } from "./admin";
 import { flagshipCopy } from "./flagship";
 import { marketingCopy } from "./marketing";
+import { supportCopy } from "./support";
 import { beautyCosmeticsTemplates } from "./templates/beauty-cosmetics";
 import { electronicsTemplates } from "./templates/electronics";
 import { fashionApparelTemplates } from "./templates/fashion-apparel";
@@ -37,6 +39,20 @@ import { generalRetailTemplates } from "./templates/general-retail";
 import { groceryFoodTemplates } from "./templates/grocery-food";
 
 export const BRAND = "EINORT" as const;
+
+/**
+ * ORD-04's refusal, declared once and read twice.
+ *
+ * A customer submitting a payment claim from their order-status page
+ * (`orderStatus.claimDuplicateReference`) and a merchant submitting proof of
+ * their own subscription payment (`plan.subscriptionClaim.duplicateReference`,
+ * SUB-03) hit the same uniqueness rule and must read the same sentence.
+ * A `const` rather than a second literal because this file's own header
+ * forbids writing one sentence twice, slightly differently — and because an
+ * object literal cannot reference its own earlier keys during initialization.
+ */
+const DUPLICATE_REFERENCE =
+  "This reference has already been used. Check your confirmation SMS and enter the exact reference." as const;
 
 export const strings = {
   /** `/` — the public marketing landing page (MKTG-01). See `./marketing.ts`. */
@@ -380,6 +396,88 @@ export const strings = {
         "Plan changes aren't available after your trial ends. Contact us to subscribe.",
       expiredCta: "Contact us to subscribe",
     },
+
+    /**
+     * Phase 6, 06-UI-SPEC.md § A3 / R-3 (SUB-03) — the merchant submits proof
+     * of their own subscription payment from `/dashboard/plan`.
+     *
+     * ---------------------------------------------------------------------
+     * THE FORM LIVES HERE, THE RECEIPT LIVES IN THE THREAD.
+     * ---------------------------------------------------------------------
+     * R-3 puts the submit dialog on this page and NOT inside
+     * `/dashboard/support`: SUB-03 says the claim runs through the thread, and
+     * it does — the submission, the owner's decision and the audit trail are
+     * all posted there as `SYSTEM` messages (`strings.support.system.*`). What
+     * it does not do is put a payment form inside a chat transcript, where a
+     * half-typed value competes with a conversation and the merchant has no
+     * plan or price context. There is no second submit form in the thread;
+     * the thread shows one inline link back to this page
+     * (`strings.support.page.subscriptionLink`).
+     *
+     * Nested under `plan` for the same reason `plan.dashboard` is: this
+     * surface reuses the tier names and prices above verbatim, and `{plan}` is
+     * always a tier NAME, never an internal tier key.
+     *
+     * This is the SAME manual-transfer pattern Phase 3 built for customer →
+     * merchant payments, with payer and payee reversed — which is why the
+     * duplicate refusal is the shared `DUPLICATE_REFERENCE` constant and not a
+     * second sentence saying the same thing. Submitting is deliberately NOT
+     * optimistic: it mints a claim row and uploads an image, so `submitting`
+     * exists and is used.
+     */
+    subscriptionClaim: {
+      /** The page's one primary CTA. Plan-switch buttons become `outline`. */
+      trigger: "Submit payment",
+
+      dialogTitle: "Submit your subscription payment",
+      dialogBody:
+        "Send the transfer first, then enter the reference exactly as it appears in your confirmation SMS.",
+
+      operatorLabel: "Operator",
+      operatorMtn: "MTN Mobile Money",
+      operatorOrange: "Orange Money",
+
+      referenceLabel: "Transaction reference",
+      referenceHelper:
+        "Exactly as it appears in the confirmation SMS from {operator}.",
+
+      /** Read-only, pre-filled from the plan price. Never client-supplied. */
+      amountLabel: "Amount",
+
+      receiptLabel: "Receipt image",
+      receiptHelper:
+        "A photo or screenshot of the confirmation SMS or the transfer receipt.",
+
+      /** § B5's manual-transfer pattern, payer and payee reversed. */
+      payToLabel: "Send to",
+      copyNumber: "Copy number",
+      copiedNumber: "Copied",
+
+      submit: "Submit payment",
+      submitting: "Submitting…",
+      cancel: "Go back",
+
+      successToast:
+        "Payment submitted — we'll review it and reply in Support.",
+
+      /**
+       * While a claim is awaiting review the trigger is REPLACED by this card,
+       * not disabled in place: a disabled button explains nothing, and the
+       * merchant's real question is where the payment went.
+       */
+      awaitingBody: "We're reviewing your payment.",
+      awaitingLink: "See it in Support",
+
+      /** Reopens the dialog with the operator pre-selected, the field cleared. */
+      resubmit: "Submit a corrected payment",
+
+      chipAwaiting: "Awaiting review",
+      chipConfirmed: "Confirmed",
+      chipRejected: "Rejected",
+
+      /** Field-level and destructive — never a toast. See the constant. */
+      duplicateReference: DUPLICATE_REFERENCE,
+    },
   },
 
   /**
@@ -491,6 +589,32 @@ export const strings = {
      */
     nav: {
       overview: "Overview",
+
+      /**
+       * Phase 6, 06-UI-SPEC.md § R-4 (D-07). Same shape as
+       * `storefrontEditor` below: the LABEL lands here first, in this file's
+       * one authoring pass, and the rail entry itself lands later.
+       *
+       * The `NAV_GROUPS` row in `src/components/app-sidebar.tsx` and the
+       * matching `"/dashboard/support"` in `REQUIRED_HREFS`
+       * (`tests/unit/dashboard-nav.test.ts`) are a single paired edit owned by
+       * plan 06-09 and must land in one commit — either half alone fails the
+       * build (06-UI-SPEC.md § Open Items 5). Adding a label is neither half.
+       *
+       * R-4 places it in the **General** group, directly beneath Overview: a
+       * conversation with the platform is neither Commerce nor Configuration,
+       * and top-of-rail keeps the unread badge visible without scrolling on a
+       * short mobile sheet. The word is `Support`, not `Messages` or `Help` —
+       * it is what the merchant will search for, and the thread's purpose
+       * includes payment proof, not just chat.
+       *
+       * Its badge is BLUE (`variant="default"`), not gold: gold means
+       * unreviewed money in this product, and inflating it into a generic
+       * notification hue would destroy the signal the claims badge depends on
+       * (06-UI-SPEC.md § Color, the one narrow accent amendment).
+       */
+      support: "Support",
+
       products: "Products",
       /**
        * Phase 4, 04-UI-SPEC.md § Storefront Editor → Navigation. The label
@@ -607,6 +731,46 @@ export const strings = {
       recentOrdersEmptyHeading: "No orders yet",
       recentOrdersEmptyBody:
         "Orders will show up here the moment your first customer checks out.",
+    },
+
+    /**
+     * Phase 6, 06-UI-SPEC.md § A1 / R-6 (DASH-01 / DASH-02) — the
+     * `Needs your attention` band that sits between the page header and the
+     * metric row, plus the fifth metric card that joins the existing four.
+     *
+     * The band and the metric row answer DIFFERENT questions and R-6 is
+     * explicit that they must not share a card: pending claims, low stock and
+     * disputed orders are WORK and belong above everything; a count of live
+     * products is a PERFORMANCE figure and belongs beside Revenue. Both sets
+     * of strings ship in this one namespace because they land in the same
+     * edit to the same page — `productsLive` is not an attention tile and must
+     * never be rendered inside the band.
+     *
+     * A tile whose count is zero is NOT rendered — a tile that says "0" is
+     * noise on the one band that must never be noise. When all three are zero
+     * the band collapses to `allClear` in their place; a blank region would be
+     * a contract violation.
+     *
+     * `{threshold}` is `LOW_STOCK_THRESHOLD` (R-5, currently 5), interpolated
+     * so the merchant is never guessing what "low" means. It is a single
+     * exported constant, not a setting and not a schema column — Phase 9
+     * replaces it with a real store-wide one.
+     *
+     * `{n} of {cap}` is omitted entirely on unlimited plans rather than
+     * rendered with an "∞" — there is no cap to report, so there is no
+     * sub-line.
+     */
+    attention: {
+      heading: "Needs your attention",
+
+      claims: "Payment claims waiting for you",
+      lowStock: "Items at or below {threshold} in stock",
+      disputed: "Orders a customer disputed",
+
+      allClear: "Nothing needs your attention right now.",
+
+      productsLive: "Products live",
+      productsLiveSublabel: "{n} of {cap}",
     },
 
     emptyHeading: "Your store is live",
@@ -1316,8 +1480,7 @@ export const strings = {
     claimSubmit: "I've paid",
     claimSubmitting: "Sending…",
     /** ORD-04, field-level and destructive — never a toast. */
-    claimDuplicateReference:
-      "This reference has already been used. Check your confirmation SMS and enter the exact reference.",
+    claimDuplicateReference: DUPLICATE_REFERENCE,
     /** Matches the Phase 1 wording exactly; one rate-limit voice, not two. */
     claimRateLimited: "Too many attempts. Try again in a minute.",
     /** The submit label when resubmitting after a rejection (D-11). */
@@ -1890,4 +2053,20 @@ export const strings = {
      */
     templateTierLocked: "This template needs a higher plan. See plans.",
   },
+
+  /**
+   * Phase 6, 06-UI-SPEC.md § Copy modules. Both spread in exactly as
+   * `root: { ...marketingCopy }` and `flagship: { ...flagshipCopy }` are —
+   * the modules are the single source of truth and these two keys can never
+   * drift from them.
+   *
+   * They are two files rather than one because they are two AUDIENCES:
+   * `admin.ts` is the platform owner's console (`{store}`, `the merchant`,
+   * never "your") and `support.ts` is the merchant's thread plus the message
+   * chrome both surfaces share. A string that would have to be moved between
+   * them is a string that has crossed the audience boundary. See each file's
+   * header.
+   */
+  admin: { ...adminCopy },
+  support: { ...supportCopy },
 } as const;
