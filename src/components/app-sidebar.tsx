@@ -7,6 +7,7 @@ import {
   Banknote,
   CreditCard,
   LayoutDashboard,
+  MessagesSquare,
   Package,
   Paintbrush,
   Settings,
@@ -88,6 +89,25 @@ import { BRAND, strings } from "@/lib/strings";
  * rewrite of how any one of them renders. `REQUIRED_HREFS` in
  * `tests/unit/dashboard-nav.test.ts` still matches on the bare href string
  * literal, so grouping the items does not change what that test scans for.
+ *
+ * ---------------------------------------------------------------------------
+ * PLAN 06-09 — `Support` JOINS THE GENERAL GROUP, WITH A BLUE BADGE.
+ * ---------------------------------------------------------------------------
+ * 06-UI-SPEC.md § R-4 (D-07): `Support` sits directly beneath `Overview` —
+ * top-of-rail keeps its unread badge visible without scrolling on a short
+ * mobile sheet, and a conversation with the platform is neither Commerce nor
+ * Configuration. Its badge is `unreadBadged`, a SEPARATE flag from `badged`
+ * on purpose: `badged` renders gold, and the gold budget in this file is
+ * fixed at exactly one occurrence (the claims item). Reusing it here would
+ * spend a second gold and fail `tests/unit/dashboard-nav.test.ts`'s budget
+ * assertion. `unreadBadged` renders `variant="default"` (blue) instead — an
+ * unread message is informational, not unreviewed money, and the two counts
+ * needed two hues so neither one's meaning gets diluted into a generic
+ * "notification" signal.
+ *
+ * This item's href, `NAV_GROUPS` row and `REQUIRED_HREFS`'s matching entry
+ * in `tests/unit/dashboard-nav.test.ts` land in the SAME commit — either
+ * half alone fails the build (06-UI-SPEC.md § Open Items 5).
  */
 
 interface NavItem {
@@ -96,6 +116,8 @@ interface NavItem {
   readonly icon: LucideIcon;
   /** Only the claims item carries the gold pending count. */
   readonly badged?: boolean;
+  /** Only the Support item carries the blue unread count — see the header. */
+  readonly unreadBadged?: boolean;
 }
 
 interface NavGroup {
@@ -120,6 +142,12 @@ const NAV_GROUPS: readonly NavGroup[] = [
         href: OVERVIEW_HREF,
         label: strings.dashboard.nav.overview,
         icon: LayoutDashboard,
+      },
+      {
+        href: "/dashboard/support",
+        label: strings.dashboard.nav.support,
+        icon: MessagesSquare,
+        unreadBadged: true,
       },
     ],
   },
@@ -189,7 +217,13 @@ function isCurrent(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppSidebar({ pendingClaims }: { pendingClaims: number }) {
+export function AppSidebar({
+  pendingClaims,
+  unreadSupportCount,
+}: {
+  pendingClaims: number;
+  unreadSupportCount: number;
+}) {
   const pathname = usePathname();
 
   return (
@@ -234,6 +268,14 @@ export function AppSidebar({ pendingClaims }: { pendingClaims: number }) {
                         {item.badged && pendingClaims > 0 ? (
                           <Badge variant="gold" className="ml-auto tabular-nums">
                             {pendingClaims}
+                          </Badge>
+                        ) : null}
+                        {item.unreadBadged && unreadSupportCount > 0 ? (
+                          <Badge
+                            variant="default"
+                            className="ml-auto tabular-nums"
+                          >
+                            {unreadSupportCount}
                           </Badge>
                         ) : null}
                       </SidebarMenuButton>

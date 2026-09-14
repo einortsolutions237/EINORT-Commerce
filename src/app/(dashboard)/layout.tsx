@@ -12,6 +12,7 @@ import { strings } from "@/lib/strings";
 import { pendingClaimCount } from "@/server/claims/queries";
 import { isUrgentTrial } from "@/server/entitlements/resolve";
 import { requireMerchantContext } from "@/server/merchant/context";
+import { unreadForMerchant } from "@/server/support/queries";
 
 import { SignOutButton } from "../sign-out-button";
 import { TrialBanner } from "./trial-banner";
@@ -62,7 +63,10 @@ import { TrialBanner } from "./trial-banner";
  *     because the rail is a Client Component and the count is a tenant-scoped
  *     database read. It is a live `count()` on every dashboard render, not a
  *     maintained counter — `src/server/claims/queries.ts` explains why that is
- *     the cheaper of the two.
+ *     the cheaper of the two. Plan 06-09 adds `unreadForMerchant` beside it in
+ *     the SAME `Promise.all`, not a second sequential await, for the same
+ *     reason two independent reads should never serialize when nothing
+ *     depends on the other's result.
  *
  * ---------------------------------------------------------------------------
  * THIS ROUTE GROUP IS APEX-ONLY, AND IT IS ALREADY ENFORCED — DO NOT "FIX" IT.
@@ -83,12 +87,18 @@ export default async function DashboardLayout({
   // `LayoutRoutes` union rather than assumed from the folder name.
 }: LayoutProps<"/">) {
   const ctx = await requireMerchantContext();
-  const pendingClaims = await pendingClaimCount(ctx.tenantId);
+  const [pendingClaims, unreadSupportCount] = await Promise.all([
+    pendingClaimCount(ctx.tenantId),
+    unreadForMerchant(ctx.tenantId),
+  ]);
 
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <AppSidebar pendingClaims={pendingClaims} />
+        <AppSidebar
+          pendingClaims={pendingClaims}
+          unreadSupportCount={unreadSupportCount}
+        />
 
         <SidebarInset>
           {/*
