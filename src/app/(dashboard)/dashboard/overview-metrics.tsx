@@ -1,3 +1,6 @@
+import { Package } from "lucide-react";
+import Link from "next/link";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { strings } from "@/lib/strings";
 
@@ -25,11 +28,17 @@ export function OverviewMetrics({
   openOrders,
   unitsSold,
   newCustomers,
+  activeProductCount,
+  productCap,
 }: {
   readonly revenueXaf: number;
   readonly openOrders: number;
   readonly unitsSold: number;
   readonly newCustomers: number;
+  /** Phase 6 plan 06-05, Task 3 — the 5th card, per `06-UI-SPEC.md` § A1. */
+  readonly activeProductCount: number;
+  /** `ctx.plan.limits.products` — `null` on an unlimited plan omits the sub-line. */
+  readonly productCap: number | null;
 }) {
   const cards = [
     {
@@ -54,8 +63,15 @@ export function OverviewMetrics({
     },
   ] as const;
 
+  const productsSublabel =
+    productCap === null
+      ? null
+      : strings.dashboard.attention.productsLiveSublabel
+          .replace("{n}", activeProductCount.toLocaleString("fr-CM"))
+          .replace("{cap}", productCap.toLocaleString("fr-CM"));
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {cards.map((card) => (
         <Card key={card.title}>
           <CardHeader>
@@ -73,6 +89,30 @@ export function OverviewMetrics({
           </CardContent>
         </Card>
       ))}
+
+      <Link
+        href="/dashboard/products"
+        className="rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5 font-sans text-sm leading-normal font-medium text-muted-foreground">
+              <Package aria-hidden="true" className="size-4" />
+              {strings.dashboard.attention.productsLive}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-1">
+            <span className="font-heading text-2xl leading-tight font-semibold tabular-nums text-foreground">
+              {activeProductCount.toLocaleString("fr-CM")}
+            </span>
+            {productsSublabel !== null && (
+              <span className="text-xs leading-normal font-normal text-muted-foreground">
+                {productsSublabel}
+              </span>
+            )}
+          </CardContent>
+        </Card>
+      </Link>
     </div>
   );
 }
