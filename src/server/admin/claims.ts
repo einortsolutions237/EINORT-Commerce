@@ -230,6 +230,17 @@ function refusalOrRethrow(error: unknown): ActionResult {
  *
  * Moves no stock, for the identical reason `confirmClaim` does not: the units
  * were decremented and held at placement, and confirmation is purely assent.
+ *
+ * PLAN 06-10 ADDED THE EXPLICIT `Promise<ActionResult<unknown>>` RETURN TYPE.
+ * Without it, TypeScript infers this standalone function's return type from
+ * its two `return` statements independently (no surrounding generic context
+ * to solve against, unlike a handler passed directly to `adminAction`), and
+ * widens the literal `{ ok: true }` to `{ ok: boolean }` — which then fails
+ * to satisfy `adminAction`'s `Promise<ActionResult<R>>` handler contract at
+ * this function's two call sites in `src/server/admin/actions.ts`. `unknown`
+ * rather than the bare default (`ActionResult`'s `T = void`) because
+ * `{ ok: true } & void` is not assignable from an actual `{ ok: true }`
+ * object literal; `{ ok: true } & unknown` is.
  */
 export async function adminConfirmOrderClaim({
   claimId,
@@ -237,7 +248,7 @@ export async function adminConfirmOrderClaim({
 }: {
   readonly claimId: string;
   readonly actorUserId: string;
-}) {
+}): Promise<ActionResult<unknown>> {
   try {
     await adminDb.$transaction(async (tx) => {
       const claim = await tx.paymentClaim.findUniqueOrThrow({
@@ -284,7 +295,7 @@ export async function adminRejectOrderClaim({
   readonly claimId: string;
   readonly reason: string;
   readonly actorUserId: string;
-}) {
+}): Promise<ActionResult<unknown>> {
   try {
     await adminDb.$transaction(async (tx) => {
       const claim = await tx.paymentClaim.findUniqueOrThrow({
