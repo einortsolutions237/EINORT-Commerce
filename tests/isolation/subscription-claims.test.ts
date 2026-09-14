@@ -243,12 +243,8 @@ describe("Assumption A1 — the reference is globally unique, not per tenant", (
     expect(JSON.stringify(sameTenantDuplicate)).not.toContain(TENANT_A.id);
     expect(JSON.stringify(sameTenantDuplicate)).not.toContain(TENANT_B.id);
 
-    // No row exists for the cross-tenant caller.
-    expect(await readClaims(TENANT_B.id)).toHaveLength(
-      (await readClaims(TENANT_B.id)).filter(
-        (claim) => claim.referenceNormalized === normalizeReference(reference),
-      ).length,
-    );
+    // No row exists for the cross-tenant caller against THIS reference — B's
+    // seeded fixture claim (a different reference entirely) is untouched.
     expect(
       (await readClaims(TENANT_B.id)).filter(
         (claim) => claim.referenceNormalized === normalizeReference(reference),
