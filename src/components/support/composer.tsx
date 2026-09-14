@@ -10,12 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePlatformIsMac } from "@/hooks/use-platform-is-mac";
 import { strings } from "@/lib/strings";
-import { requestThreadAttachmentUpload } from "@/server/images/thread-upload";
+import { sendPlatformMessage } from "@/server/admin/support-actions";
+import {
+  requestAdminThreadAttachmentUpload,
+  requestThreadAttachmentUpload,
+} from "@/server/images/thread-upload";
 import { sendSupportMessage } from "@/server/support/actions";
 import type { SupportMessageRow } from "@/server/support/shared";
 
 import { AttachmentGrid, type StagedAttachment } from "./attachment-grid";
-import { MessageBubble } from "./message-bubble";
+import { MessageBubble, type SupportViewer } from "./message-bubble";
 
 /**
  * The sticky composer, with an optimistic send — 06-UI-SPEC.md § A2 / § S.
@@ -82,6 +86,30 @@ import { MessageBubble } from "./message-bubble";
  * the picker's courtesy check; the binding limit is the mint schema's own
  * `.max()`, which signs the real ceiling into `content-length` so R2 enforces
  * it regardless of what this file believes.
+ *
+ * ---------------------------------------------------------------------------
+ * `viewer`/`tenantId` (plan 06-12) — THE SAME MIRROR `message-bubble.tsx` AND
+ * `message-list.tsx` ALREADY USE, COMPLETED HERE RATHER THAN FORKED.
+ * ---------------------------------------------------------------------------
+ * Plan 06-09 shipped this component with zero props, calling the merchant's
+ * own `sendSupportMessage`/`requestThreadAttachmentUpload` unconditionally —
+ * correct for `/dashboard/support`, the only caller that existed then, but
+ * it left this the one file in `src/components/support/` NOT actually
+ * mirrored by the `viewer` prop 06-UI-SPEC.md § S promises for "one
+ * component, two surfaces". `/admin/support/[tenantId]` (plan 06-12) needs
+ * the platform owner's doors instead, at all THREE steps this component
+ * drives — mint (`requestAdminThreadAttachmentUpload`), finalize
+ * (`/api/upload/admin-thread-finalize`, its own sibling Route Handler
+ * mirroring `thread-finalize/route.ts`), and send (`sendPlatformMessage`) —
+ * every one of which additionally requires the target `tenantId` in its
+ * payload, because the admin identity function resolves WHO is calling and
+ * never WHICH store they mean (see `src/server/admin/context.ts`'s header).
+ * Forking a second composer file was rejected outright — § S is explicit
+ * that a fork here is the exact regression the mirror exists to prevent.
+ * `viewer` defaults to `"MERCHANT"` so `/dashboard/support`'s existing
+ * zero-prop `<Composer/>` keeps compiling and behaving identically; only the
+ * admin page opts into the other three doors, by passing both
+ * `viewer="PLATFORM"` and its own `tenantId`.
  */
 
 const TEXTAREA_ROWS = 3;
@@ -111,6 +139,10 @@ const MAX_THREAD_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_THREAD_UPLOAD_LABEL = `${Math.round(MAX_THREAD_UPLOAD_BYTES / (1024 * 1024))} MB`;
 
 const FINALIZE_ENDPOINT = "/api/upload/thread-finalize";
+/** The admin door's own finalize route (plan 06-12) — see `composer.tsx`'s
+ * `viewer`/`tenantId` header block and that route's own header for why a
+ * second endpoint exists rather than one branching on caller type. */
+const ADMIN_FINALIZE_ENDPOINT = "/api/upload/admin-thread-finalize";
 
 /** One finalized image attachment, exactly as the finalize route returns it. */
 interface ThreadAttachmentDescriptor {
@@ -154,11 +186,14 @@ const NO_PENDING_ROWS: readonly SupportMessageRow[] = [];
  * `MessageBubble` the confirmed thread uses. The id is never sent anywhere —
  * it exists only as a React key for the transition's lifetime — and
  * `createdAt` is never read: `pending` suppresses the time line entirely.
+ * `author` is the composing `viewer` itself, never hardcoded — a draft is
+ * always this side's own message, so `MessageBubble`'s `isOwn` check
+ * (`row.author === viewer`) is true on both surfaces.
  */
-function draftRow(body: string): SupportMessageRow {
+function draftRow(body: string, author: SupportViewer): SupportMessageRow {
   return {
     id: `optimistic-${Date.now()}`,
-    author: "MERCHANT",
+    author,
     authorUserId: null,
     body,
     createdAt: new Date(),
@@ -167,7 +202,18 @@ function draftRow(body: string): SupportMessageRow {
   };
 }
 
-export function Composer() {
+export interface ComposerProps {
+  /** Mirrors `MessageBubble`/`MessageList`'s own prop. Defaults to
+   * `"MERCHANT"` so `/dashboard/support`'s existing zero-prop usage is
+   * unaffected. */
+  readonly viewer?: SupportViewer;
+  /** The admin door's target tenant. Required, and used, only when `viewer`
+   * is `"PLATFORM"` — the merchant door resolves its own tenant from the
+   * session and never takes one. */
+  readonly tenantId?: string;
+}
+
+export function Composer({ viewer = "MERCHANT", tenantId }: ComposerProps) {
   const router = useRouter();
   const textareaId = useId();
   const isMac = usePlatformIsMac();
@@ -238,11 +284,19 @@ export function Composer() {
     }
 
     try {
-      const grant = await requestThreadAttachmentUpload({
-        kind: "threads",
-        contentType: file.type,
-        byteSize: file.size,
-      });
+      const grant =
+        viewer === "PLATFORM" && tenantId !== undefined
+          ? await requestAdminThreadAttachmentUpload({
+              tenantId,
+              kind: "threads",
+              contentType: file.type,
+              byteSize: file.size,
+            })
+          : await requestThreadAttachmentUpload({
+              kind: "threads",
+              contentType: file.type,
+              byteSize: file.size,
+            });
       if (!grant.ok) {
         dropStaged();
         setAttachmentError(strings.support.attachments.uploadError);
@@ -265,11 +319,22 @@ export function Composer() {
         return;
       }
 
-      const finalized = await fetch(FINALIZE_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadId: grant.uploadId, kind: "threads" }),
-      });
+      const finalized =
+        viewer === "PLATFORM" && tenantId !== undefined
+          ? await fetch(ADMIN_FINALIZE_ENDPOINT, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                uploadId: grant.uploadId,
+                kind: "threads",
+                tenantId,
+              }),
+            })
+          : await fetch(FINALIZE_ENDPOINT, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uploadId: grant.uploadId, kind: "threads" }),
+            });
       if (!finalized.ok) {
         dropStaged();
         setAttachmentError(strings.support.attachments.uploadError);
@@ -311,12 +376,19 @@ export function Composer() {
     setError(null);
 
     startTransition(async () => {
-      addPendingRow(draftRow(outgoingBody));
+      addPendingRow(draftRow(outgoingBody, viewer));
 
-      const result = await sendSupportMessage({
-        body: outgoingBody,
-        attachments: outgoingAttachments,
-      });
+      const result =
+        viewer === "PLATFORM" && tenantId !== undefined
+          ? await sendPlatformMessage({
+              tenantId,
+              body: outgoingBody,
+              attachments: outgoingAttachments,
+            })
+          : await sendSupportMessage({
+              body: outgoingBody,
+              attachments: outgoingAttachments,
+            });
 
       if (!result.ok) {
         setError(result.error.form?.[0] ?? strings.support.composer.sendError);
@@ -336,7 +408,7 @@ export function Composer() {
         <MessageBubble
           key={row.id}
           row={row}
-          viewer="MERCHANT"
+          viewer={viewer}
           authorOtherLabel={strings.support.thread.authorOther}
           pending
         />
