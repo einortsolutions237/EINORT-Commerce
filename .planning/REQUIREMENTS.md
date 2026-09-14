@@ -84,7 +84,7 @@
 ### Platform Admin (Super Admin)
 
 - [ ] **ADM-01**: Platform owner can view and suspend merchants/stores
-- [ ] **ADM-02**: Platform owner can view a global payment-claims ledger across all tenants
+- [x] **ADM-02**: Platform owner can view a global payment-claims ledger across all tenants
 - [ ] **ADM-03**: Platform owner can view domain status across tenants and has a support-contact view
 - [ ] **ADM-04**: Platform admin scope stays pilot-sized (the items in this section) — the broader ~20-module admin surface referenced in prior planning docs is explicitly deferred
 - [ ] **ADM-05**: A merchant and the platform owner have a persistent, in-app messaging thread per merchant (text plus file/image attachments), surfaced in both the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on a new message. No real-time/websocket infrastructure — async, check-in-when-you-can, matching the manual-first pattern already established for payment claims. This is also the channel SUB-03's subscription-payment-claim flow runs through.
@@ -262,7 +262,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | DASH-01 | Phase 6 | Pending |
 | DASH-02 | Phase 6 | Pending |
 | ADM-01 | Phase 6 | Pending |
-| ADM-02 | Phase 6 | Pending |
+| ADM-02 | Phase 6 | Complete |
 | ADM-03 | Phase 6 | Pending |
 | ADM-04 | Phase 6 | Pending |
 | ADM-05 | Phase 6 | Pending |
