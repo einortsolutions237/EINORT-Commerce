@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: Phase 6 Wave 4 (06-11, support-thread image attachments) executed, not yet merged to master
-last_updated: "2026-09-14T22:15:00.000Z"
-last_activity: "2026-09-14 -- 06-11 executed (all 3 tasks): threads/subscriptions upload namespaces + thread image preset, two narrow mint doors, merchant-authenticated re-authorizing finalize route, transactional SupportMessage+SupportAttachment persistence, shared sent/staged attachment grid wired into the composer and message bubble. Post-task gate green: lint/typecheck/build/685 unit tests; tests/isolation/claim-submission.test.ts (12/12) re-run clean to confirm the untouched claim-upload path. ADM-05 marked complete."
+stopped_at: Phase 6 Wave 4 merged to master
+last_updated: "2026-09-14T22:25:00.000Z"
+last_activity: 2026-09-14 -- Phase 6 Wave 4 (06-11) executed and merged
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 92
+  completed_plans: 88
   percent: 34
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 6 is executing now (Waves 1-3 of 7 merged to master — plans 06-01 through 06-10; Wave 4/06-11 executed in-worktree, pending merge). Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
+**Current focus:** Phase 6 is executing now (Waves 1-4 of 7 complete and merged to master — plans 06-01 through 06-11). Wave 5 (06-12, 06-15) is next. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
 
 ## Current Position
 
 Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
-Plan: Wave 4 of 7 (06-11) executed, all 3 tasks complete, pending merge to master
+Plan: Wave 4 of 7 complete (06-11 merged to master); Wave 5 (06-12, 06-15) next
 Status: Executing Phase 6
-Last activity: 2026-09-14 -- 06-11 executed (support-thread image attachments: threads/subscriptions namespaces, thread preset, two narrow mint doors, merchant-authenticated finalize route, transactional attachment persistence, sent/staged attachment grid), post-task gate green: lint/typecheck/build/685 unit tests, tests/isolation/claim-submission.test.ts 12/12
+Last activity: 2026-09-14 -- Wave 4 executed and merged (support-thread image attachments: thread/subscription upload namespaces, thread image preset, two narrow mint doors, merchant-authenticated finalize route, transactional attachment persistence, sent/staged attachment grid). Post-merge gate green: lint/typecheck/build/685 unit tests. Corrected an overstated ADM-05 completion claim back to Pending — the requirement's Super Admin inbox half is still 06-12's job. Full isolation suite deferred to after Wave 5 merges, to avoid Neon test-branch contention with the incoming parallel executors.
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -145,7 +145,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-14T22:15:00.000Z
-Stopped at: Phase 6 Wave 4 (06-11, support-thread image attachments) executed in-worktree; awaiting merge to master
+Last session: 2026-09-14T22:25:00.000Z
+Stopped at: Phase 6 Wave 4 merged to master; Wave 5 (06-12, 06-15) dispatched
 Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-11-SUMMARY.md
-Next command: Merge the 06-11 worktree to master, then `/gsd:execute-phase 6` (resume at Wave 5) or dispatch the next wave's plans directly
+Next command: `/gsd:execute-phase 6` (resume at Wave 5 merge) once the dispatched Wave 5 executors complete
