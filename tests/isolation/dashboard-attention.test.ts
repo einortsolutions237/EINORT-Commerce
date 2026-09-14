@@ -92,6 +92,7 @@ async function seedOrders(
   // `tests/setup/seed-two-tenants.ts` does.
   await scopedDb(tenantId).order.createMany({
     data: orders.map((order) => ({
+      tenantId,
       id: `${tenantId}-${order.suffix}`,
       orderNumber: `${slug}-${order.suffix}`,
       state: order.state,
@@ -129,6 +130,7 @@ async function seedProduct(
   await db.product.createMany({
     data: [
       {
+        tenantId,
         id: productId,
         name: `${slug} ${product.suffix}`,
         slug: `${slug}-${product.suffix}`,
@@ -142,6 +144,7 @@ async function seedProduct(
 
   await db.productVariant.createMany({
     data: product.variants.map((variant) => ({
+      tenantId,
       id: `${productId}-${variant.suffix}`,
       productId,
       // Distinct option values: `@@unique([tenantId, productId,
