@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -21,11 +21,13 @@ import { describe, expect, it } from "vitest";
  *      `src/lib/strings.ts`. A label inlined here is copy that a later i18n
  *      extraction silently misses.
  *   3. **The gold accent budget is spent exactly where the contract says.**
- *      03-UI-SPEC.md § A. Color gives this phase two uses of `--gold-accent`
- *      and no more: this badge and the `Payment claimed` order chip. Gold means
- *      "a human needs to look at this now", and a signal that appears in a
- *      third place stops meaning anything. A budget that is only written down
- *      is a budget that gets spent.
+ *      03-UI-SPEC.md § A. Color gave the merchant surface two uses of
+ *      `--gold-accent`; 06-UI-SPEC.md § Color amends that to five when the
+ *      platform admin surface arrives, as an ITEMISED allow-table rather than
+ *      a directory exemption — see `GOLD_BUDGET` below. Gold means "a human
+ *      needs to look at this now", and a signal that appears in one more place
+ *      than the contract names stops meaning anything. A budget that is only
+ *      written down is a budget that gets spent.
  *
  * The idiom is `tests/unit/no-tenant-id-param.test.ts`'s and
  * `tests/unit/surface-token-isolation.test.ts`'s: read what is on disk, match
@@ -70,14 +72,37 @@ const REQUIRED_HREFS = [
 ] as const;
 
 /**
- * The one other module allowed to spend gold: the order-state chip.
+ * The gold allow-table — 06-UI-SPEC.md § Color, transcribed file for file.
  *
- * Matched by filename rather than pinned to a path, because the chip is built
- * by a later plan in this phase and does not exist yet. Loose enough not to
- * fail on the file it is waiting for, tight enough that a `variant="gold"` in
- * a product card or a settings alert is still a failure.
+ * Phase 6 amends `03-UI-SPEC.md`'s two-use budget to FIVE, because the platform
+ * admin surface did not exist when the original was written. The budget is
+ * extended, itemised and re-enforced — never blanket-exempted, which is why
+ * there is a row per file here rather than a directory-wide pass for the new
+ * surface. Both halves matter: a file in this table that spends MORE than its
+ * allowance fails, and so does a file that spends gold without being in it.
+ *
+ * Every entry is `1`. That is not a coincidence worth collapsing into a
+ * constant: each one is a separate decision about one signal, and the day a
+ * row legitimately needs `2` the table should be able to say so.
+ *
+ *   1. the merchant rail's pending order-claims count   (existing)
+ *   2. the `Payment claimed` order-state chip           (existing)
+ *   3. the persistent Platform Admin strip (D-02)       (new)
+ *   4. the admin rail's shared pending-count badge slot (new) — ONE occurrence
+ *      rendered inside the item map and used by both `Payment claims` and
+ *      `Subscription payments`
+ *   5. the `Awaiting review` subscription-claim chip    (new)
  */
-const ORDER_STATE_CHIP = /order-state/;
+const GOLD_BUDGET: Readonly<Record<string, number>> = {
+  "src/components/app-sidebar.tsx": 1,
+  "src/components/order-state-chip.tsx": 1,
+  "src/components/admin/admin-banner.tsx": 1,
+  "src/components/admin/admin-sidebar.tsx": 1,
+  "src/components/subscription-claim-chip.tsx": 1,
+};
+
+/** What the five rows above add up to, asserted independently of them. */
+const GOLD_TOTAL = 5;
 
 /**
  * Blank out comments, keeping string literals and line numbering intact.
@@ -186,7 +211,20 @@ function looksLikeProse(value: string): boolean {
   return words.every((word) => /^[A-Za-z][A-Za-z'’]*$/.test(word));
 }
 
-const GOLD_VARIANT = /variant="gold"/g;
+/**
+ * The gold accent, counted in BOTH the forms this codebase spends it in:
+ * `variant="gold"` as a JSX attribute, and `variant: "gold"` as a row in a
+ * status-chip registry.
+ *
+ * The JSX-only matcher this file shipped with counted ONE of the two budgeted
+ * uses and called the budget kept — `order-state-chip.tsx` reaches `Badge`
+ * through `chip.variant`, so its gold has always been a data row rather than an
+ * attribute, and the scan never saw it. That is not a technicality: a chip
+ * registry is exactly where a sixth gold would be cheapest to add and hardest
+ * to notice. `tests/unit/phase-03-requirement-coverage.test.ts` already counts
+ * both forms for this reason; the two matchers are now the same matcher.
+ */
+const GOLD_VARIANT = /\bvariant\s*[:=]\s*"gold"/g;
 
 function countGold(code: string): number {
   return code.match(GOLD_VARIANT)?.length ?? 0;
@@ -268,7 +306,7 @@ describe("dashboard navigation contract", () => {
     ).toEqual([]);
   });
 
-  it("spends the gold accent exactly twice, and only where the contract says", () => {
+  it("spends the gold accent exactly five times, in the five files the budget names", () => {
     const files = GOLD_SCAN_DIRS.flatMap(tsxFilesUnder).sort();
 
     expect(
@@ -277,37 +315,68 @@ describe("dashboard navigation contract", () => {
         "counted grep that counts nothing is not a budget.",
     ).toBeGreaterThan(0);
 
-    const spenders = files
-      .map((file) => ({ file, count: countGold(readCode(file)) }))
-      .filter(({ count }) => count > 0);
+    const counts = new Map(
+      files.map((file) => [file, countGold(readCode(file))] as const),
+    );
+
+    const BUDGET_REASONING =
+      "  --gold-accent means one thing on both surfaces: a human needs to " +
+      "look at this now, and what they are looking at is unreviewed money. " +
+      "06-UI-SPEC.md § Color amends 03-UI-SPEC.md's original two-use budget " +
+      "to exactly five, itemised per file — the pending order-claims count " +
+      "on the merchant rail, the `Payment claimed` order chip, the persistent " +
+      "Platform Admin strip, the admin rail's shared pending-count badge and " +
+      "the `Awaiting review` subscription-claim chip. A sixth use makes gold " +
+      "decorative, and a merchant — or an owner — who learns gold is " +
+      "decorative stops checking the queues it marks.\n" +
+      "  For a status that is merely notable use `secondary`; for unread " +
+      "information use `default` (blue, § Color's narrow accent amendment); " +
+      "for something settled use `success` or `outline-success`; for " +
+      "something wrong use `destructive`. Gold is not a stronger version of " +
+      "any of them.\n" +
+      "  If a new gold surface is genuinely required, add its file and its " +
+      "expected count to GOLD_BUDGET above and raise GOLD_TOTAL in the same " +
+      "commit, so the budget stays a decision somebody made rather than a " +
+      "number that drifted. Do not exempt a directory, and do not reach for a " +
+      "raw gold fill utility to dodge this scan — that renders identically " +
+      "and slips past silently, which is strictly worse than an honest " +
+      "failure.";
+
+    const wrong = Object.entries(GOLD_BUDGET)
+      .filter(([file, allowed]) => counts.get(file) !== allowed)
+      .map(
+        ([file, allowed]) =>
+          `${file}: expected ${allowed}, found ${counts.get(file) ?? "no such file"}`,
+      );
 
     expect(
-      spenders.find(({ file }) => file === SIDEBAR_FILE)?.count,
-      "The pending-claims badge is the rail's one use of the gold accent " +
-        "(D-13). Exactly one `variant=\"gold\"` belongs in " +
-        `${SIDEBAR_FILE} — no more, and not zero.`,
-    ).toBe(1);
+      wrong,
+      "06-UI-SPEC.md § Color violation — a file in the gold budget does not " +
+        "spend what the budget says.\n" +
+        "  Every row of GOLD_BUDGET is a signal somebody depends on, so zero " +
+        "is as much a failure as two: a missing badge is a queue that stopped " +
+        "shouting.\n" +
+        BUDGET_REASONING,
+    ).toEqual([]);
 
-    const unauthorized = spenders
-      .filter(
-        ({ file }) =>
-          file !== SIDEBAR_FILE && !ORDER_STATE_CHIP.test(basename(file)),
-      )
-      .map(({ file, count }) => `${file}: ${count}`);
+    const unauthorized = [...counts]
+      .filter(([file, count]) => count > 0 && !(file in GOLD_BUDGET))
+      .map(([file, count]) => `${file}: ${count}`);
 
     expect(
       unauthorized,
-      "03-UI-SPEC.md § A. Color violation — the gold accent is spent outside " +
-        "its budget.\n" +
-        "  --gold-accent has exactly two uses in this phase: the pending-claims " +
-        "count badge on the Payment claims rail item, and the `Payment " +
-        "claimed` order-state chip. Both mean the same thing — a human needs " +
-        "to look at this now — and that meaning is the whole value of the " +
-        "colour. A third use makes gold decorative, and a merchant who learns " +
-        "gold is decorative stops checking the claims queue.\n" +
-        "  For a status that is merely notable use `secondary`; for something " +
-        "settled use `success` or `outline-success`; for something wrong use " +
-        "`destructive`. Gold is not a stronger version of any of them.",
+      "06-UI-SPEC.md § Color violation — the gold accent is spent outside " +
+        "its budget.\n" + BUDGET_REASONING,
     ).toEqual([]);
+
+    const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+
+    expect(
+      total,
+      `The gold accent is spent ${total} times across ` +
+        `${GOLD_SCAN_DIRS.join(" and ")}; the budget is exactly ` +
+        `${GOLD_TOTAL}.\n` +
+        BUDGET_REASONING,
+    ).toBe(GOLD_TOTAL);
   });
 });
