@@ -2,7 +2,7 @@
 
 import { AlertCircle, Check, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -54,10 +54,19 @@ export function PlanSwitchForm({
   currentTier,
   memberCount,
   cards,
+  currentPlanExtra,
 }: {
   readonly currentTier: PlanTier;
   readonly memberCount: number;
   readonly cards: readonly PlanSwitchCard[];
+  /**
+   * SUB-03 (plan 06-15): the payment CTA/claim-card region for the merchant's
+   * CURRENT plan card — a `<SubmitPaymentDialog/>` or `<SubscriptionClaimCard/>`
+   * composed server-side in `page.tsx`, never authored in this client island.
+   * `undefined` renders nothing extra, so this prop stays optional for any
+   * future caller that has no subscription-claim state to show.
+   */
+  readonly currentPlanExtra?: ReactNode;
 }) {
   const router = useRouter();
 
@@ -149,6 +158,10 @@ export function PlanSwitchForm({
                 ) : null}
               </div>
 
+              {isCurrent && currentPlanExtra !== undefined ? (
+                <div className="flex flex-col gap-2">{currentPlanExtra}</div>
+              ) : null}
+
               <p className="flex flex-wrap items-baseline gap-1">
                 <span className="text-2xl leading-tight font-semibold tracking-tight text-foreground">
                   {card.price}
@@ -171,6 +184,7 @@ export function PlanSwitchForm({
 
                   <Button
                     type="button"
+                    variant="outline"
                     onClick={() => {
                       void handleSwitchClick(card);
                     }}
