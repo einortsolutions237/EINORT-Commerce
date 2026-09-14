@@ -33,3 +33,23 @@ enforcement of this invariant (it scans `.tsx` source specifically, not comment 
 passes cleanly as part of the 685-test `npm run test:unit` run. The plan's illustrative
 `grep -ro` command is a simplified approximation that double-counts comment mentions; the
 underlying budget itself is intact.
+
+## From plan 06-12
+
+### Same `variant="gold"` grep discrepancy observed, unchanged
+
+**Found during:** Task 2 and Task 3 final verification (same `grep -ro 'variant="gold"' src/app
+src/components | wc -l` command named above).
+
+**Detail:** Confirmed via `git stash` before and after this plan's Task 2 edits that the count
+was already 10 at this plan's starting commit (`ce9ee38`, itself a descendant of the `6d41ae9`
+base 06-11 recorded against) — identical to 06-11's own finding. None of 06-12's new or modified
+files (`src/server/admin/support.ts`, `src/server/admin/support-actions.ts`,
+`src/app/admin/support/page.tsx`, `src/app/admin/support/loading.tsx`,
+`src/app/admin/support/[tenantId]/page.tsx`, `src/app/admin/support/[tenantId]/loading.tsx`,
+`src/app/admin/layout.tsx`, `src/app/admin/merchants-list.tsx`,
+`src/app/admin/merchants/[id]/page.tsx`) reference the string `gold` anywhere — verified by grep
+against each file individually.
+
+**Action:** Not fixed here, for the identical reason 06-11 did not fix it — out of scope, and
+`tests/unit/dashboard-nav.test.ts`'s real contract test still passes at 685/685.

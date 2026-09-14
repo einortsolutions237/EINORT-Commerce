@@ -14,6 +14,7 @@ import { platformDb } from "@/server/db/platform";
 
 import { requireAdminContext } from "@/server/admin/context";
 import { pendingOrderClaimCount as loadPendingOrderClaimCount } from "@/server/admin/claims";
+import { unreadThreadCount as loadUnreadThreadCount } from "@/server/admin/support";
 
 import { SignOutButton } from "../sign-out-button";
 
@@ -74,12 +75,13 @@ export default async function AdminLayout({
   children,
 }: LayoutProps<"/admin">) {
   const ctx = await requireAdminContext();
-  const [owner, pendingOrderClaims] = await Promise.all([
+  const [owner, pendingOrderClaims, unreadThreads] = await Promise.all([
     platformDb.user.findUniqueOrThrow({
       where: { id: ctx.userId },
       select: { email: true },
     }),
     loadPendingOrderClaimCount(),
+    loadUnreadThreadCount(),
   ]);
 
   return (
@@ -89,16 +91,16 @@ export default async function AdminLayout({
       <ThemeProvider>
         <SidebarProvider>
           {/*
-           * `pendingOrderClaims` is wired below (plan 06-10). The other two
-           * are still literal zeros: 06-16 wires `pendingSubscriptionClaims`,
-           * 06-12 wires `unreadThreads`. Honest rather than unfinished — see
-           * `AdminSidebar`'s own header for why each later plan changes only
-           * this call site.
+           * `pendingOrderClaims` (plan 06-10) and `unreadThreads` (plan
+           * 06-12) are both wired below. `pendingSubscriptionClaims` is
+           * still a literal zero: 06-16 wires it. Honest rather than
+           * unfinished — see `AdminSidebar`'s own header for why each later
+           * plan changes only this call site.
            */}
           <AdminSidebar
             pendingOrderClaims={pendingOrderClaims}
             pendingSubscriptionClaims={0}
-            unreadThreads={0}
+            unreadThreads={unreadThreads}
           />
 
           <SidebarInset>
