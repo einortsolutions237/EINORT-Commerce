@@ -159,3 +159,16 @@ export type StorefrontThemeCreateInput =
  */
 export type StorefrontPageCreateInput =
   Prisma.StorefrontPageUncheckedCreateInput;
+
+/**
+ * `SupportMessage` (ADM-05), written by `postMerchantMessage` and
+ * `postSystemMessage` in `src/server/support/messages.ts`, and by the admin
+ * zone's own sibling writer in `src/server/admin/support.ts` (plan 06-12)
+ * through `adminDb` instead.
+ *
+ * The `Unchecked` variant for the same Pitfall 1/4 reason as every entry
+ * above: the row is written with scalar columns only (`authorUserId`,
+ * `subscriptionClaimId`), never through a nested relation write.
+ */
+export type SupportMessageCreateInput =
+  Prisma.SupportMessageUncheckedCreateInput;
