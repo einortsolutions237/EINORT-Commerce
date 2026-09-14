@@ -164,6 +164,18 @@ export const adminCopy = {
     statusChangedSuspended: "Suspended {when}. Reason: {reason}",
     statusChangedActive: "Active since {when}.",
 
+    /**
+     * The Plan & subscription card's Body line (06-08-PLAN.md Task 3) —
+     * `src/server/entitlements/resolve.ts`'s `TrialState` has exactly three
+     * values, and each reads a different sentence here rather than one
+     * sentence with a conditional clause, for the same reason
+     * `statusChangedSuspended`/`statusChangedActive` above are two strings:
+     * a subscribed store has no trial date left to show.
+     */
+    trialEndsLine: "Trial ends {when}.",
+    trialEndedLine: "Trial ended {when}.",
+    subscriptionActiveLine: "Subscription active.",
+
     /** § C4's `Covers through` column, restated on the plan card. */
     coversThrough: "Covers through",
     subscriptionsLink: "See subscription payments",
