@@ -3,7 +3,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { ArrowUpDown, Ban, CircleCheck, Ellipsis, ExternalLink } from "lucide-react";
+import {
+  ArrowUpDown,
+  Ban,
+  CircleCheck,
+  Ellipsis,
+  ExternalLink,
+  MessagesSquare,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,7 +134,12 @@ function StoreStatusBadge({ status }: { readonly status: string }) {
   );
 }
 
-/** One row's `⋯` menu. A data array of one item today — see the file header. */
+/**
+ * One row's `⋯` menu. `external` picks which anchor the render below uses:
+ * `view-store` leaves this app entirely (the merchant's own storefront), so
+ * it opens in a new tab; `open-thread` (plan 06-12) is an internal admin
+ * route and navigates in place, like every other link in this tree.
+ */
 function rowActionsFor(item: AdminMerchantListItem) {
   return [
     {
@@ -135,8 +147,15 @@ function rowActionsFor(item: AdminMerchantListItem) {
       label: strings.admin.merchants.actionViewStore,
       icon: ExternalLink,
       href: item.storefrontHref,
+      external: true,
     },
-    // Plan 06-12 appends "Open support thread" here.
+    {
+      key: "open-thread",
+      label: strings.admin.merchants.actionOpenThread,
+      icon: MessagesSquare,
+      href: `/admin/support/${item.id}`,
+      external: false,
+    },
     // Plan 06-14 appends "Suspend store" / "Restore store" here.
   ] as const;
 }
@@ -171,7 +190,11 @@ function RowActionsMenu({ item }: { readonly item: AdminMerchantListItem }) {
             <DropdownMenuItem
               key={action.key}
               render={
-                <a href={action.href} target="_blank" rel="noopener" />
+                action.external ? (
+                  <a href={action.href} target="_blank" rel="noopener" />
+                ) : (
+                  <Link href={action.href} />
+                )
               }
             >
               <Icon aria-hidden="true" />

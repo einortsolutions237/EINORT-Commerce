@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Ban, CircleCheck } from "lucide-react";
+import { Ban, CircleCheck, MessagesSquare } from "lucide-react";
 
 import { DomainCell } from "@/components/admin/domain-cell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -38,17 +40,18 @@ import { formatAbsoluteDate, planLabelFor } from "../../format";
  * probed id therefore looks identical to a wrong one from outside.
  *
  * ---------------------------------------------------------------------------
- * TWO CARDS SHIP SMALLER THAN `06-UI-SPEC.md § C2` DESCRIBES — DELIBERATELY,
- * NOT AN OVERSIGHT.
+ * TWO CARDS STILL SHIP SMALLER THAN `06-UI-SPEC.md § C2` DESCRIBES —
+ * DELIBERATELY, NOT AN OVERSIGHT.
  * ---------------------------------------------------------------------------
- * The header's `Open support thread` button, the Store status card's
- * Suspend/Restore control, and the Plan card's `See subscription payments`
- * link and the At a glance figures' ledger links all point at destinations
- * that do not exist until later plans (`/admin/support/[id]` — 06-12,
- * suspend/restore's write path — 06-14, `/admin/subscriptions` — 06-16,
- * `/admin/claims` — 06-10). `06-08-PLAN.md`'s own words: "a menu item
- * pointing at a 404 is worse than an absent one." Each is a comment at the
- * spot it will land, not a disabled control.
+ * The header's `Open support thread` button now lands (plan 06-12, this
+ * plan). The Store status card's Suspend/Restore control, the Plan card's
+ * `See subscription payments` link, and the At a glance figures' own
+ * per-figure ledger links still point at destinations that do not exist
+ * until later plans (suspend/restore's write path — 06-14,
+ * `/admin/subscriptions` — 06-16, the figures' filtered-ledger links —
+ * 06-16). `06-08-PLAN.md`'s own words: "a menu item pointing at a 404 is
+ * worse than an absent one." Each remaining one is a comment at the spot it
+ * will land, not a disabled control.
  */
 
 export const metadata: Metadata = {
@@ -141,7 +144,17 @@ export default async function AdminMerchantDetailPage({
         <p className="text-sm leading-normal font-normal text-muted-foreground">
           {merchant.ownerName} · {merchant.ownerEmail}
         </p>
-        {/* `Open support thread` lands here — plan 06-12, see the header. */}
+
+        <div>
+          <Button
+            variant="outline"
+            className="min-h-11"
+            render={<Link href={`/admin/support/${merchant.id}`} />}
+          >
+            <MessagesSquare aria-hidden="true" />
+            {strings.admin.merchantDetail.openThread}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

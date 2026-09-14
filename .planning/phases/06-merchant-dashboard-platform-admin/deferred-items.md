@@ -53,3 +53,29 @@ against each file individually.
 
 **Action:** Not fixed here, for the identical reason 06-11 did not fix it — out of scope, and
 `tests/unit/dashboard-nav.test.ts`'s real contract test still passes at 685/685.
+
+### `ls src/components/support/` lists 5 files, not "exactly the four" Task 3's acceptance criteria names
+
+**Found during:** Task 3 final verification.
+
+**Detail:** The Task 3 acceptance criteria expect `ls src/components/support/` to show "exactly
+the four components from plans 06-09 and 06-11" as evidence no forked transcript component was
+added. The directory actually contains five: `attachment-grid.tsx`, `composer.tsx`,
+`message-bubble.tsx`, `message-list.tsx`, and `scroll-to-latest.tsx`. `scroll-to-latest.tsx` was
+already present at this plan's starting commit (`ce9ee38`, shipped by plan 06-09 alongside the
+other three transcript components) — it is a scroll-into-view helper, not a transcript-rendering
+component, which is presumably why the plan's prose names "four." This plan added zero new files
+to that directory; it only edited `composer.tsx` in place (see the `viewer`/`tenantId` deviation
+in `06-12-SUMMARY.md`) and reused `scroll-to-latest.tsx` unchanged on the admin thread page (§ C6
+inherits A2's "scrolls to newest on load" contract). No forking occurred.
+
+### `viewer="PLATFORM"` grep count on the thread page is 2, not the expected 1
+
+**Found during:** Task 3 final verification (`grep -c 'viewer="PLATFORM"' src/app/admin/support/[tenantId]/page.tsx`).
+
+**Detail:** The acceptance criterion expected exactly one occurrence (on `<MessageList
+viewer="PLATFORM" .../>`). This plan's `<Composer viewer="PLATFORM" tenantId={tenantId} />` call
+is a second, necessary occurrence — see `06-12-SUMMARY.md`'s deviation note on extending
+`Composer` with the same `viewer` mirror `MessageBubble`/`MessageList` already had, since the
+component shipped by plan 06-09 took no props at all and could not otherwise serve the admin
+surface without forking. Both occurrences are legitimate call sites, not a fork.
