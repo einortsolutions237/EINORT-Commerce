@@ -1,10 +1,50 @@
 import "server-only";
 
-import type { SupportMessageCreateInput } from "@/server/db/model-inputs";
+import type {
+  SupportAttachmentCreateManyInput,
+  SupportMessageCreateInput,
+} from "@/server/db/model-inputs";
 import { scopedCreateData, scopedDb } from "@/server/db/tenant-scoped";
 import type { ScopedTx } from "@/server/db/tenant-scoped";
 
 import { UNREAD_BY_MERCHANT_AUTHORS, type SupportMessageRow } from "./shared";
+
+/**
+ * One image attachment as `sendSupportMessage`'s Zod schema hands it down
+ * after `src/app/api/upload/thread-finalize/route.ts` has already derived and
+ * stored it (ADM-05 / D-10). `width`/`height` are non-null here on purpose —
+ * this plan is images-only, and the finalize route always reports real,
+ * Sharp-measured dimensions for an `IMAGE` row. `SupportAttachmentRow`'s own
+ * fields stay nullable for the `DOCUMENT` case plan 06-13 adds.
+ */
+export interface ThreadAttachmentInput {
+  readonly storageKey: string;
+  readonly contentType: string;
+  readonly byteSize: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+const MESSAGE_SELECT = {
+  id: true,
+  author: true,
+  authorUserId: true,
+  body: true,
+  createdAt: true,
+  subscriptionClaimId: true,
+  attachments: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      kind: true,
+      storageKey: true,
+      contentType: true,
+      byteSize: true,
+      width: true,
+      height: true,
+    },
+  },
+} as const;
 
 /**
  * ADM-05 — the write primitive for the merchant↔platform support thread.
@@ -39,46 +79,74 @@ import { UNREAD_BY_MERCHANT_AUTHORS, type SupportMessageRow } from "./shared";
 export type { SupportMessageRow };
 
 /**
- * A merchant writes into their own thread.
+ * A merchant writes into their own thread, optionally with up to four image
+ * attachments (ADM-05 / plan 06-11).
  *
  * `authorUserId` is the merchant's own `userId` from `MerchantContext` — never
  * a parameter a caller could substitute for another merchant's. The Server
  * Action in `actions.ts` is the only caller, and it passes `ctx.userId`
  * straight from `requireMerchantContext()`.
+ *
+ * ---------------------------------------------------------------------------
+ * ONE TRANSACTION, MESSAGE THEN ATTACHMENTS. NEVER TWO WRITES A CRASH COULD
+ * SPLIT.
+ * ---------------------------------------------------------------------------
+ * `src/app/api/upload/thread-finalize/route.ts` already derived and stored
+ * the bytes before this function ever runs — see that route's own header for
+ * why it writes no row. This function is the caller that DOES know whether
+ * the message succeeded, so the `SupportMessage` row and its
+ * `SupportAttachment` rows are written inside one `scopedDb(tenantId)`
+ * transaction: if the transaction fails, no attachment row exists and the
+ * merchant sees a send failure with their typed text intact (T-06-37) rather
+ * than a message that silently lost its picture.
+ *
+ * `SupportAttachment.messageId` is a scalar on a `createMany` batch rather
+ * than a nested `create`, for the same Pitfall 1/4 reason
+ * `ProductImageCreateManyInput` is: the tenant-scope extension does not
+ * intercept nested writes, and `createMany` is one of the batch operations it
+ * DOES intercept.
  */
 export async function postMerchantMessage(
   tenantId: string,
   authorUserId: string,
   body: string,
+  attachments: readonly ThreadAttachmentInput[] = [],
 ): Promise<SupportMessageRow> {
-  const message = await scopedDb(tenantId).supportMessage.create({
-    data: scopedCreateData<SupportMessageCreateInput>({
-      author: "MERCHANT",
-      authorUserId,
-      body,
-    }),
-    select: {
-      id: true,
-      author: true,
-      authorUserId: true,
-      body: true,
-      createdAt: true,
-      subscriptionClaimId: true,
-      attachments: {
-        select: {
-          id: true,
-          kind: true,
-          storageKey: true,
-          contentType: true,
-          byteSize: true,
-          width: true,
-          height: true,
-        },
-      },
-    },
-  });
+  return scopedDb(tenantId).$transaction(async (tx: ScopedTx) => {
+    const created = await tx.supportMessage.create({
+      data: scopedCreateData<SupportMessageCreateInput>({
+        author: "MERCHANT",
+        authorUserId,
+        body,
+      }),
+      select: { id: true },
+    });
 
-  return message;
+    if (attachments.length > 0) {
+      await tx.supportAttachment.createMany({
+        data: attachments.map((attachment) =>
+          scopedCreateData<SupportAttachmentCreateManyInput>({
+            messageId: created.id,
+            // Images only in this plan (D-22's DOCUMENT path is plan 06-13).
+            kind: "IMAGE",
+            storageKey: attachment.storageKey,
+            contentType: attachment.contentType,
+            byteSize: attachment.byteSize,
+            width: attachment.width,
+            height: attachment.height,
+          }),
+        ),
+      });
+    }
+
+    // Re-selected rather than assembled by hand: the attachment rows just
+    // written carry server-generated ids and timestamps this function never
+    // saw, and `SupportMessageRow` is the one shape every surface renders.
+    return tx.supportMessage.findUniqueOrThrow({
+      where: { id: created.id },
+      select: MESSAGE_SELECT,
+    });
+  });
 }
 
 /**

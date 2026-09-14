@@ -81,6 +81,24 @@ export const IMAGE_PRESETS = {
     lossless: false,
   },
   /**
+   * ADM-05 / SUB-03 (plan 06-11). Copies the `claim` row's spec verbatim, and
+   * deliberately so: a support-thread attachment is the same kind of artifact
+   * as a payment-claim screenshot — evidence — and a square crop can remove
+   * the very transaction reference the reviewer needs to read off it. Also
+   * serves plan 06-15's subscription-receipt upload, which reuses this same
+   * preset through the `subscriptions` namespace rather than declaring a
+   * second row for what is, pixel for pixel, the same requirement.
+   */
+  thread: {
+    sizes: [1200],
+    labels: ["full"],
+    fit: "inside",
+    ratio: null,
+    format: "webp",
+    enhance: true,
+    lossless: false,
+  },
+  /**
    * The D-07 Phase-4 slot (ONB-03). Unused in Phase 3 — do NOT delete it as
    * dead code; its existence is the contract that the logo upload adds data
    * rather than a second implementation of this file.

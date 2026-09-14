@@ -21,21 +21,65 @@ import type { SupportMessageRow } from "./shared";
  */
 
 /**
- * `body` is the only field this plan's schema validates. `.trim()` runs
- * BEFORE the length check — the same order `claims/actions.ts`'s
- * `rejectSchema` uses — so a submission of pure whitespace is refused as
- * empty rather than accepted as one space.
- *
- * `min(1)`: an empty body is not yet permitted. Plan 06-11 relaxes this to a
- * cross-field refinement once an attachment exists ("body is required unless
- * an attachment is present") — that relaxation is NOT built here. Building it
- * now would leave a branch with no attachment path to satisfy it, which is
- * exactly the kind of unreachable code this codebase's review discipline
- * exists to catch.
+ * § S's attachment cap — enforced HERE as the boundary, and in the composer
+ * as a convenience (the attach button disables at four). A client cap alone
+ * is a UI nicety a scripted POST can ignore; this is the check that matters.
  */
-const sendMessageSchema = z.object({
-  body: z.string().trim().min(1).max(4000),
+const MAX_ATTACHMENTS = 4;
+
+/**
+ * The shape a `threads`-namespace derivative prefix must have. Mirrors
+ * `objectKeyFor`'s own layout with `/original` stripped
+ * (`tenants/{tenantId}/threads/{uploadId}`), restated here rather than
+ * imported because `src/server/images/r2.ts` exposes no schema of its own —
+ * only `src/server/theming/schema.ts`'s `storageKeySchema` does that for the
+ * `products`/`logos` pair, and this is the same idiom applied to a third
+ * namespace.
+ *
+ * This checks SHAPE only. It does not and cannot check that the tenant
+ * segment is the CALLER's own tenant — a static schema has no access to
+ * `ctx` — so the handler below re-checks that ownership explicitly (T-06-49).
+ */
+const THREAD_STORAGE_KEY_PATTERN =
+  /^tenants\/[A-Za-z0-9_-]+\/threads\/[a-z0-9-]{8,64}$/;
+
+/**
+ * One finalized image attachment, exactly as
+ * `src/app/api/upload/thread-finalize/route.ts` returns it. `width`/`height`
+ * are required (not nullable) because this plan is images-only — the route
+ * always reports real, Sharp-measured dimensions for an `IMAGE` row.
+ */
+const attachmentSchema = z.object({
+  storageKey: z.string().regex(THREAD_STORAGE_KEY_PATTERN),
+  contentType: z.string().min(1).max(128),
+  byteSize: z.number().int().positive(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
 });
+
+/**
+ * `body` may be empty ONLY when at least one attachment is present
+ * (06-UI-SPEC.md § A2) — "a body OR an attachment, never neither". `.trim()`
+ * runs BEFORE the length check, the same order `claims/actions.ts`'s
+ * `rejectSchema` uses, so a submission of pure whitespace with no attachment
+ * is refused as empty rather than accepted as one space.
+ *
+ * The cross-field rule is a `.refine` on the whole object rather than two
+ * independent field constraints, because "body OR attachment" cannot be
+ * expressed as a property of either field alone. `path: ["body"]` is what
+ * keeps the failure inside `fieldErrors` — `merchantAction` discards
+ * `z.flattenError`'s `formErrors` half, so a refine with no path would
+ * produce an error object with nothing in it for the client to read.
+ */
+const sendMessageSchema = z
+  .object({
+    body: z.string().trim().max(4000),
+    attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS),
+  })
+  .refine((data) => data.body.length > 0 || data.attachments.length > 0, {
+    error: "A message needs text, an attachment, or both.",
+    path: ["body"],
+  });
 
 /**
  * A merchant sends a message. Posts it, schedules the platform-direction
@@ -51,7 +95,32 @@ export const sendSupportMessage = merchantAction({
   mode: "write",
   schema: sendMessageSchema,
   handler: async (ctx, input): Promise<ActionResult<{ message: SupportMessageRow }>> => {
-    const message = await postMerchantMessage(ctx.tenantId, ctx.userId, input.body);
+    /*
+     * T-06-49 — the ownership half of the storage-key check. The schema above
+     * only proves the key is SHAPED like a `threads` derivative prefix; it
+     * cannot prove it is the CALLER's own, because a static Zod schema has no
+     * access to `ctx`. A key naming another tenant's prefix would let a
+     * merchant attach a stranger's image to their own message — not a bucket
+     * compromise (both prefixes hold nothing but Sharp-re-encoded WebP), but a
+     * forged reference this action must refuse rather than trust as opaque.
+     */
+    const expectedPrefix = `tenants/${ctx.tenantId}/threads/`;
+    const foreignAttachment = input.attachments.find(
+      (attachment) => !attachment.storageKey.startsWith(expectedPrefix),
+    );
+    if (foreignAttachment) {
+      return {
+        ok: false,
+        error: { attachments: ["That attachment could not be attached."] },
+      };
+    }
+
+    const message = await postMerchantMessage(
+      ctx.tenantId,
+      ctx.userId,
+      input.body,
+      input.attachments,
+    );
 
     /*
      * Scheduled after the response, never awaited: the merchant's optimistic

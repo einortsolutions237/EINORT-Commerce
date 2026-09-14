@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { strings } from "@/lib/strings";
+import { publicUrlFor } from "@/server/images/r2";
 import type { SupportMessageRow } from "@/server/support/shared";
 
 import { MessageBubble, type SupportViewer } from "./message-bubble";
@@ -51,6 +52,28 @@ const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("en", {
   day: "numeric",
   year: "numeric",
 });
+
+/**
+ * ADM-05 (plan 06-11) — turns a persisted `IMAGE` attachment's derivative
+ * PREFIX into its publicly reachable URL, resolved HERE, server-side, before
+ * it ever reaches `MessageBubble`.
+ *
+ * `publicUrlFor` (`src/server/images/r2.ts`) is `server-only`. This module
+ * carries no `"use client"` directive and is rendered from
+ * `/dashboard/support/page.tsx`, a Server Component, so importing it here is
+ * safe — but `MessageBubble` is ALSO imported by `composer.tsx` (a Client
+ * Component, for the optimistic pending bubble), so the resolved closure is
+ * handed down as a PROP rather than `MessageBubble` importing `publicUrlFor`
+ * itself. See that component's own header for the full reasoning: a
+ * `server-only` import anywhere in ITS static import graph would fail the
+ * client build regardless of whether the code path actually runs.
+ *
+ * `full.webp` is the `thread` preset's one derivative label
+ * (`src/server/images/pipeline.ts`).
+ */
+function resolveThreadAttachmentUrl(storageKey: string): string {
+  return publicUrlFor(`${storageKey}/full.webp`);
+}
 
 function isSameCalendarDay(a: Date, b: Date): boolean {
   return (
@@ -134,6 +157,7 @@ export function MessageList({
         row={row}
         viewer={viewer}
         authorOtherLabel={authorOtherLabel}
+        resolveAttachmentUrl={resolveThreadAttachmentUrl}
       />,
     );
 

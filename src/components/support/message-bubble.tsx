@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { strings } from "@/lib/strings";
 import type { SupportMessageRow } from "@/server/support/shared";
 
+import { AttachmentGrid } from "./attachment-grid";
+
 /**
  * ONE message, rendered by a single `viewer` prop — 06-UI-SPEC.md § S.
  *
@@ -67,11 +69,23 @@ export interface MessageBubbleProps {
    */
   readonly pending?: boolean;
   /**
-   * Plan 06-11 fills this with the attachment grid. A NAMED, EMPTY slot —
-   * not a disabled `paperclip` affordance — so nothing here has to change
-   * when attachments land; the grid simply arrives as this prop's value.
+   * Plan 06-11 fills the named attachment slot with `<AttachmentGrid
+   * mode="sent" />`, built from `row.attachments` right here rather than
+   * accepted as an opaque `React.ReactNode` — so `MessageList` (unchanged by
+   * this plan) keeps rendering `<MessageBubble row={row} .../>` exactly as it
+   * already does, and the grid simply starts appearing.
+   *
+   * `resolveAttachmentUrl` is how the grid gets a real `<img src>` without
+   * this file ever importing `src/server/images/r2.ts` — that module is
+   * `server-only`, and this component is ALSO reachable from
+   * `composer.tsx`'s client tree (the optimistic pending bubble), so a
+   * `server-only` import anywhere in this file's static import graph would
+   * fail that build regardless of whether the code path actually runs.
+   * `MessageList`, a server component, supplies the resolved closure; the
+   * pending draft never supplies one because `draftRow`'s `attachments` is
+   * always empty, so it is never invoked from that tree.
    */
-  readonly attachmentsSlot?: React.ReactNode;
+  readonly resolveAttachmentUrl?: (storageKey: string) => string;
 }
 
 /** `strings.support.thread.meta` is `"{author} · {time}"` — split once, on `{time}`, so the pending state can swap a spinner in for the text half without hand-writing a second template. */
@@ -89,7 +103,7 @@ export function MessageBubble({
   viewer,
   authorOtherLabel,
   pending = false,
-  attachmentsSlot,
+  resolveAttachmentUrl,
 }: MessageBubbleProps) {
   /*
    * SYSTEM messages are a platform EVENT, not a turn in the conversation —
@@ -119,6 +133,23 @@ export function MessageBubble({
   const [metaPrefix, metaSuffix] = splitMetaTemplate(authorLabel);
   const absoluteTime = formatAbsoluteTime(row.createdAt);
   const relativeTime = formatRelativeTime(row.createdAt);
+
+  /*
+   * `kind === "IMAGE"` only — a `DOCUMENT` row (plan 06-13) has no public
+   * derivative URL to resolve at all; it is served through its own
+   * authorized route handler instead. This filter is what keeps that future
+   * kind from being fed through `resolveAttachmentUrl` by accident the day
+   * it starts appearing in `row.attachments`.
+   */
+  const imageAttachments =
+    resolveAttachmentUrl === undefined
+      ? []
+      : row.attachments
+          .filter((attachment) => attachment.kind === "IMAGE")
+          .map((attachment) => ({
+            ...attachment,
+            url: resolveAttachmentUrl(attachment.storageKey),
+          }));
 
   return (
     <div className={cn("flex", isOwn ? "justify-end" : "justify-start")}>
@@ -150,11 +181,20 @@ export function MessageBubble({
             pending && "opacity-70",
           )}
         >
-          <p className="text-base leading-normal font-normal whitespace-pre-wrap break-words text-foreground">
-            {row.body}
-          </p>
+          {row.body.length > 0 ? (
+            <p className="text-base leading-normal font-normal whitespace-pre-wrap break-words text-foreground">
+              {row.body}
+            </p>
+          ) : null}
 
-          {attachmentsSlot}
+          {imageAttachments.length > 0 ? (
+            <AttachmentGrid
+              mode="sent"
+              attachments={imageAttachments}
+              authorLabel={authorLabel}
+              time={absoluteTime}
+            />
+          ) : null}
         </div>
       </div>
     </div>

@@ -243,6 +243,14 @@ describe("IMAGE_PRESETS", () => {
     });
   });
 
+  it("thread: matches the claim preset's spec exactly (ADM-05 / SUB-03, plan 06-11)", () => {
+    // A support-thread attachment is the same kind of artifact as a payment
+    // screenshot — evidence — so the two rows must state the same spec. This
+    // assertion is the join: a later edit that "tidies" one preset without the
+    // other fails here rather than drifting silently.
+    expect(IMAGE_PRESETS.thread).toStrictEqual(IMAGE_PRESETS.claim);
+  });
+
   it("logo: the D-07 Phase-4 slot, contained on a transparent background", () => {
     // ONB-03 has not been built yet. This row exists now so that building it is
     // a data edit rather than a second pipeline — deleting it as dead code is

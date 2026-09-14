@@ -150,6 +150,11 @@ export const supportCopy = {
    */
   attachments: {
     attachmentAlt: "Image attached by {author} at {time}",
+    /** Alt text for a STAGED thumb, before the message has an author/time to
+     * interpolate into `attachmentAlt`. Never `alt=""` — an empty alt hides
+     * the thumbnail from a screen reader entirely, and the merchant is still
+     * looking at exactly one picture on their own device. */
+    stagedAlt: "Image ready to send",
     typeHelper: "JPG, PNG or WebP.",
     typeError: "Only JPG, PNG and WebP images can be attached.",
     sizeError: "That image is larger than {max}. Try a smaller one.",

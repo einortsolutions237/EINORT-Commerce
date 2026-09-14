@@ -421,7 +421,7 @@ Plans:
   6. A merchant and the platform owner can exchange messages and file/image attachments in a persistent, per-merchant thread — visible in the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on new activity. No real-time/websocket infrastructure.
   7. A merchant can submit their monthly subscription payment (Mobile Money/Orange Money transaction reference + receipt image) through that same thread, and the platform owner can confirm or reject it there, activating/extending the subscription on confirmation — reusing Phase 3's claim-and-verify pattern with payer/payee reversed.
 
-**Plans:** 10/17 plans executed
+**Plans:** 11/17 plans executed
 **UI hint**: yes
 
 Plans:
@@ -446,7 +446,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 06-11-PLAN.md — Extend the presign→PUT→finalize upload triad to support-thread image attachments (two narrow doors), rendered in the transcript
+- [x] 06-11-PLAN.md — Extend the presign→PUT→finalize upload triad to support-thread image attachments (two narrow doors), rendered in the transcript
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -701,7 +701,7 @@ Milestone v2.0 begins at Phase 6. Phases 9 → 10 → 11 → 12 are a hard order
 | 05.1. Template Preview Rendering & Picker Redesign | v1.0 | 9/9 | Complete | 2026-09-08 |
 | 05.2. Marketing Landing Page Redesign | v1.0 | 1/1 | Complete | 2026-09-08 |
 | 05.3. Storefront Editor Page Split | v1.0 | 3/4 | In Progress | - |
-| 6. Merchant Dashboard & Platform Admin | v2.0 | 10/17 | In Progress|  |
+| 6. Merchant Dashboard & Platform Admin | v2.0 | 11/17 | In Progress|  |
 | 7. Trial & Template-Tier Business Rules | v2.0 | 0/TBD | Not started | - |
 | 8. Design System & Visual Migration | v2.0 | 0/TBD | Not started | - |
 | 9. Inventory | v2.0 | 0/TBD | Not started | - |
