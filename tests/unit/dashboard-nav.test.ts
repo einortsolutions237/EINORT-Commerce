@@ -48,8 +48,8 @@ const SIDEBAR_FILE = "src/components/app-sidebar.tsx";
 const GOLD_SCAN_DIRS = ["src/app", "src/components"] as const;
 
 /**
- * The seven destinations the rail must offer, in 03-UI-SPEC.md's order, extended
- * by 04-UI-SPEC.md § Navigation.
+ * The eight destinations the rail must offer, in 03-UI-SPEC.md's order, extended
+ * by 04-UI-SPEC.md § Navigation and by 06-UI-SPEC.md § R-4.
  *
  * This list is the contract. Adding a dashboard route means adding it here and
  * in the rail, in that order — which is the point: the test is what turns
@@ -58,6 +58,14 @@ const GOLD_SCAN_DIRS = ["src/app", "src/components"] as const;
  */
 const REQUIRED_HREFS = [
   "/dashboard",
+  "/dashboard/support",
+  /*
+   * Plan 06-09, 06-UI-SPEC.md § R-4 (D-07). Second, directly after the
+   * apex — the General group's rail item sits right beneath `Overview`,
+   * and this list is ordered to match the rail rather than sorted. Landed
+   * in the same commit as the `NAV_GROUPS` row it pairs with; either half
+   * alone fails this test (06-UI-SPEC.md § Open Items 5).
+   */
   "/dashboard/products",
   /*
    * Phase 4, EDIT-02. Placed between `Products` and `Orders` because that is
