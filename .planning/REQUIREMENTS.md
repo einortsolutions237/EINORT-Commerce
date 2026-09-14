@@ -85,9 +85,9 @@
 
 - [ ] **ADM-01**: Platform owner can view and suspend merchants/stores
 - [x] **ADM-02**: Platform owner can view a global payment-claims ledger across all tenants
-- [ ] **ADM-03**: Platform owner can view domain status across tenants and has a support-contact view
+- [x] **ADM-03**: Platform owner can view domain status across tenants and has a support-contact view
 - [ ] **ADM-04**: Platform admin scope stays pilot-sized (the items in this section) — the broader ~20-module admin surface referenced in prior planning docs is explicitly deferred
-- [ ] **ADM-05**: A merchant and the platform owner have a persistent, in-app messaging thread per merchant (text plus file/image attachments), surfaced in both the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on a new message. No real-time/websocket infrastructure — async, check-in-when-you-can, matching the manual-first pattern already established for payment claims. This is also the channel SUB-03's subscription-payment-claim flow runs through.
+- [ ] **ADM-05**: A merchant and the platform owner have a persistent, in-app messaging thread per merchant (text plus file/image attachments), surfaced in both the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on a new message. No real-time/websocket infrastructure — async, check-in-when-you-can, matching the manual-first pattern already established for payment claims. This is also the channel SUB-03's subscription-payment-claim flow runs through. *(Core two-way loop shipped by plan 06-12 — inbox, thread, both directions' badge/nudge. Left open pending SUB-03's own claim-card surface, 06-15/06-16.)*
 
 ## v2.0 Milestone Requirements
 
@@ -263,9 +263,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | DASH-02 | Phase 6 | Complete |
 | ADM-01 | Phase 6 | Pending |
 | ADM-02 | Phase 6 | Complete |
-| ADM-03 | Phase 6 | Pending |
+| ADM-03 | Phase 6 | Complete |
 | ADM-04 | Phase 6 | Pending |
-| ADM-05 | Phase 6 | Pending |
+| ADM-05 | Phase 6 | In Progress (06-12 landed the two-way loop; SUB-03 surface still pending) |
 
 **Phase 6 reconciliation (2026-09-13):** the eight rows above mapped to Phase 6 (SUB-03, DASH-01/02, ADM-01..05) were committed during v1.0 but never planned or executed. Milestone v2.0 **keeps Phase 6 exactly as-is — same number, same requirements, same success criteria** — and runs it first, as v2.0's foundation phase. Nothing was renumbered, moved, or dropped. Rationale: Phase 6 builds the merchant dashboard shell that every new v2.0 dashboard surface plugs into, the pilot-scoped Super Admin that MMKT-06's moderation page lives inside, and the ADM-05 support thread that is the only merchant↔platform notification channel that exists (`resend` is declared but unwired). New v2.0 phases therefore start at Phase 7.
 

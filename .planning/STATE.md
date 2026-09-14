@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: Phase 6 Wave 4 merged to master
-last_updated: "2026-09-14T22:25:00.000Z"
-last_activity: 2026-09-14 -- Phase 6 Wave 4 (06-11) executed and merged
+stopped_at: 06-12 completed and committed on its own worktree branch, awaiting merge; sibling plan 06-15 (Wave 5) status unknown to this executor
+last_updated: "2026-09-14T21:59:58.788Z"
+last_activity: "2026-09-14 -- Wave 4 executed and merged (support-thread image attachments: thread/subscription upload namespaces, thread image preset, two narrow mint doors, merchant-authenticated finalize route, transactional attachment persistence, sent/staged attachment grid). Post-merge gate green: lint/typecheck/build/685 unit tests. Corrected an overstated ADM-05 completion claim back to Pending — the requirement's Super Admin inbox half is still 06-12's job. Full isolation suite deferred to after Wave 5 merges, to avoid Neon test-branch contention with the incoming parallel executors."
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 88
-  percent: 34
+  completed_plans: 92
+  percent: 33
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 6 is executing now (Waves 1-4 of 7 complete and merged to master — plans 06-01 through 06-11). Wave 5 (06-12, 06-15) is next. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
+**Current focus:** Phase 6 is executing now (Waves 1-4 of 7 complete and merged to master — plans 06-01 through 06-11). Wave 5 (06-12, 06-15) is in flight: 06-12 is complete on its own worktree branch and awaiting merge; 06-15's status is unknown to this executor. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
 
 ## Current Position
 
 Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
-Plan: Wave 4 of 7 complete (06-11 merged to master); Wave 5 (06-12, 06-15) next
+Plan: Wave 5 of 7 — 06-12 complete on its own worktree branch, awaiting merge; sibling plan 06-15 status unknown to this executor
 Status: Executing Phase 6
-Last activity: 2026-09-14 -- Wave 4 executed and merged (support-thread image attachments: thread/subscription upload namespaces, thread image preset, two narrow mint doors, merchant-authenticated finalize route, transactional attachment persistence, sent/staged attachment grid). Post-merge gate green: lint/typecheck/build/685 unit tests. Corrected an overstated ADM-05 completion claim back to Pending — the requirement's Super Admin inbox half is still 06-12's job. Full isolation suite deferred to after Wave 5 merges, to avoid Neon test-branch contention with the incoming parallel executors.
+Last activity: 2026-09-14 -- 06-12 executed on its own worktree branch (admin support inbox + per-merchant thread, ADM-03/ADM-05): src/server/admin/support.ts/support-actions.ts (cross-tenant inbox, unread map, platform-side message writer), /admin/support and /admin/support/[tenantId] pages, the rail's live unread badge, both deferred merchants-surface entry points wired. Extended composer.tsx with a viewer/tenantId mirror (it had none despite message-bubble.tsx/message-list.tsx already having one) and built the admin-authenticated finalize route thread-finalize/route.ts had already deferred to this plan by name — both Rule 3 blocking-issue fixes, without which an admin reply with an attachment would fail at the last step. Post-task gate green: lint/typecheck/build/685 unit tests, on the executor's own worktree (not yet merged to master). ADM-05 left Pending, not Complete, in REQUIREMENTS.md — the two-way loop works but SUB-03's own claim-card surface (06-15/06-16) is still outstanding. See 06-12-SUMMARY.md.
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -60,6 +60,7 @@ Phases 9 → 10 → 11 → 12 (Inventory → Delivery → Customers → Analytic
 | Phase 05.3 P01 | ~35min | 3 tasks | 5 files |
 | Phase 06-merchant-dashboard-platform-admin P10 | 55min | 2 tasks | 6 files |
 | Phase 06-merchant-dashboard-platform-admin P11 | ~35min | 3 tasks | 22 files |
+| Phase 06 P12 | 70min | 3 tasks | 13 files |
 
 ## Quick Tasks Completed
 
@@ -110,6 +111,8 @@ Recent decisions affecting current work:
 - [Phase 06-merchant-dashboard-platform-admin]: 06-10: merchant-side RejectDialog (dashboard/claims/reject-dialog.tsx) reused directly on /admin/claims, not recomposed -- verified genuinely surface-agnostic (no tenant context, no merchant-only action) before importing
 - [Phase 06-merchant-dashboard-platform-admin]: 06-11: thread-finalize route serves the merchant door only -- the admin door's mint half exists (requestAdminThreadAttachmentUpload) per Task 1's acceptance criteria but is inert until 06-12/06-15 build the consuming admin UI and their own admin-authenticated finalize route, matching finalize/route.ts's existing precedent of deferring the claims namespace to its own file rather than a branch
 - [Phase 06-merchant-dashboard-platform-admin]: 06-11: message-bubble.tsx cannot statically import anything from src/server/images/** (server-only) because it is reachable from composer.tsx's client tree -- the resolved attachment URL is threaded down as a resolveAttachmentUrl closure prop from message-list.tsx (a server component) instead; verified empirically via a clean npm run build
+- [Phase 06-merchant-dashboard-platform-admin]: 06-12: composer.tsx (06-09) had no viewer prop and hardcoded merchant-only Server Actions at mint/finalize/send -- extended with viewer/tenantId props (default MERCHANT) rather than forking a second composer, and built the admin-authenticated finalize route (admin-thread-finalize/route.ts) thread-finalize/route.ts's own header had already deferred to this plan by name
+- [Phase 06-merchant-dashboard-platform-admin]: 06-12: ADM-05 left Pending (not Complete) in REQUIREMENTS.md despite the two-way thread loop landing -- SUB-03's own claim-card surface (06-15/06-16) is still outstanding, per explicit orchestrator instruction not to overclaim
 
 ### Pending Todos
 
@@ -145,7 +148,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-14T22:25:00.000Z
-Stopped at: Phase 6 Wave 4 merged to master; Wave 5 (06-12, 06-15) dispatched
-Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-11-SUMMARY.md
+Last session: 2026-09-14T21:59:58.779Z
+Stopped at: 06-12 completed and committed on its own worktree branch, awaiting merge; sibling plan 06-15 (Wave 5) status unknown to this executor
+Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-12-SUMMARY.md
 Next command: `/gsd:execute-phase 6` (resume at Wave 5 merge) once the dispatched Wave 5 executors complete
