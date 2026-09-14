@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useOptimistic, useState, useTransition } from "react";
-import { LoaderCircle, Send, TriangleAlert } from "lucide-react";
+import { useId, useOptimistic, useRef, useState, useTransition } from "react";
+import { LoaderCircle, Paperclip, Send, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePlatformIsMac } from "@/hooks/use-platform-is-mac";
 import { strings } from "@/lib/strings";
+import { requestThreadAttachmentUpload } from "@/server/images/thread-upload";
 import { sendSupportMessage } from "@/server/support/actions";
 import type { SupportMessageRow } from "@/server/support/shared";
 
+import { AttachmentGrid, type StagedAttachment } from "./attachment-grid";
 import { MessageBubble } from "./message-bubble";
 
 /**
@@ -58,15 +60,91 @@ import { MessageBubble } from "./message-bubble";
  * this component adds a handler ONLY for the modified combination.
  *
  * ---------------------------------------------------------------------------
- * NO ATTACHMENT AFFORDANCE YET.
+ * THE ATTACH AFFORDANCE (plan 06-11).
  * ---------------------------------------------------------------------------
- * Plan 06-11 adds the attach-image button and its staged-thumbnail row.
- * Shipping a disabled version of it now would be a dead control sitting in
- * a live composer; the text-only send path below is this plan's whole
- * scope, and the slot simply does not exist until that plan builds it.
+ * The paperclip button drives the existing presign -> PUT -> finalize triad
+ * directly against `src/server/images/thread-upload.ts` and
+ * `/api/upload/thread-finalize` — the same three-step sequence
+ * `claim-form.tsx` already uses for a payment screenshot, adapted to stage up
+ * to four images before Send rather than exactly one before Submit. A failed
+ * upload REMOVES the staged thumb and surfaces
+ * `strings.support.attachments.uploadError` inline; the typed body is
+ * untouched either way, matching T-06-37's "never lose what the merchant
+ * typed" rule this file already applies to a failed send.
+ *
+ * `ACCEPTED_CONTENT_TYPES` and `MAX_THREAD_UPLOAD_BYTES` below MIRROR
+ * `src/server/images/r2.ts`'s `ALLOWED_UPLOAD_CONTENT_TYPES` and
+ * `thread-upload.ts`'s own private byte cap, exactly as `claim-form.tsx`
+ * mirrors the same allowlist for the same reason: both source modules are
+ * server-only (or, for the byte cap, simply unexported — see
+ * `thread-upload.ts`'s header on why a `"use server"` file cannot export a
+ * plain constant) and cannot be imported from a client component. This is
+ * the picker's courtesy check; the binding limit is the mint schema's own
+ * `.max()`, which signs the real ceiling into `content-length` so R2 enforces
+ * it regardless of what this file believes.
  */
 
 const TEXTAREA_ROWS = 3;
+
+/** § S's attachment cap, restated as the composer's own convenience check — the schema's `max(4)` is the boundary. */
+const ATTACHMENT_CAP = 4;
+
+/**
+ * See this file's header. Mirrors `ALLOWED_UPLOAD_CONTENT_TYPES` in
+ * `src/server/images/r2.ts`, which is `server-only` and cannot be imported
+ * here. This list is the picker filter and a courtesy check; the binding one
+ * is the mint, which pins the content type into the signature so a lie here
+ * produces a 403 rather than an object of the wrong kind.
+ */
+const ACCEPTED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** The `accept` attribute needs the same list joined, not re-typed. */
+const ACCEPTED_CONTENT_TYPES_ATTR = ACCEPTED_CONTENT_TYPES.join(",");
+
+/**
+ * See this file's header. Mirrors `thread-upload.ts`'s private
+ * `MAX_THREAD_UPLOAD_BYTES`, which cannot leave that `"use server"` module.
+ * The composer interpolates this into `strings.support.attachments.sizeError`
+ * rather than hardcoding "10 MB", so the two numbers cannot read differently.
+ */
+const MAX_THREAD_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_THREAD_UPLOAD_LABEL = `${Math.round(MAX_THREAD_UPLOAD_BYTES / (1024 * 1024))} MB`;
+
+const FINALIZE_ENDPOINT = "/api/upload/thread-finalize";
+
+/** One finalized image attachment, exactly as the finalize route returns it. */
+interface ThreadAttachmentDescriptor {
+  readonly storageKey: string;
+  readonly contentType: string;
+  readonly byteSize: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** A staged attachment plus the descriptor it resolves to once uploaded — `null` while `status` is `"uploading"`. */
+interface StagedItem extends StagedAttachment {
+  readonly descriptor: ThreadAttachmentDescriptor | null;
+}
+
+/** The one field of the finalize response this composer uses, narrowed by hand. */
+function readDescriptor(body: unknown): ThreadAttachmentDescriptor | null {
+  if (typeof body !== "object" || body === null) return null;
+  const { storageKey, contentType, byteSize, width, height } = body as Record<
+    string,
+    unknown
+  >;
+  if (
+    typeof storageKey === "string" &&
+    storageKey.length > 0 &&
+    typeof contentType === "string" &&
+    typeof byteSize === "number" &&
+    typeof width === "number" &&
+    typeof height === "number"
+  ) {
+    return { storageKey, contentType, byteSize, width, height };
+  }
+  return null;
+}
 
 /** `useOptimistic`'s base value never changes, so a stable reference avoids a needless reset on every render. */
 const NO_PENDING_ROWS: readonly SupportMessageRow[] = [];
@@ -93,9 +171,12 @@ export function Composer() {
   const router = useRouter();
   const textareaId = useId();
   const isMac = usePlatformIsMac();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [staged, setStaged] = useState<readonly StagedItem[]>([]);
   const [isSending, startTransition] = useTransition();
   const [pendingRows, addPendingRow] = useOptimistic(
     NO_PENDING_ROWS,
@@ -103,18 +184,139 @@ export function Composer() {
   );
 
   const trimmedBody = body.trim();
-  const canSend = trimmedBody.length > 0 && !isSending;
+  const hasUploadingAttachment = staged.some(
+    (item) => item.status === "uploading",
+  );
+  const readyDescriptors = staged
+    .map((item) => item.descriptor)
+    .filter((descriptor): descriptor is ThreadAttachmentDescriptor => descriptor !== null);
+  const canSend =
+    (trimmedBody.length > 0 || readyDescriptors.length > 0) &&
+    !isSending &&
+    !hasUploadingAttachment;
+  const atAttachmentCap = staged.length >= ATTACHMENT_CAP;
+
+  /**
+   * Drives the mint -> direct PUT -> finalize sequence for one file, staging
+   * it optimistically and holding the returned descriptor once finalize
+   * answers. A failure at any step removes the staged thumb entirely — the
+   * typed body is never touched.
+   */
+  async function stageFile(file: File) {
+    if (atAttachmentCap) return;
+
+    if (!ACCEPTED_CONTENT_TYPES.includes(file.type)) {
+      setAttachmentError(strings.support.attachments.typeError);
+      return;
+    }
+
+    if (file.size > MAX_THREAD_UPLOAD_BYTES) {
+      setAttachmentError(
+        strings.support.attachments.sizeError.replace(
+          "{max}",
+          MAX_THREAD_UPLOAD_LABEL,
+        ),
+      );
+      return;
+    }
+
+    setAttachmentError(null);
+
+    const id = crypto.randomUUID();
+    const previewUrl = URL.createObjectURL(file);
+    setStaged((prev) => [
+      ...prev,
+      { id, previewUrl, status: "uploading", descriptor: null },
+    ]);
+
+    function dropStaged() {
+      setStaged((prev) => {
+        const target = prev.find((item) => item.id === id);
+        if (target) URL.revokeObjectURL(target.previewUrl);
+        return prev.filter((item) => item.id !== id);
+      });
+    }
+
+    try {
+      const grant = await requestThreadAttachmentUpload({
+        kind: "threads",
+        contentType: file.type,
+        byteSize: file.size,
+      });
+      if (!grant.ok) {
+        dropStaged();
+        setAttachmentError(strings.support.attachments.uploadError);
+        return;
+      }
+
+      /*
+       * Byte-for-byte the signed value. R2 compares this header against the
+       * signature, so `image/JPEG` here is a 403 blamed on storage and caused
+       * three lines above.
+       */
+      const stored = await fetch(grant.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!stored.ok) {
+        dropStaged();
+        setAttachmentError(strings.support.attachments.uploadError);
+        return;
+      }
+
+      const finalized = await fetch(FINALIZE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadId: grant.uploadId, kind: "threads" }),
+      });
+      if (!finalized.ok) {
+        dropStaged();
+        setAttachmentError(strings.support.attachments.uploadError);
+        return;
+      }
+
+      const descriptor = readDescriptor(await finalized.json());
+      if (descriptor === null) {
+        dropStaged();
+        setAttachmentError(strings.support.attachments.uploadError);
+        return;
+      }
+
+      setStaged((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: "ready", descriptor } : item,
+        ),
+      );
+    } catch {
+      // A dropped connection mid-upload. Same outcome as every other failure.
+      dropStaged();
+      setAttachmentError(strings.support.attachments.uploadError);
+    }
+  }
+
+  function removeStaged(id: string) {
+    setStaged((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  }
 
   function send() {
     if (!canSend) return;
 
     const outgoingBody = trimmedBody;
+    const outgoingAttachments = readyDescriptors;
     setError(null);
 
     startTransition(async () => {
       addPendingRow(draftRow(outgoingBody));
 
-      const result = await sendSupportMessage({ body: outgoingBody });
+      const result = await sendSupportMessage({
+        body: outgoingBody,
+        attachments: outgoingAttachments,
+      });
 
       if (!result.ok) {
         setError(result.error.form?.[0] ?? strings.support.composer.sendError);
@@ -122,6 +324,8 @@ export function Composer() {
       }
 
       setBody("");
+      for (const item of staged) URL.revokeObjectURL(item.previewUrl);
+      setStaged([]);
       router.refresh();
     });
   }
@@ -147,6 +351,23 @@ export function Composer() {
         </Alert>
       )}
 
+      {attachmentError === null ? null : (
+        <Alert variant="destructive">
+          <TriangleAlert aria-hidden="true" />
+          <AlertDescription className="text-destructive">
+            {attachmentError}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {staged.length > 0 ? (
+        <AttachmentGrid
+          mode="staged"
+          attachments={staged}
+          onRemove={removeStaged}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={textareaId}>{strings.support.composer.label}</Label>
         <Textarea
@@ -171,7 +392,38 @@ export function Composer() {
         </span>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_CONTENT_TYPES_ATTR}
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              // Cleared so picking the same photo twice in a row still fires a change.
+              event.target.value = "";
+              if (file) void stageFile(file);
+            }}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="min-h-11 min-w-11"
+            disabled={atAttachmentCap || isSending}
+            aria-label={strings.support.composer.attachLabel}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Paperclip aria-hidden="true" />
+          </Button>
+          <span className="text-sm leading-normal font-normal text-muted-foreground">
+            {atAttachmentCap
+              ? strings.support.composer.attachmentCapNote
+              : strings.support.attachments.typeHelper}
+          </span>
+        </div>
+
         <Button
           type="button"
           className="min-h-11"
