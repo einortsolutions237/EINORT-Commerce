@@ -357,10 +357,34 @@ const claimConfirms = writesMatching(
  */
 const GOLD_SPEND = /\bvariant\s*[:=]\s*"gold"/g;
 
+/**
+ * Phase 3's own two spenders. This half of the assertion is a PHASE 3
+ * invariant and does not move: whatever later phases add, the pending-claims
+ * badge and the `Payment claimed` chip must still be gold, because losing one
+ * is a queue that stopped shouting.
+ */
 const GOLD_BUDGET = [
   "src/components/app-sidebar.tsx",
   "src/components/order-state-chip.tsx",
 ] as const;
+
+/**
+ * Everywhere gold is allowed to appear TODAY, which is a different question.
+ *
+ * 06-UI-SPEC.md § Color amends the original two-use budget to exactly five when
+ * the platform admin surface arrives — itemised per file, never as a directory
+ * exemption. The per-file counts and the total live in
+ * `tests/unit/dashboard-nav.test.ts`, which is the budget's home; this list
+ * exists only so a Phase 3 invariants file does not fail the build over a
+ * Phase 6 decision it is not the record of. Add a file in both places or
+ * neither.
+ */
+const GOLD_ALLOWED: readonly string[] = [
+  ...GOLD_BUDGET,
+  "src/components/admin/admin-banner.tsx",
+  "src/components/admin/admin-sidebar.tsx",
+  "src/components/subscription-claim-chip.tsx",
+];
 
 // ---------------------------------------------------------------------------
 
@@ -529,18 +553,18 @@ describe("Phase 3 cross-plan invariants", () => {
     ).toEqual([]);
 
     const unauthorized = spenders
-      .filter(
-        ({ file }) => !(GOLD_BUDGET as readonly string[]).includes(file),
-      )
+      .filter(({ file }) => !GOLD_ALLOWED.includes(file))
       .map(({ file, count }) => `${file}: ${count}`);
 
     expect(
       unauthorized,
-      "03-UI-SPEC.md § A. Color violation — the gold accent is spent outside " +
+      "06-UI-SPEC.md § Color violation — the gold accent is spent outside " +
         "its budget.\n" +
-        "  --gold-accent has exactly two uses in this phase: the " +
-        "pending-claims count badge on the Payment claims rail item, and the " +
-        "`Payment claimed` order-state chip. A third use makes gold " +
+        "  --gold-accent had exactly two uses in Phase 3 — the pending-claims " +
+        "count badge on the Payment claims rail item and the `Payment " +
+        "claimed` order-state chip — and Phase 6 adds three more, itemised in " +
+        "GOLD_ALLOWED above and counted per file in " +
+        "tests/unit/dashboard-nav.test.ts. One use past that list makes gold " +
         "decorative, and a merchant who learns gold is decorative stops " +
         "checking the claims queue.\n" +
         "  For a status that is merely notable use `secondary`; for something " +

@@ -21,14 +21,21 @@ import { ThemeToggle } from "./theme-toggle";
  * secretly does nothing.
  *
  * ---------------------------------------------------------------------------
- * A SUPER ADMIN PANEL ENTRY POINT WAS DELIBERATELY REMOVED HERE.
+ * A SUPER ADMIN PANEL ENTRY POINT WAS DELIBERATELY REMOVED HERE, AND STAYS REMOVED.
  * ---------------------------------------------------------------------------
  * Quick task 260906-egn shipped an unconditional `/admin` link (a route that
- * does not exist) because this session shape carries no role concept. Quick
- * task 260907-a2v deletes it: an always-404 link that implies an admin
+ * did not exist yet) because this session shape carried no role concept.
+ * Quick task 260907-a2v deleted it: an always-404 link that implies an admin
  * capability every merchant sees but none has is worse than no link at all.
- * It returns in Phase 6, gated on a real `User.platformRole` check — not
- * un-commented from here.
+ *
+ * `/admin` is real now (Phase 6), and the real `User.platformRole` check this
+ * comment once predicted (`requireAdminContext`, `src/server/admin/context.ts`)
+ * exists — but the link is NOT un-commented from here. Phase 06-04's D-03
+ * locks the admin surface as reachable by an unlinked URL only: no link
+ * anywhere in the merchant dashboard UI, deliberately more obscure than a
+ * gated link would be, so the surface carries no discoverability risk at all.
+ * A future reader finding no admin link here should read that as this
+ * decision holding, not as the prediction above having gone unfulfilled.
  *
  * Every control here carries `min-h-11` — the same 44px touch-target floor
  * `app-sidebar.tsx` inherits from this market's hardware.
