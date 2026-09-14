@@ -26,9 +26,35 @@ const loginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
+/**
+ * `redirectTo` is computed SERVER-SIDE and is the D-05 control.
+ *
+ * The client cannot know `platformRole` before it navigates — the field is
+ * `input: false` and is never sent to the browser as part of the sign-in
+ * response — and it must not be trusted to decide even if it could. So the
+ * destination is resolved here, from the session that was just created, and the
+ * form's only job is to push the string it is handed.
+ *
+ * This closes 06-RESEARCH.md Pitfall 5: with a hardcoded client-side
+ * `/dashboard`, the platform owner logged in, `requireMerchantContext()` found
+ * no `activeOrganizationId`, and walked them into `/onboarding/create-store` —
+ * which, if completed, gives the owner a store and breaks D-04 permanently.
+ */
 export type SignInMerchantResult =
-  | { ok: true }
+  | { ok: true; redirectTo: string }
   | { ok: false; error: Record<string, string[]> };
+
+/** The one `platformRole` value that routes to the platform admin surface. */
+const ADMIN_ROLE = "admin";
+
+/**
+ * The two post-login destinations. Allowlisted rather than derived, so a role a
+ * future migration adds lands on the merchant dashboard — where the merchant
+ * ladder will make its own decision — instead of being routed somewhere by
+ * string interpolation.
+ */
+const ADMIN_DESTINATION = "/admin";
+const MERCHANT_DESTINATION = "/dashboard";
 
 /** Better Auth signals failures as `APIError`; the code lives on `body.code`. */
 function apiErrorCode(error: unknown): string | undefined {
@@ -101,7 +127,37 @@ export async function signInMerchant(
     return { ok: false, error: { form: [strings.login.genericError] } };
   }
 
-  return { ok: true };
+  /*
+   * D-05: one login page, routed by role, decided SERVER-SIDE.
+   *
+   * The session has to be re-read rather than taken from `signInEmail`'s return
+   * value: that payload is the public user object, and `platformRole` is an
+   * `input: false` additional field that exists to be unreachable from the
+   * client half of this exchange. `getSession` goes through Better Auth's own
+   * output schema, which DOES carry the field (it has no `returned: false`, and
+   * no `session.cookieCache` is configured), so this reads the column from the
+   * row that was just written.
+   *
+   * `requestHeaders` already carries the freshly-issued session cookie: the
+   * `nextCookies()` plugin writes `Set-Cookie` into Next's cookie store, and
+   * `auth.api.signInEmail` mutated this same mutable `Headers` instance via the
+   * cookie helpers, so the lookup below authenticates as the user who just
+   * signed in rather than as whoever the incoming request was.
+   *
+   * A failed or missing session here falls through to the merchant
+   * destination rather than throwing. `/dashboard` is gated by
+   * `requireMerchantContext()`, which runs its own ladder on arrival — so the
+   * worst case is one extra redirect, never an unauthorized render. Sending a
+   * merchant to `/admin` on an ambiguous read would be the unsafe direction,
+   * and that is the branch that requires a positive match.
+   */
+  const session = await auth.api.getSession({ headers: requestHeaders });
+  const redirectTo =
+    session?.user.platformRole === ADMIN_ROLE
+      ? ADMIN_DESTINATION
+      : MERCHANT_DESTINATION;
+
+  return { ok: true, redirectTo };
 }
 
 /**

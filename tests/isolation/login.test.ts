@@ -223,7 +223,10 @@ describe("signs in", () => {
     });
 
     const result = await signInMerchant({ email, password: PASSWORD });
-    expect(result).toEqual({ ok: true });
+    // D-05: the success arm now carries a server-computed destination. A
+    // merchant's is `/dashboard`; see the "routes by role" block below for the
+    // other half of the branch.
+    expect(result).toEqual({ ok: true, redirectTo: "/dashboard" });
 
     const sessionsAfter = await platformDb.session.count({
       where: { userId: user!.id },
@@ -254,7 +257,7 @@ describe("tenant from session", () => {
     resetRequestContext();
 
     const result = await signInMerchant({ email, password: PASSWORD });
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, redirectTo: "/dashboard" });
 
     const session = await platformDb.session.findFirst({
       where: { userId: user!.id },
@@ -262,6 +265,72 @@ describe("tenant from session", () => {
     });
     expect(session).not.toBeNull();
     expect(session?.activeOrganizationId).toBe(organization!.id);
+  });
+});
+
+describe("routes by role", () => {
+  it("returns /admin for the platform owner and /dashboard for a merchant", async () => {
+    const ownerEmail = "owner-routes@example.test";
+    const merchantEmail = "merchant-routes@example.test";
+
+    /*
+     * The owner's account is created through Better Auth directly and NOT
+     * through `signUpMerchant`, because D-04 says the platform owner has no
+     * store — `signUpMerchant` would provision one and this fixture would then
+     * be asserting against an account the product forbids.
+     *
+     * `platformRole` is written straight to the row. It is `input: false`, so
+     * there is no API path that could set it, and the only writer in the
+     * repository is `scripts/promote-admin.ts` — which this test deliberately
+     * does not invoke: exercising the script here would make a bug in the
+     * script present as a bug in the routing.
+     */
+    await auth.api.signUpEmail({
+      body: {
+        email: ownerEmail,
+        password: PASSWORD,
+        name: "Platform Owner",
+      },
+      headers: requestContext.headers,
+    });
+    const promoted = await platformDb.user.update({
+      where: { email: ownerEmail },
+      data: { platformRole: "admin" },
+      select: { platformRole: true },
+    });
+    expect(
+      promoted.platformRole,
+      "the fixture failed to write platformRole, so the assertion below would " +
+        "be checking a merchant row",
+    ).toBe("admin");
+
+    const merchantSignUp = await signUpMerchant({
+      email: merchantEmail,
+      password: PASSWORD,
+      storeName: "Merchant Routes",
+      slug: "merchant-routes-store",
+    });
+    expect(merchantSignUp.ok).toBe(true);
+
+    resetRequestContext();
+    const ownerResult = await signInMerchant({
+      email: ownerEmail,
+      password: PASSWORD,
+    });
+
+    resetRequestContext();
+    const merchantResult = await signInMerchant({
+      email: merchantEmail,
+      password: PASSWORD,
+    });
+
+    /*
+     * D-05, both arms in one test on purpose: the claim is that the SAME login
+     * page routes two accounts differently. Asserting only the admin arm would
+     * pass on an implementation that sent everyone to `/admin`.
+     */
+    expect(ownerResult).toEqual({ ok: true, redirectTo: "/admin" });
+    expect(merchantResult).toEqual({ ok: true, redirectTo: "/dashboard" });
   });
 });
 

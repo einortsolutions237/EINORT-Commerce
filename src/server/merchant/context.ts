@@ -89,6 +89,18 @@ const MERCHANT_COLUMNS = {
  * future migration adds fails closed rather than serving by omission. */
 const ACTIVE_STATUS = "active";
 
+/**
+ * The `platformRole` that belongs on the admin surface instead of this one.
+ *
+ * Kept in agreement with `ADMIN_ROLE` in `src/server/admin/context.ts` and
+ * `src/server/auth/login.ts`. Deliberately duplicated rather than imported:
+ * `eslint.config.mjs` fences `src/server/admin/**` off from the tenant surface
+ * in both directions (TEN-05), and a shared constant module would be the first
+ * thread of exactly the code-sharing that fence exists to prevent. Three copies
+ * of a four-character string literal is the cheaper side of that trade.
+ */
+const ADMIN_ROLE = "admin";
+
 export const requireMerchantContext = cache(
   async (): Promise<MerchantContext> => {
     // The signed cookie, decoded by Better Auth. Never hand-parsed: the session
@@ -96,6 +108,30 @@ export const requireMerchantContext = cache(
     // second, weaker implementation of the check that matters most.
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session) redirect("/login");
+
+    /*
+     * The platform owner, sent home. Belt and braces, and it costs one line.
+     *
+     * D-05 already routes by role at login (`src/server/auth/login.ts` returns
+     * a server-computed `redirectTo`), so in the normal flow this rung never
+     * fires. It exists for the abnormal one: a bookmark, a stale client that
+     * still pushes `/dashboard`, a back-button, a link in an old email. Every
+     * one of those lands here with `activeOrganizationId` null — because the
+     * owner has no organization (D-04) — and would fall straight through to the
+     * rung below into `/onboarding/create-store`.
+     *
+     * That is 06-RESEARCH.md Pitfall 5, and its consequence is not a bad
+     * redirect but a permanent one: if the owner completes that form they
+     * acquire an `Organization`, and an account that is both merchant and
+     * platform administrator cannot be cleanly unwound — the store already
+     * holds a slug, a slug-history row and possibly orders.
+     *
+     * MUST STAY ABOVE THE `!tenantId` RUNG. Below it, it is unreachable.
+     *
+     * This changes nothing about the signature: the role, like the tenant,
+     * comes from the session and is not a parameter.
+     */
+    if (session.user.platformRole === ADMIN_ROLE) redirect("/admin");
 
     const tenantId = session.session.activeOrganizationId;
     // An account with no store. Phase 1's recovery route owns this case — the
