@@ -1,8 +1,7 @@
 import "server-only";
 
-import type { ScopedTx } from "@/server/db/tenant-scoped";
-
 import { OutOfStockError } from "./errors";
+import type { OrderWriteTx } from "./write-client";
 
 /**
  * CAT-03 / D-04 — moving inventory, atomically, without a lock of our own.
@@ -54,11 +53,29 @@ import { OutOfStockError } from "./errors";
  * A hold that committed on its own would decrement stock for an order that the
  * next statement then failed to write — inventory sold to nobody, invisible
  * until a merchant counts their shelves. Same for a release: it must vanish
- * together with the state change that justified it. So both take a `ScopedTx`,
- * and the tenant scope rides along with it (prisma/prisma#19565): there is no
- * `tenantId` parameter here because the extension rewrites every `where` below,
- * which is also what makes a cross-tenant variant id match zero rows instead of
- * decrementing someone else's inventory.
+ * together with the state change that justified it. So all three take the
+ * caller's transaction client.
+ *
+ * ---------------------------------------------------------------------------
+ * THE PARAMETER IS `OrderWriteTx`, WHICH A SCOPED *AND* AN UNSCOPED CLIENT MEET.
+ * ---------------------------------------------------------------------------
+ * ADM-02 (plan 06-07) lets the platform owner reject any tenant's payment claim,
+ * and a rejection MUST put the units back on sale exactly as the merchant's own
+ * rejection does — same function, not a second copy. The admin zone cannot
+ * construct or even name a `ScopedTx` (`eslint.config.mjs`), so the parameter is
+ * the structural minimum these three functions actually use; see
+ * `src/server/orders/write-client.ts` for the full argument and the enumeration.
+ *
+ * There is still no `tenantId` parameter here, and on a transaction opened
+ * against `scopedDb` nothing has changed: the extension rewrites every `where`
+ * below (prisma/prisma#19565), which is what makes a cross-tenant variant id
+ * match zero rows instead of decrementing someone else's inventory. On a
+ * transaction opened against `adminDb` there is no rewrite — and none is needed,
+ * because every `where` below is keyed on a cuid primary key (`Order.id`,
+ * `ProductVariant.id`) or on `OrderItem.orderId`, all globally unique, so the
+ * unscoped query selects exactly the rows the scoped one would have. Nothing in
+ * this module CREATES a row, which is the one operation an unscoped client
+ * genuinely cannot perform correctly on a tenant-scoped table.
  *
  * ---------------------------------------------------------------------------
  * `holdStockForLines` IS DELIBERATELY CALLABLE OUTSIDE PLACEMENT.
@@ -113,7 +130,7 @@ function sortedByVariant<T extends { variantId: string }>(
  * sequence the cart happened to arrive in.
  */
 export async function holdStockForLines(
-  tx: ScopedTx,
+  tx: OrderWriteTx,
   lines: readonly StockLine[],
 ): Promise<void> {
   for (const line of sortedByVariant(lines)) {
@@ -164,7 +181,7 @@ export async function holdStockForLines(
  * `holdStockForLines` and is recording that fact.
  */
 export async function markStockHeld(
-  tx: ScopedTx,
+  tx: OrderWriteTx,
   orderId: string,
 ): Promise<void> {
   await tx.order.updateMany({
@@ -206,7 +223,7 @@ export async function markStockHeld(
  * transition, not a redesign.
  */
 export async function releaseStock(
-  tx: ScopedTx,
+  tx: OrderWriteTx,
   orderId: string,
 ): Promise<void> {
   const { count } = await tx.order.updateMany({

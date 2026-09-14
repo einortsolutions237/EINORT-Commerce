@@ -32,12 +32,45 @@ import { describe, expect, it } from "vitest";
  * were actually read and that the detector still fires on the one file that is
  * SUPPOSED to match. If `transition.ts` is ever renamed or moved, the positive
  * control fails loudly rather than the guard silently guarding nothing.
+ *
+ * ---------------------------------------------------------------------------
+ * THE PLATFORM-ADMIN ZONE IS EXPLICITLY IN SCOPE (ADM-02, plan 06-07).
+ * ---------------------------------------------------------------------------
+ * `src/server/admin/**` is the newest and most tempting place for a second
+ * writer to appear. It reads through `adminDb`, which is deliberately unscoped,
+ * so a stray `order.update({ data: { state } })` there would move ANY tenant's
+ * order with nobody's name on it — the same hole as elsewhere, except across
+ * every store at once. Plan 06-07 deliberately did NOT add that zone to any
+ * allowlist: it widened `transitionOrder`'s parameter to `OrderWriteTx` so the
+ * admin path can call the one sanctioned writer instead of needing to become
+ * one. `SANCTIONED_WRITER` is therefore still a single value, and must stay one.
+ *
+ * The scan below already walks all of `src/`, so that zone was technically
+ * covered the moment it was created — which is exactly the kind of coverage
+ * that evaporates without anyone noticing. `COVERED_ZONES` turns it into a
+ * stated requirement: if a directory in that list stops contributing files,
+ * this file fails rather than quietly narrowing.
  */
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 /** The one module allowed to write `Order.state`. */
 const SANCTIONED_WRITER = "src/server/orders/transition.ts";
+
+/**
+ * Directories whose coverage is asserted rather than assumed.
+ *
+ * Each one is a place a second writer would plausibly be written: the order
+ * domain itself, the claim-review path that moves orders on a merchant's tap,
+ * and the platform-admin zone that moves them on the owner's. A rename or a
+ * move that takes any of them out of `src/` must fail this file, not silently
+ * shrink what it guards.
+ */
+const COVERED_ZONES = [
+  "src/server/orders",
+  "src/server/claims",
+  "src/server/admin",
+] as const;
 
 /**
  * Directories skipped entirely.
@@ -178,6 +211,29 @@ describe("single Order.state writer", () => {
       "No .ts files were found under src/. A vacuous pass is the one failure " +
         "mode a source-level guard must not have.",
     ).toBeGreaterThan(0);
+
+    /*
+     * PER-ZONE, not just in aggregate. A count over all of `src/` stays
+     * comfortably non-zero even if one directory is renamed or moved out, so it
+     * would report full confidence over a surface it had stopped reading.
+     * `src/server/admin` is the current newcomer and the one with no tenant
+     * predicate underneath it — see the header.
+     */
+    for (const zone of COVERED_ZONES) {
+      expect(
+        existsSync(join(repoRoot, zone)),
+        `${zone} does not exist. This guard would then be silently narrower ` +
+          "than it claims — update COVERED_ZONES in " +
+          "tests/unit/single-order-state-writer.test.ts to the directory's " +
+          "new home.",
+      ).toBe(true);
+
+      expect(
+        scannedFiles.filter((file) => file.startsWith(`${zone}/`)).length,
+        `No .ts files under ${zone} were scanned, so nothing in that zone was ` +
+          "checked for a second Order.state writer.",
+      ).toBeGreaterThan(0);
+    }
   });
 
   it("still detects a state write in the sanctioned writer", () => {
