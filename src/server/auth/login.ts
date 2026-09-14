@@ -104,8 +104,9 @@ export async function signInMerchant(
 
   const { email, password } = parsed.data;
 
+  let signInResult: Awaited<ReturnType<typeof auth.api.signInEmail>>;
   try {
-    await auth.api.signInEmail({
+    signInResult = await auth.api.signInEmail({
       body: { email, password },
       headers: requestHeaders,
     });
@@ -130,30 +131,26 @@ export async function signInMerchant(
   /*
    * D-05: one login page, routed by role, decided SERVER-SIDE.
    *
-   * The session has to be re-read rather than taken from `signInEmail`'s return
-   * value: that payload is the public user object, and `platformRole` is an
-   * `input: false` additional field that exists to be unreachable from the
-   * client half of this exchange. `getSession` goes through Better Auth's own
-   * output schema, which DOES carry the field (it has no `returned: false`, and
-   * no `session.cookieCache` is configured), so this reads the column from the
-   * row that was just written.
+   * `platformRole` is read straight off `signInEmail`'s own response —
+   * NOT re-fetched via `getSession`. An earlier version of this function
+   * re-fetched the session, on the theory that `nextCookies()` mutates the
+   * `requestHeaders` instance passed into `signInEmail` so a follow-up
+   * `getSession({ headers: requestHeaders })` would authenticate as the
+   * user who just signed in. That theory is false: `nextCookies()` (see
+   * `node_modules/better-auth/dist/integrations/next-js.mjs`) writes the
+   * session cookie through Next's own `cookies()` API, never touching the
+   * `Headers` object `signInEmail` was called with — so the re-fetch always
+   * read an unauthenticated request and silently fell through to
+   * `MERCHANT_DESTINATION` for every account, admin included
+   * (`tests/isolation/login.test.ts` "routes by role" caught this).
    *
-   * `requestHeaders` already carries the freshly-issued session cookie: the
-   * `nextCookies()` plugin writes `Set-Cookie` into Next's cookie store, and
-   * `auth.api.signInEmail` mutated this same mutable `Headers` instance via the
-   * cookie helpers, so the lookup below authenticates as the user who just
-   * signed in rather than as whoever the incoming request was.
-   *
-   * A failed or missing session here falls through to the merchant
-   * destination rather than throwing. `/dashboard` is gated by
-   * `requireMerchantContext()`, which runs its own ladder on arrival — so the
-   * worst case is one extra redirect, never an unauthorized render. Sending a
-   * merchant to `/admin` on an ambiguous read would be the unsafe direction,
-   * and that is the branch that requires a positive match.
+   * `parseUserOutput` (Better Auth's output filter) excludes a field only
+   * when its schema declares `returned: false`. `platformRole` sets
+   * `input: false` alone, so it survives that filter and comes back on
+   * `signInResult.user` from this same call — no second round-trip needed.
    */
-  const session = await auth.api.getSession({ headers: requestHeaders });
   const redirectTo =
-    session?.user.platformRole === ADMIN_ROLE
+    signInResult.user.platformRole === ADMIN_ROLE
       ? ADMIN_DESTINATION
       : MERCHANT_DESTINATION;
 
