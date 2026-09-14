@@ -97,16 +97,19 @@ import { MessageBubble, type SupportViewer } from "./message-bubble";
  * it left this the one file in `src/components/support/` NOT actually
  * mirrored by the `viewer` prop 06-UI-SPEC.md § S promises for "one
  * component, two surfaces". `/admin/support/[tenantId]` (plan 06-12) needs
- * the platform owner's doors instead — `sendPlatformMessage` and
- * `requestAdminThreadAttachmentUpload`, both of which additionally require
- * the target `tenantId` in their payload, because the admin identity
- * function resolves WHO is calling and never WHICH store they mean (see
- * `src/server/admin/context.ts`'s header). Forking a second composer file
- * was rejected outright — § S is explicit that a fork here is the exact
- * regression the mirror exists to prevent. `viewer` defaults to `"MERCHANT"`
- * so `/dashboard/support`'s existing zero-prop `<Composer/>` keeps compiling
- * and behaving identically; only the admin page opts into the other door, by
- * passing both `viewer="PLATFORM"` and its own `tenantId`.
+ * the platform owner's doors instead, at all THREE steps this component
+ * drives — mint (`requestAdminThreadAttachmentUpload`), finalize
+ * (`/api/upload/admin-thread-finalize`, its own sibling Route Handler
+ * mirroring `thread-finalize/route.ts`), and send (`sendPlatformMessage`) —
+ * every one of which additionally requires the target `tenantId` in its
+ * payload, because the admin identity function resolves WHO is calling and
+ * never WHICH store they mean (see `src/server/admin/context.ts`'s header).
+ * Forking a second composer file was rejected outright — § S is explicit
+ * that a fork here is the exact regression the mirror exists to prevent.
+ * `viewer` defaults to `"MERCHANT"` so `/dashboard/support`'s existing
+ * zero-prop `<Composer/>` keeps compiling and behaving identically; only the
+ * admin page opts into the other three doors, by passing both
+ * `viewer="PLATFORM"` and its own `tenantId`.
  */
 
 const TEXTAREA_ROWS = 3;
@@ -136,6 +139,10 @@ const MAX_THREAD_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_THREAD_UPLOAD_LABEL = `${Math.round(MAX_THREAD_UPLOAD_BYTES / (1024 * 1024))} MB`;
 
 const FINALIZE_ENDPOINT = "/api/upload/thread-finalize";
+/** The admin door's own finalize route (plan 06-12) — see `composer.tsx`'s
+ * `viewer`/`tenantId` header block and that route's own header for why a
+ * second endpoint exists rather than one branching on caller type. */
+const ADMIN_FINALIZE_ENDPOINT = "/api/upload/admin-thread-finalize";
 
 /** One finalized image attachment, exactly as the finalize route returns it. */
 interface ThreadAttachmentDescriptor {
@@ -312,11 +319,22 @@ export function Composer({ viewer = "MERCHANT", tenantId }: ComposerProps) {
         return;
       }
 
-      const finalized = await fetch(FINALIZE_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadId: grant.uploadId, kind: "threads" }),
-      });
+      const finalized =
+        viewer === "PLATFORM" && tenantId !== undefined
+          ? await fetch(ADMIN_FINALIZE_ENDPOINT, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                uploadId: grant.uploadId,
+                kind: "threads",
+                tenantId,
+              }),
+            })
+          : await fetch(FINALIZE_ENDPOINT, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uploadId: grant.uploadId, kind: "threads" }),
+            });
       if (!finalized.ok) {
         dropStaged();
         setAttachmentError(strings.support.attachments.uploadError);

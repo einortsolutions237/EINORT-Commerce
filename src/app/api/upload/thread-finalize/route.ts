@@ -16,23 +16,22 @@ import { requireMerchantContext } from "@/server/merchant/context";
  * for a signed-in merchant.
  *
  * ---------------------------------------------------------------------------
- * THE MERCHANT DOOR ONLY. THE ADMIN DOOR GETS ITS OWN SIBLING ROUTE, LATER.
+ * THE MERCHANT DOOR ONLY. THE ADMIN DOOR HAS ITS OWN SIBLING ROUTE.
  * ---------------------------------------------------------------------------
- * `src/server/images/thread-upload.ts`'s two mint doors are matched by
- * exactly one finalize route here, and that is deliberate rather than an
- * oversight: the platform owner's side of this thread has no consuming UI
- * until plan 06-12 builds `/admin/support/[tenantId]`'s own attach
- * affordance, and plan 06-15 builds the subscription-receipt upload that
- * reuses the `subscriptions` namespace. Building a branch here today — "the
- * admin context, or the merchant context, chosen by whether the body names a
- * target tenant" — would be exactly the one-more-branch shape
- * `thread-upload.ts`'s own header rejects for the mint step: the credential
- * in force would be buried in a runtime conditional instead of visible at an
- * export. `finalize/route.ts` sets the same precedent for the product/logo
- * pair — "the `claims` kind is deliberately not handled here... that path is
- * a later plan's action" — and this route follows it. When 06-12 or 06-15
- * needs an admin-authenticated finalize, it is a new file built the same way
- * this one was, re-authorizing through `requireAdminContext()` instead.
+ * `src/server/images/thread-upload.ts`'s two mint doors are matched by two
+ * finalize routes, not one: this file for the merchant door, and
+ * `src/app/api/upload/admin-thread-finalize/route.ts` (plan 06-12) for the
+ * admin door that `/admin/support/[tenantId]`'s attach affordance now calls.
+ * Building a single branching route here — "the admin context, or the
+ * merchant context, chosen by whether the body names a target tenant" —
+ * would be exactly the one-more-branch shape `thread-upload.ts`'s own header
+ * rejects for the mint step: the credential in force would be buried in a
+ * runtime conditional instead of visible at an export. `finalize/route.ts`
+ * sets the same precedent for the product/logo pair — "the `claims` kind is
+ * deliberately not handled here... that path is a later plan's action" —
+ * and both of these routes follow it. Plan 06-15's subscription-receipt
+ * upload (the `subscriptions` namespace) is still deferred: it reuses
+ * whichever of the two doors its own consuming UI needs, unchanged.
  *
  * ---------------------------------------------------------------------------
  * IT RE-AUTHORIZES. FINALIZE IS NOT A CONTINUATION OF THE MINT.
