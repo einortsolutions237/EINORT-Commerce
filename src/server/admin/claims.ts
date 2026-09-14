@@ -2,7 +2,12 @@ import "server-only";
 
 import { strings } from "@/lib/strings";
 import { adminDb } from "@/server/db/admin";
-import type { ClaimStatus, PaymentOperator } from "@/server/db/enums";
+import type {
+  ClaimStatus,
+  OrderChannel,
+  OrderState,
+  PaymentOperator,
+} from "@/server/db/enums";
 import type { ActionResult } from "@/server/merchant/action";
 import {
   AlreadyReviewedError,
@@ -110,13 +115,32 @@ import { transitionOrder } from "@/server/orders/transition";
  */
 const ADMIN_CLAIM_LEDGER_ROW_CAP = 1000;
 
-/** One row of the C3 ledger — a claim, the order it is against, and the store. */
+/**
+ * One row of the C3 ledger — a claim, the order it is against, and the store.
+ *
+ * `orderChannel` / `orderState` were ADDED BY PLAN 06-10, not part of plan
+ * 06-07's original shape. 06-UI-SPEC.md § Status Chip Registry states the
+ * C3 ledger's "Status chip" column reuses `OrderStateChip` — the merchant
+ * dashboard's own order-state chip — byte-identically rather than inventing
+ * an admin-only claim-status chip: "a merchant and the owner discussing an
+ * order must be looking at the same word." That component needs the order's
+ * actual live `channel` and `state`, not a value derived from
+ * `PaymentClaim.status` — a claim can stay `CONFIRMED` while its order later
+ * moves on to `FULFILLED`, and the chip must show what is true NOW. Deriving
+ * a chip from the claim status alone would also quietly re-open the gold
+ * budget: `03-UI-SPEC.md § A. Color` already spends `PAYMENT_CLAIMED`'s gold
+ * once (`src/components/order-state-chip.tsx`, budget entry #2), and
+ * reusing that chip verbatim is what keeps this page from needing a sixth
+ * `variant="gold"` occurrence the 06-UI-SPEC.md § Color budget does not have.
+ */
 export interface AdminClaimRow {
   readonly id: string;
   readonly tenantId: string;
   readonly storeName: string;
   readonly orderNumber: string;
   readonly orderTotalXaf: number;
+  readonly orderChannel: OrderChannel;
+  readonly orderState: OrderState;
   readonly amountClaimedXaf: number;
   readonly operator: PaymentOperator;
   readonly reference: string;
@@ -160,7 +184,14 @@ export async function listOrderClaimsForAdmin(
       submittedAt: true,
       status: true,
       screenshotKey: true,
-      order: { select: { orderNumber: true, totalXaf: true } },
+      order: {
+        select: {
+          orderNumber: true,
+          totalXaf: true,
+          channel: true,
+          state: true,
+        },
+      },
     },
     take: ADMIN_CLAIM_LEDGER_ROW_CAP,
   });
@@ -182,6 +213,8 @@ export async function listOrderClaimsForAdmin(
     storeName: storeNameByTenant.get(claim.tenantId) ?? claim.tenantId,
     orderNumber: claim.order.orderNumber,
     orderTotalXaf: claim.order.totalXaf,
+    orderChannel: claim.order.channel,
+    orderState: claim.order.state,
     amountClaimedXaf: claim.amountClaimedXaf,
     operator: claim.operator,
     reference: claim.reference,
