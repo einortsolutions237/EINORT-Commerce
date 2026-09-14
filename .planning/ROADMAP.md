@@ -421,15 +421,15 @@ Plans:
   6. A merchant and the platform owner can exchange messages and file/image attachments in a persistent, per-merchant thread — visible in the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on new activity. No real-time/websocket infrastructure.
   7. A merchant can submit their monthly subscription payment (Mobile Money/Orange Money transaction reference + receipt image) through that same thread, and the platform owner can confirm or reject it there, activating/extending the subscription on confirmation — reusing Phase 3's claim-and-verify pattern with payer/payee reversed.
 
-**Plans:** 17 plans across 7 waves
+**Plans:** 3/17 plans executed
 **UI hint**: yes
 
 Plans:
 **Wave 1**
 
-- [ ] 06-01-PLAN.md — Admin trust boundary: `requireAdminContext()`, `adminAction()`, the out-of-band bootstrap script minting the admin account, D-05's server-side post-login role routing
-- [ ] 06-02-PLAN.md — Complete Phase 6 copy surface: two new string modules plus index keys, enforcing 06-UI-SPEC.md's two-audiences rule structurally
-- [ ] 06-03-PLAN.md — Full Phase 6 schema migration in one pass, plus the four files a new tenant-scoped model costs in this codebase, applied to the dev database
+- [x] 06-01-PLAN.md — Admin trust boundary: `requireAdminContext()`, `adminAction()`, the out-of-band bootstrap script minting the admin account, D-05's server-side post-login role routing
+- [x] 06-02-PLAN.md — Complete Phase 6 copy surface: two new string modules plus index keys, enforcing 06-UI-SPEC.md's two-audiences rule structurally
+- [x] 06-03-PLAN.md — Full Phase 6 schema migration in one pass, plus the four files a new tenant-scoped model costs in this codebase, applied to the dev database
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -701,7 +701,7 @@ Milestone v2.0 begins at Phase 6. Phases 9 → 10 → 11 → 12 are a hard order
 | 05.1. Template Preview Rendering & Picker Redesign | v1.0 | 9/9 | Complete | 2026-09-08 |
 | 05.2. Marketing Landing Page Redesign | v1.0 | 1/1 | Complete | 2026-09-08 |
 | 05.3. Storefront Editor Page Split | v1.0 | 3/4 | In Progress | - |
-| 6. Merchant Dashboard & Platform Admin | v2.0 | 0/TBD | Not started | - |
+| 6. Merchant Dashboard & Platform Admin | v2.0 | 3/17 | In Progress|  |
 | 7. Trial & Template-Tier Business Rules | v2.0 | 0/TBD | Not started | - |
 | 8. Design System & Visual Migration | v2.0 | 0/TBD | Not started | - |
 | 9. Inventory | v2.0 | 0/TBD | Not started | - |
