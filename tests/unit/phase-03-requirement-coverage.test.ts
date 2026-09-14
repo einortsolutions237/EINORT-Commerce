@@ -325,8 +325,23 @@ const sourceFiles = sourceFilesUnder("src").sort();
 /** The one module allowed to write `Order.state` (ORD-05, 03-03). */
 const SANCTIONED_STATE_WRITER = "src/server/orders/transition.ts";
 
-/** The one module allowed to confirm a payment claim (ORD-02, 03-13). */
-const SANCTIONED_CLAIM_CONFIRMER = "src/server/claims/actions.ts";
+/**
+ * The modules allowed to confirm a payment claim (ORD-02, 03-13).
+ *
+ * TWO, not one, since Phase 6 plan 06-07: `src/server/admin/claims.ts` gives
+ * the platform owner the identical one-tap confirm over any tenant's claim
+ * (ADM-02), through its own writer rather than through `confirmClaim` —
+ * that action resolves its tenant from `requireMerchantContext()`, which the
+ * platform owner does not have (Pitfall 3). Unlike `Order.state`, which stays
+ * genuinely single-writer because both surfaces call the same
+ * `transitionOrder`, `PaymentClaim.status` has no shared writer to delegate
+ * to across the merchant/admin fence — so this is a widened ALLOWLIST of two
+ * named files, asserted below, not an unbounded relaxation.
+ */
+const SANCTIONED_CLAIM_CONFIRMERS = [
+  "src/server/claims/actions.ts",
+  "src/server/admin/claims.ts",
+];
 
 /**
  * `state:` but not `toState:` / `fromState:`.
@@ -476,31 +491,35 @@ describe("Phase 3 cross-plan invariants", () => {
     ).toEqual([]);
   });
 
-  it("still detects the sanctioned payment-claim confirmer", () => {
+  it("still detects both sanctioned payment-claim confirmers", () => {
     // The same positive control, for the same reason.
-    expect(
-      claimConfirms.map((hit) => hit.file),
-      `${SANCTIONED_CLAIM_CONFIRMER} contains no detected write of a claim to ` +
-        "CONFIRMED, so the detector has drifted and the next assertion is " +
-        "vacuous.",
-    ).toContain(SANCTIONED_CLAIM_CONFIRMER);
+    const confirmerFiles = claimConfirms.map((hit) => hit.file);
+    for (const sanctioned of SANCTIONED_CLAIM_CONFIRMERS) {
+      expect(
+        confirmerFiles,
+        `${sanctioned} contains no detected write of a claim to CONFIRMED, ` +
+          "so the detector has drifted and the next assertion is vacuous.",
+      ).toContain(sanctioned);
+    }
   });
 
-  it("has exactly one confirmer of a payment claim in src/", () => {
+  it("has no confirmer of a payment claim outside the two-file allowlist", () => {
     const offenders = claimConfirms
-      .filter((hit) => hit.file !== SANCTIONED_CLAIM_CONFIRMER)
+      .filter((hit) => !SANCTIONED_CLAIM_CONFIRMERS.includes(hit.file))
       .map((hit) => `${hit.file}:${hit.line} — ${hit.snippet}`);
 
     expect(
       offenders,
       "ORD-02 violation — something other than " +
-        `${SANCTIONED_CLAIM_CONFIRMER} moves a PaymentClaim to CONFIRMED.\n` +
+        `${SANCTIONED_CLAIM_CONFIRMERS.join(" or ")} moves a PaymentClaim to ` +
+        "CONFIRMED.\n" +
         "  A claim is never auto-confirmed from the customer's own report. " +
-        "The single confirming path exists so that the optimistic-lock check " +
+        "The two confirming paths exist so that the optimistic-lock check " +
         "(`claim.status !== \"PENDING\"`), the merchant-actor transition and " +
         "the reviewer's id are written in one transaction and cannot be " +
         "assembled wrongly somewhere else.\n" +
-        "  Call `confirmClaim` rather than writing the status directly.",
+        "  Call `confirmClaim` (merchant) or `adminConfirmOrderClaim` " +
+        "(platform owner) rather than writing the status directly.",
     ).toEqual([]);
   });
 
