@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: Phase 6 Wave 6 merged to master
-last_updated: "2026-09-16T16:55:00.000Z"
-last_activity: 2026-09-16 -- Phase 6 Waves 5-6 (06-12, 06-15, 06-13, 06-14, 06-16) executed and merged
+stopped_at: Phase 6 Wave 7 Tasks 1-2 merged to master; Task 3 (blocking human checkpoint) awaiting the developer
+last_updated: "2026-09-16T20:00:00.000Z"
+last_activity: 2026-09-16 -- Phase 6 Wave 7 (06-17) Tasks 1-2 executed and merged
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 93
+  completed_plans: 94
   percent: 35
 ---
 
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 6 is executing now (Waves 1-6 of 7 complete and merged to master — plans 06-01 through 06-16, 13/17). Only Wave 7 (06-17, the phase gate) remains. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
+**Current focus:** Phase 6 is one signed-off checkpoint away from complete. All 17 plan files' automatable scope is done and merged to master (06-01 through 06-17 Tasks 1-2). 06-17 Task 3 — two blocking `checkpoint:human-verify` manual verifications (admin-account bootstrap correctness against a real account, a full two-session merchant↔platform thread round trip) — is the only thing left, and it requires the developer directly; no agent can complete it. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute once Phase 6's checkpoint is signed off.
 
 ## Current Position
 
-Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
-Plan: Wave 6 of 7 complete (06-13, 06-14, 06-16 merged to master); Wave 7 (06-17, phase gate) next and last
-Status: Executing Phase 6
-Last activity: 2026-09-16 -- Waves 5 and 6 executed and merged: 06-12 (admin support inbox + per-merchant thread), 06-15 (subscription-claim submission, merchant half), 06-13 (PDF support-thread attachments, D-22), 06-14 (suspend/restore, the sole Organization.status writer), 06-16 (subscription-claim platform review, completing SUB-03). Post-merge gate green: lint/typecheck/build/704 unit tests. Resolved a real 3-file merge conflict between 06-13 and 06-16 (both added a prop to MessageList/its two pages — additive, kept both). Found and fixed a genuine test bug: tests/isolation/claims.test.ts's ORD-02 confirmer scan used a bare `status: "CONFIRMED"` text match with no model context, so 06-16's sanctioned SubscriptionPaymentClaim writer false-positived as an ORD-02 violation the moment it landed — rescoped the scan to the PaymentClaim delegate call site specifically, matching the precise pattern tests/unit/phase-03-requirement-coverage.test.ts already used for the same class of problem. ADM-01, ADM-05, and SUB-03 all now genuinely complete (verified against each requirement's full text, not just each plan's self-report) — see REQUIREMENTS.md.
+Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING, blocked on the developer
+Plan: Wave 7 (06-17) Tasks 1-2 merged to master; Task 3 (blocking human checkpoint) is the only remaining work in the entire phase
+Status: Executing Phase 6 — awaiting developer sign-off on 06-VALIDATION.md § Manual-Only Verifications
+Last activity: 2026-09-16 -- 06-17 Tasks 1-2 executed and merged: tests/unit/phase-06-requirement-coverage.test.ts (all eight Phase 6 requirements mapped to real artifacts, plus an ADM-04 scope-ceiling assertion walking the real src/app/admin/ tree), and four corrected project documents (CLAUDE.md's stale "resend unwired" claim, ROADMAP.md's "Plans: TBD", REQUIREMENTS.md marking ADM-04 complete with the two deferred items recorded — KD-V2-02 entitlement enforcement, R-5's low-stock constant — and 06-VALIDATION.md's TBD task IDs replaced with real ones). Full gate green on master: lint/typecheck/build/715 unit tests, test:full 1120/1125 on a clean solo run (5 known-pattern Neon pool-timeout flakes; an earlier contaminated run showing 153 failures was traced to two test:full processes racing on the same Neon test branch after a background subagent's stale process wasn't cleaned up — not a regression, confirmed by the clean rerun). Also fixed a real bug earlier this session: tests/isolation/claims.test.ts's ORD-02 confirmer scan used a bare `status: "CONFIRMED"` text match with no model context, false-positiving on 06-16's sanctioned SubscriptionPaymentClaim writer — rescoped to the PaymentClaim delegate call site specifically.
+
+**Waiting on the developer for 06-17 Task 3** — see `.planning/phases/06-merchant-dashboard-platform-admin/06-VALIDATION.md` § Manual-Only Verifications and `06-17-PLAN.md`'s Task 3 for the full 17-step checklist (admin bootstrap + a two-browser-session merchant↔owner round trip covering messages, attachments in both formats, unread badges, suspend/restore, and the subscription-claim flow). Once signed off, Phase 6 closes and Phase 7 is ready to execute immediately.
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -149,7 +151,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-16T16:55:00.000Z
-Stopped at: Phase 6 Wave 6 merged to master; Wave 7 (06-17, the phase gate) not yet dispatched
-Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-16-SUMMARY.md
-Next command: `/gsd:execute-phase 6` (resume at Wave 7) — note 06-17 has two blocking checkpoint:human-verify tasks (admin bootstrap correctness, a full two-session thread round trip) that need the user, not just automated gates
+Last session: 2026-09-16T20:00:00.000Z
+Stopped at: Phase 6 Wave 7 Tasks 1-2 merged to master; Task 3 (the blocking human checkpoint) is all that remains in the phase
+Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-VALIDATION.md § Manual-Only Verifications, and 06-17-PLAN.md's Task 3
+Next command: run the 17-step manual checklist with the developer, record results in 06-VALIDATION.md, then close Phase 6 and proceed to `/gsd:execute-phase 7`
