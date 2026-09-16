@@ -79,3 +79,41 @@ is a second, necessary occurrence — see `06-12-SUMMARY.md`'s deviation note on
 `Composer` with the same `viewer` mirror `MessageBubble`/`MessageList` already had, since the
 component shipped by plan 06-09 took no props at all and could not otherwise serve the admin
 surface without forking. Both occurrences are legitimate call sites, not a fork.
+
+## From plan 06-13
+
+### Same `variant="gold"` grep discrepancy observed, unchanged
+
+**Found during:** Task 3 final verification (`grep -ro 'variant="gold"' src/app src/components |
+wc -l`, the plan's own final `<verification>`-block command).
+
+**Detail:** Returns 10, identical to 06-11's and 06-12's own findings — none of this plan's
+new or modified files (`src/server/images/r2.ts`, `src/server/images/thread-upload.ts`, the four
+new route files, `src/server/support/messages.ts`, `src/server/support/actions.ts`,
+`src/server/admin/support.ts`, `src/server/admin/support-actions.ts`,
+`src/components/support/attachment-grid.tsx`, `src/components/support/composer.tsx`,
+`src/components/support/message-bubble.tsx`, `src/components/support/message-list.tsx`,
+`src/lib/strings/support.ts`, the two `page.tsx` files) contain the string `gold` anywhere —
+verified by grep against each file individually. Not fixed here, for the identical reason 06-11
+and 06-12 did not fix it — out of scope, pre-existing, and `tests/unit/dashboard-nav.test.ts`'s
+real contract test still passes (701/701 in this plan's full unit run).
+
+### Task 3's stated `<files>` list omitted `message-bubble.tsx`, `message-list.tsx`, and both
+### support `page.tsx` files — editing them was required for D-22 to actually render
+
+**Found during:** Task 3, while tracing how a persisted `DOCUMENT` attachment would reach the
+screen after `attachment-grid.tsx` gained a `DOCUMENT` branch.
+
+**Detail:** `message-bubble.tsx` (plan 06-11) filtered `row.attachments` down to
+`kind === "IMAGE"` before ever calling `<AttachmentGrid mode="sent" />` — a `DOCUMENT` row would
+persist correctly via `postMerchantMessage`/`postPlatformMessage` but never reach the grid at
+all, and even if it had, `AttachmentGrid`'s new `downloadBasePath` prop (required for a
+`DOCUMENT` tile's link) had no source anywhere in the existing prop chain
+(`page.tsx` → `MessageList` → `MessageBubble` → `AttachmentGrid`). Task 3's plan text focuses
+entirely on `attachment-grid.tsx`'s own rendering branch and does not mention this filter or the
+missing prop. Without editing all four files, D-22's own `must_haves.truths` — "the platform
+owner can open it" — could not be satisfied: the PDF would upload, verify, and persist, but stay
+permanently invisible in both threads.
+
+**Action:** Fixed as part of Task 3's own commit (Rule 2 — missing critical functionality),
+not deferred. See `06-13-SUMMARY.md`'s Deviations section for the full change list.

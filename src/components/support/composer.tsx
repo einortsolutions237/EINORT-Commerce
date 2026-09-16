@@ -13,7 +13,9 @@ import { strings } from "@/lib/strings";
 import { sendPlatformMessage } from "@/server/admin/support-actions";
 import {
   requestAdminThreadAttachmentUpload,
+  requestAdminThreadDocumentUpload,
   requestThreadAttachmentUpload,
+  requestThreadDocumentUpload,
 } from "@/server/images/thread-upload";
 import { sendSupportMessage } from "@/server/support/actions";
 import type { SupportMessageRow } from "@/server/support/shared";
@@ -110,6 +112,28 @@ import { MessageBubble, type SupportViewer } from "./message-bubble";
  * zero-prop `<Composer/>` keeps compiling and behaving identically; only the
  * admin page opts into the other three doors, by passing both
  * `viewer="PLATFORM"` and its own `tenantId`.
+ *
+ * ---------------------------------------------------------------------------
+ * D-22 — PDF RECEIPTS, A SECOND MINT/FINALIZE PAIR CHOSEN BY THE PICKED
+ * FILE'S TYPE.
+ * ---------------------------------------------------------------------------
+ * 06-UI-SPEC.md § S's attachment-types row and Assumption A2 restricted this
+ * `accept` attribute to three raster formats and said "No PDF — see the Open
+ * Items". D-22 (06-CONTEXT.md) is the locked decision that supersedes that
+ * assumption: a merchant whose Mobile Money app exports a PDF receipt can
+ * attach it, on the genuinely separate, non-re-encoding path plan 06-13
+ * builds (`ALLOWED_DOCUMENT_CONTENT_TYPES`, `requestThreadDocumentUpload`,
+ * `/api/upload/thread-document-finalize`, and their admin-door siblings).
+ * A2 was a narrowing pending confirmation, not a permanent rule; D-22 is the
+ * confirmation, and this widened `accept` attribute plus the branch in
+ * `stageFile` below are where the resolution actually lands in code.
+ *
+ * The branch belongs HERE, at the point `file.type` is first known, rather
+ * than inside one function that "handles both": the two finalize endpoints
+ * return different shapes (an `IMAGE` descriptor carries `width`/`height`, a
+ * `DOCUMENT` one does not), so hiding which contract is in force behind a
+ * single helper would be exactly the kind of merge `thread-upload.ts`'s own
+ * header rejects for the mint step, applied here to the picker step.
  */
 
 const TEXTAREA_ROWS = 3;
@@ -124,14 +148,27 @@ const ATTACHMENT_CAP = 4;
  * is the mint, which pins the content type into the signature so a lie here
  * produces a 403 rather than an object of the wrong kind.
  */
-const ACCEPTED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_IMAGE_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-/** The `accept` attribute needs the same list joined, not re-typed. */
-const ACCEPTED_CONTENT_TYPES_ATTR = ACCEPTED_CONTENT_TYPES.join(",");
+/**
+ * D-22. Mirrors `ALLOWED_DOCUMENT_CONTENT_TYPES` in `src/server/images/r2.ts`
+ * — a second, separate list, never merged into the one above, for the same
+ * reason the server-side allowlist stays separate: the two are different
+ * storage contracts, not two entries in one list.
+ */
+const ACCEPTED_DOCUMENT_CONTENT_TYPES = ["application/pdf"];
+
+/** The `accept` attribute needs both lists joined, not re-typed. */
+const ACCEPTED_CONTENT_TYPES_ATTR = [
+  ...ACCEPTED_IMAGE_CONTENT_TYPES,
+  ...ACCEPTED_DOCUMENT_CONTENT_TYPES,
+].join(",");
 
 /**
  * See this file's header. Mirrors `thread-upload.ts`'s private
- * `MAX_THREAD_UPLOAD_BYTES`, which cannot leave that `"use server"` module.
+ * `MAX_THREAD_UPLOAD_BYTES`, which cannot leave that `"use server"` module —
+ * shared by both the image and document mint schemas, so one copy here
+ * covers both.
  * The composer interpolates this into `strings.support.attachments.sizeError`
  * rather than hardcoding "10 MB", so the two numbers cannot read differently.
  */
@@ -144,38 +181,68 @@ const FINALIZE_ENDPOINT = "/api/upload/thread-finalize";
  * second endpoint exists rather than one branching on caller type. */
 const ADMIN_FINALIZE_ENDPOINT = "/api/upload/admin-thread-finalize";
 
-/** One finalized image attachment, exactly as the finalize route returns it. */
-interface ThreadAttachmentDescriptor {
-  readonly storageKey: string;
-  readonly contentType: string;
-  readonly byteSize: number;
-  readonly width: number;
-  readonly height: number;
-}
+/** D-22's document finalize doors — `thread-document-finalize/route.ts`'s
+ * own header explains why these are separate files from the two above. */
+const DOCUMENT_FINALIZE_ENDPOINT = "/api/upload/thread-document-finalize";
+const ADMIN_DOCUMENT_FINALIZE_ENDPOINT =
+  "/api/upload/admin-thread-document-finalize";
+
+/**
+ * One finalized attachment, either kind, exactly as the matching finalize
+ * route returns it (D-22). A discriminated union, mirroring
+ * `ThreadAttachmentInput` (`src/server/support/messages.ts`): an `IMAGE`
+ * descriptor always carries `width`/`height`, a `DOCUMENT` one carries
+ * neither — a PDF has no raster dimensions.
+ */
+type ThreadAttachmentDescriptor =
+  | {
+      readonly kind: "IMAGE";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+      readonly width: number;
+      readonly height: number;
+    }
+  | {
+      readonly kind: "DOCUMENT";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+    };
 
 /** A staged attachment plus the descriptor it resolves to once uploaded — `null` while `status` is `"uploading"`. */
 interface StagedItem extends StagedAttachment {
   readonly descriptor: ThreadAttachmentDescriptor | null;
 }
 
-/** The one field of the finalize response this composer uses, narrowed by hand. */
-function readDescriptor(body: unknown): ThreadAttachmentDescriptor | null {
+/**
+ * The one field of the finalize response this composer uses, narrowed by
+ * hand. `kind` selects which shape to expect: an `IMAGE` response without
+ * numeric `width`/`height`, or a `DOCUMENT` response with neither, is
+ * refused exactly like any other malformed body.
+ */
+function readDescriptor(
+  kind: "IMAGE" | "DOCUMENT",
+  body: unknown,
+): ThreadAttachmentDescriptor | null {
   if (typeof body !== "object" || body === null) return null;
   const { storageKey, contentType, byteSize, width, height } = body as Record<
     string,
     unknown
   >;
   if (
-    typeof storageKey === "string" &&
-    storageKey.length > 0 &&
-    typeof contentType === "string" &&
-    typeof byteSize === "number" &&
-    typeof width === "number" &&
-    typeof height === "number"
+    typeof storageKey !== "string" ||
+    storageKey.length === 0 ||
+    typeof contentType !== "string" ||
+    typeof byteSize !== "number"
   ) {
-    return { storageKey, contentType, byteSize, width, height };
+    return null;
   }
-  return null;
+  if (kind === "IMAGE") {
+    if (typeof width !== "number" || typeof height !== "number") return null;
+    return { kind: "IMAGE", storageKey, contentType, byteSize, width, height };
+  }
+  return { kind: "DOCUMENT", storageKey, contentType, byteSize };
 }
 
 /** `useOptimistic`'s base value never changes, so a stable reference avoids a needless reset on every render. */
@@ -247,14 +314,22 @@ export function Composer({ viewer = "MERCHANT", tenantId }: ComposerProps) {
    * it optimistically and holding the returned descriptor once finalize
    * answers. A failure at any step removes the staged thumb entirely — the
    * typed body is never touched.
+   *
+   * D-22: the file's own `type` selects which pair of doors this drives —
+   * the image mint/finalize pair, or the document one. See this file's
+   * header for why that choice is made here rather than inside a merged
+   * helper.
    */
   async function stageFile(file: File) {
     if (atAttachmentCap) return;
 
-    if (!ACCEPTED_CONTENT_TYPES.includes(file.type)) {
+    const isDocument = ACCEPTED_DOCUMENT_CONTENT_TYPES.includes(file.type);
+    const isImage = ACCEPTED_IMAGE_CONTENT_TYPES.includes(file.type);
+    if (!isDocument && !isImage) {
       setAttachmentError(strings.support.attachments.typeError);
       return;
     }
+    const kind: "IMAGE" | "DOCUMENT" = isDocument ? "DOCUMENT" : "IMAGE";
 
     if (file.size > MAX_THREAD_UPLOAD_BYTES) {
       setAttachmentError(
@@ -272,7 +347,7 @@ export function Composer({ viewer = "MERCHANT", tenantId }: ComposerProps) {
     const previewUrl = URL.createObjectURL(file);
     setStaged((prev) => [
       ...prev,
-      { id, previewUrl, status: "uploading", descriptor: null },
+      { id, kind, previewUrl, byteSize: file.size, status: "uploading", descriptor: null },
     ]);
 
     function dropStaged() {
@@ -284,8 +359,20 @@ export function Composer({ viewer = "MERCHANT", tenantId }: ComposerProps) {
     }
 
     try {
-      const grant =
-        viewer === "PLATFORM" && tenantId !== undefined
+      const isAdmin = viewer === "PLATFORM" && tenantId !== undefined;
+
+      const grant = isDocument
+        ? isAdmin
+          ? await requestAdminThreadDocumentUpload({
+              tenantId,
+              contentType: file.type,
+              byteSize: file.size,
+            })
+          : await requestThreadDocumentUpload({
+              contentType: file.type,
+              byteSize: file.size,
+            })
+        : isAdmin
           ? await requestAdminThreadAttachmentUpload({
               tenantId,
               kind: "threads",
@@ -319,29 +406,33 @@ export function Composer({ viewer = "MERCHANT", tenantId }: ComposerProps) {
         return;
       }
 
-      const finalized =
-        viewer === "PLATFORM" && tenantId !== undefined
-          ? await fetch(ADMIN_FINALIZE_ENDPOINT, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                uploadId: grant.uploadId,
-                kind: "threads",
-                tenantId,
-              }),
-            })
-          : await fetch(FINALIZE_ENDPOINT, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ uploadId: grant.uploadId, kind: "threads" }),
-            });
+      const finalizeEndpoint = isDocument
+        ? isAdmin
+          ? ADMIN_DOCUMENT_FINALIZE_ENDPOINT
+          : DOCUMENT_FINALIZE_ENDPOINT
+        : isAdmin
+          ? ADMIN_FINALIZE_ENDPOINT
+          : FINALIZE_ENDPOINT;
+      const finalizeBody = isDocument
+        ? isAdmin
+          ? { uploadId: grant.uploadId, tenantId }
+          : { uploadId: grant.uploadId }
+        : isAdmin
+          ? { uploadId: grant.uploadId, kind: "threads", tenantId }
+          : { uploadId: grant.uploadId, kind: "threads" };
+
+      const finalized = await fetch(finalizeEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(finalizeBody),
+      });
       if (!finalized.ok) {
         dropStaged();
         setAttachmentError(strings.support.attachments.uploadError);
         return;
       }
 
-      const descriptor = readDescriptor(await finalized.json());
+      const descriptor = readDescriptor(kind, await finalized.json());
       if (descriptor === null) {
         dropStaged();
         setAttachmentError(strings.support.attachments.uploadError);

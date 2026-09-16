@@ -137,16 +137,28 @@ export const supportCopy = {
   },
 
   /**
-   * § S — attachments. JPG/PNG/WebP only (Assumption A2): every accepted
-   * format is a decoder the image pipeline must be trusted with, and a PDF
-   * cannot be re-encoded at all. Do not write "PDF" anywhere in this
-   * namespace — the format is not supported and naming it promises it.
+   * § S — attachments. Images (JPG/PNG/WebP) and PDF documents, per D-22.
+   *
+   * ---------------------------------------------------------------------------
+   * D-22 SUPERSEDES 06-UI-SPEC.md § S'S ASSUMPTION A2. THIS IS THE RESOLUTION,
+   * NOT A CONTRADICTION.
+   * ---------------------------------------------------------------------------
+   * 06-UI-SPEC.md § S's attachment-types row and Assumption A2 restricted this
+   * namespace to three raster formats and said "No PDF — see the Open Items".
+   * That was a narrowing pending confirmation, not a locked decision: D-22
+   * itself (06-CONTEXT.md) is the confirmation, and it names the mechanism —
+   * a PDF receipt, on its own non-re-encoding storage and serving path
+   * (plan 06-13). So this namespace now names PDF explicitly, where the
+   * previous revision of this comment instructed the opposite. See plan
+   * 06-13's own summary for the full resolution.
    *
    * `attachmentAlt` is never empty and never a filename: an empty alt hides
    * the attachment from a screen reader entirely, and a filename is the one
    * string here that could carry a merchant's own words into a context that
    * does not escape them. `{max}` in `sizeError` interpolates the real upload
-   * constant — never hardcode a number into this sentence.
+   * constant — never hardcode a number into this sentence. Uses "file"
+   * rather than "image" throughout so the same sentence reads correctly for
+   * either kind.
    */
   attachments: {
     attachmentAlt: "Image attached by {author} at {time}",
@@ -155,17 +167,24 @@ export const supportCopy = {
      * the thumbnail from a screen reader entirely, and the merchant is still
      * looking at exactly one picture on their own device. */
     stagedAlt: "Image ready to send",
-    typeHelper: "JPG, PNG or WebP.",
-    typeError: "Only JPG, PNG and WebP images can be attached.",
-    sizeError: "That image is larger than {max}. Try a smaller one.",
+    typeHelper: "JPG, PNG, WebP or PDF.",
+    typeError: "Only JPG, PNG, WebP images or PDF files can be attached.",
+    sizeError: "That file is larger than {max}. Try a smaller one.",
 
     uploading: "Uploading…",
     /** Inline beside the staged thumb. The typed message body survives. */
-    uploadError: "That image didn't upload. Try again.",
+    uploadError: "That file didn't upload. Try again.",
 
-    removeLabel: "Remove this image",
+    removeLabel: "Remove this file",
     openLabel: "Open this image",
     closeLightbox: "Close",
+
+    /** D-22 — the document tile's label, rendered beside the file-size text
+     * instead of a thumbnail (a PDF has no raster preview). */
+    documentLabel: "PDF document",
+    /** Accessible name on a `DOCUMENT` tile's download link. `{size}` is a
+     * pre-formatted "1.2 MB" string, never a raw byte count. */
+    downloadLabel: "Download PDF document, {size}",
   },
 
   /**

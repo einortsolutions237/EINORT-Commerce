@@ -166,6 +166,7 @@ export default async function AdminSupportThreadPage({
           viewer="PLATFORM"
           authorOtherLabel={merchant.storeName}
           firstUnreadAt={firstUnreadAt}
+          downloadBasePath="/api/admin/support/attachment"
         />
       )}
 

@@ -1,7 +1,10 @@
 import "server-only";
 
 import { adminDb } from "@/server/db/admin";
-import type { SupportAuthor } from "@/server/db/enums";
+import type {
+  SupportAttachmentKind,
+  SupportAuthor,
+} from "@/server/db/enums";
 
 import { UNREAD_BY_PLATFORM_AUTHORS, type SupportMessageRow } from "../support/shared";
 
@@ -131,19 +134,32 @@ const MESSAGE_SELECT = {
 } as const;
 
 /**
- * One image attachment as `support-actions.ts`'s Zod schema hands it down,
- * after the admin mint door (`src/server/images/thread-upload.ts`,
- * `requestAdminThreadAttachmentUpload`) has already derived and stored it.
- * `width`/`height` are non-null for the identical reason
- * `messages.ts`'s `ThreadAttachmentInput` states: this plan is images-only.
+ * One attachment as `support-actions.ts`'s Zod schema hands it down, after
+ * either the admin image mint door (`requestAdminThreadAttachmentUpload`) or
+ * the admin document mint door (`requestAdminThreadDocumentUpload`,
+ * `src/server/images/thread-upload.ts`) has already verified and stored it.
+ *
+ * A discriminated union on `kind`, mirroring `ThreadAttachmentInput`
+ * (`../support/messages.ts`) — the admin-zone sibling of that type, for the
+ * identical D-22 reason: a `DOCUMENT` attachment has no raster dimensions,
+ * and the union makes a descriptor that carries them for the wrong kind a
+ * type error rather than a runtime possibility.
  */
-export interface PlatformThreadAttachmentInput {
-  readonly storageKey: string;
-  readonly contentType: string;
-  readonly byteSize: number;
-  readonly width: number;
-  readonly height: number;
-}
+export type PlatformThreadAttachmentInput =
+  | {
+      readonly kind: "IMAGE";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+      readonly width: number;
+      readonly height: number;
+    }
+  | {
+      readonly kind: "DOCUMENT";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+    };
 
 /**
  * A narrow, structural transaction-client shape — `postSystemMessageAsAdmin`
@@ -315,6 +331,46 @@ function compareInboxRows(a: InboxRow, b: InboxRow): number {
 }
 
 /**
+ * D-22 — one `SupportAttachment` row, by id alone, for the admin-credential
+ * download door (`src/app/api/admin/support/attachment/[attachmentId]/route.ts`).
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS FUNCTION EXISTS AT ALL, RATHER THAN THE ROUTE CALLING `adminDb`
+ * DIRECTLY.
+ * ---------------------------------------------------------------------------
+ * `eslint.config.mjs` restricts `adminDb` to `src/server/admin/**` — a Route
+ * Handler under `src/app/api/admin/**` is outside that zone and the import
+ * fails lint, exactly as it should: the fence exists so every read across the
+ * cross-tenant trust boundary is visibly inside this directory, not scattered
+ * across route handlers that merely happen to live under an `/admin/` path
+ * segment. This function is the one place that boundary is crossed for the
+ * download door, mirroring the reasoning `merchantExistsForAdmin`
+ * (`src/server/admin/queries.ts`) already established for the mint and
+ * finalize doors.
+ *
+ * ---------------------------------------------------------------------------
+ * NO `tenantId` PARAMETER, AND THAT IS CORRECT HERE.
+ * ---------------------------------------------------------------------------
+ * `SupportAttachment.id` is a `cuid()`, globally unique across every tenant —
+ * unlike `threadForAdmin`/`firstUnreadForPlatform`, which take a target
+ * tenant because they read a WHOLE thread, this reads exactly one row by its
+ * own unique key. `adminDb` is deliberately unscoped and the platform owner
+ * is authorized to read any tenant's attachment, so no tenant predicate is
+ * needed to narrow this lookup — see `requireAdminContext`'s own header on
+ * why this function taking no tenant id is not the TEN-04 substitution that
+ * `no-tenant-id-param.test.ts` forbids elsewhere on this surface.
+ */
+export async function attachmentForAdmin(attachmentId: string): Promise<{
+  readonly kind: SupportAttachmentKind;
+  readonly storageKey: string;
+} | null> {
+  return adminDb.supportAttachment.findUnique({
+    where: { id: attachmentId },
+    select: { kind: true, storageKey: true },
+  });
+}
+
+/**
  * One merchant's whole conversation, oldest first (D-12) — the admin-zone
  * mirror of `threadForMerchant`. `createdAt asc` is never re-ordered, for the
  * identical reason stated there: this is a transcript, not a feed, and both
@@ -408,13 +464,14 @@ export async function postPlatformMessage(
         data: attachments.map((attachment) => ({
           tenantId: merchantId,
           messageId: created.id,
-          // Images only in this plan (D-22's DOCUMENT path is plan 06-13).
-          kind: "IMAGE" as const,
+          kind: attachment.kind,
           storageKey: attachment.storageKey,
           contentType: attachment.contentType,
           byteSize: attachment.byteSize,
-          width: attachment.width,
-          height: attachment.height,
+          // NULL for DOCUMENT — see `PlatformThreadAttachmentInput`'s own
+          // header and `messages.ts`'s identical merchant-side write.
+          width: attachment.kind === "IMAGE" ? attachment.width : null,
+          height: attachment.kind === "IMAGE" ? attachment.height : null,
         })),
       });
     }

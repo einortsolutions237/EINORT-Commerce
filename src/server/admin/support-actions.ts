@@ -76,17 +76,34 @@ const THREAD_STORAGE_KEY_PATTERN =
   /^tenants\/[A-Za-z0-9_-]+\/threads\/[a-z0-9-]{8,64}$/;
 
 /**
- * One finalized image attachment, exactly as
- * `src/app/api/upload/thread-finalize/route.ts` returns it. `width`/`height`
- * are required because this plan is images-only.
+ * One finalized attachment, either kind — the admin-zone mirror of
+ * `src/server/support/actions.ts`'s own `attachmentSchema`. See that
+ * module's header for the full D-22 reasoning: the `IMAGE` variant requires
+ * real, Sharp-measured `width`/`height`; the `DOCUMENT` variant (as returned
+ * by `src/app/api/upload/admin-thread-document-finalize/route.ts`) has
+ * neither, and `z.discriminatedUnion` makes a descriptor that carries them
+ * for the wrong kind a type error rather than a runtime possibility.
  */
-const attachmentSchema = z.object({
+const imageAttachmentSchema = z.object({
+  kind: z.literal("IMAGE"),
   storageKey: z.string().regex(THREAD_STORAGE_KEY_PATTERN),
   contentType: z.string().min(1).max(128),
   byteSize: z.number().int().positive(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
 });
+
+const documentAttachmentSchema = z.object({
+  kind: z.literal("DOCUMENT"),
+  storageKey: z.string().regex(THREAD_STORAGE_KEY_PATTERN),
+  contentType: z.string().min(1).max(128),
+  byteSize: z.number().int().positive(),
+});
+
+const attachmentSchema = z.discriminatedUnion("kind", [
+  imageAttachmentSchema,
+  documentAttachmentSchema,
+]);
 
 /**
  * `body` may be empty ONLY when at least one attachment is present — the

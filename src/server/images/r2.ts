@@ -78,6 +78,75 @@ export function isAllowedContentType(
 }
 
 /**
+ * D-22 — the PDF-receipt path, a SECOND allowlist beside the one above, never
+ * merged into it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A PDF GETS ITS OWN CONSTANT INSTEAD OF JOINING ALLOWED_UPLOAD_CONTENT_TYPES.
+ * ---------------------------------------------------------------------------
+ * `ALLOWED_UPLOAD_CONTENT_TYPES`'s own header excludes `image/svg+xml` because
+ * "it is a script-carrying XML document, not a raster image, and storing one
+ * means serving an attacker-authored document from the platform's own
+ * origin." A PDF is exactly that same objection restated: a script-carrying
+ * document, not a raster image, that Sharp cannot re-encode. Widening the
+ * image allowlist to admit it would mean every consumer of that constant —
+ * the derive pipeline, the public-derivative finalize route — now has to
+ * handle a type it cannot process. So this path answers the objection
+ * differently instead of overriding it: a document minted through this
+ * allowlist is deliberately never re-encoded and never published. It stays at
+ * the `/original` key `publicUrlFor` structurally refuses to return a public
+ * URL for, and the only reader is an authorized route handler
+ * (`src/app/api/support/attachment/[attachmentId]/route.ts` and its admin
+ * sibling) that forces a download with `X-Content-Type-Options: nosniff` and
+ * a `Content-Security-Policy: default-src 'none'; sandbox` — so the document
+ * never executes in a document context on this origin. D-22 is the decision
+ * that requires PDF support; 06-RESEARCH.md § Discretion Q5 and
+ * 06-PATTERNS.md § R-2 are the analyses that concluded this had to be a
+ * separate, non-re-encoding path rather than an extension of the image one.
+ */
+export const ALLOWED_DOCUMENT_CONTENT_TYPES = ["application/pdf"] as const;
+
+export type AllowedDocumentContentType =
+  (typeof ALLOWED_DOCUMENT_CONTENT_TYPES)[number];
+
+/**
+ * Exact match, no trimming, no case folding, no parameter stripping — same
+ * reasoning as `isAllowedContentType`: the accepted value is echoed verbatim
+ * into `PutObjectCommand`'s `ContentType` and R2 compares the signed value
+ * byte for byte against what the browser actually sends.
+ */
+export function isAllowedDocumentContentType(
+  value: string,
+): value is AllowedDocumentContentType {
+  return (ALLOWED_DOCUMENT_CONTENT_TYPES as readonly string[]).includes(
+    value,
+  );
+}
+
+/**
+ * A pure magic-byte check: true only for a buffer whose first five bytes are
+ * the literal PDF header `%PDF-`.
+ *
+ * The signed `content-type` on a presigned PUT proves what the browser
+ * DECLARED, not what it SENT — nothing about the R2 grant stops a caller from
+ * uploading any bytes at all under an `application/pdf` grant. Since this
+ * path never re-encodes (there is no Sharp step to fail loudly on a bad
+ * file), the finalize route reads the object back and calls this function
+ * before any `SupportAttachment` row can reference it. A buffer shorter than
+ * five bytes, an empty buffer, or a real magic sequence appearing at any
+ * offset other than zero are all refused — anchoring at offset zero is the
+ * point: the header must be the first bytes of the file, not merely present
+ * somewhere inside it.
+ */
+export function looksLikePdf(bytes: Buffer): boolean {
+  const PDF_MAGIC = Buffer.from("%PDF-", "ascii");
+  if (bytes.length < PDF_MAGIC.length) {
+    return false;
+  }
+  return bytes.subarray(0, PDF_MAGIC.length).equals(PDF_MAGIC);
+}
+
+/**
  * The five storage namespaces.
  *
  * `logos` is unused in Phase 3 and must not be deleted as dead code: D-07 makes

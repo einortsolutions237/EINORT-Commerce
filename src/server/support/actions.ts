@@ -44,18 +44,48 @@ const THREAD_STORAGE_KEY_PATTERN =
   /^tenants\/[A-Za-z0-9_-]+\/threads\/[a-z0-9-]{8,64}$/;
 
 /**
- * One finalized image attachment, exactly as
- * `src/app/api/upload/thread-finalize/route.ts` returns it. `width`/`height`
- * are required (not nullable) because this plan is images-only — the route
- * always reports real, Sharp-measured dimensions for an `IMAGE` row.
+ * One finalized attachment, either kind — a discriminated union on `kind`,
+ * matching `ThreadAttachmentInput`'s own shape (`./messages.ts`).
+ *
+ * ---------------------------------------------------------------------------
+ * D-22 — THE DOCUMENT VARIANT, ADDED BESIDE THE IMAGE ONE.
+ * ---------------------------------------------------------------------------
+ * The `IMAGE` variant is exactly as `src/app/api/upload/thread-finalize
+ * /route.ts` returns it: `width`/`height` required, because that route
+ * always reports real, Sharp-measured dimensions. The `DOCUMENT` variant is
+ * exactly as `src/app/api/upload/thread-document-finalize/route.ts` returns
+ * it: no `width`/`height` at all — a PDF has no raster dimensions, and a
+ * schema that made them merely optional would still let a client attach a
+ * fabricated pair of numbers to a document row. `z.discriminatedUnion` makes
+ * that shape impossible to submit rather than merely unused.
+ *
+ * Both variants reuse `THREAD_STORAGE_KEY_PATTERN` — the persisted storage
+ * key for a `threads`-namespace attachment has the same derivative-PREFIX
+ * shape for either kind (`SupportAttachment.storageKey`'s own contract, see
+ * `prisma/schema.prisma` and `./shared.ts`: "NEVER an `/original` key in
+ * either case"), so `kind` is what distinguishes the two contracts, not the
+ * key's shape.
  */
-const attachmentSchema = z.object({
+const imageAttachmentSchema = z.object({
+  kind: z.literal("IMAGE"),
   storageKey: z.string().regex(THREAD_STORAGE_KEY_PATTERN),
   contentType: z.string().min(1).max(128),
   byteSize: z.number().int().positive(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
 });
+
+const documentAttachmentSchema = z.object({
+  kind: z.literal("DOCUMENT"),
+  storageKey: z.string().regex(THREAD_STORAGE_KEY_PATTERN),
+  contentType: z.string().min(1).max(128),
+  byteSize: z.number().int().positive(),
+});
+
+const attachmentSchema = z.discriminatedUnion("kind", [
+  imageAttachmentSchema,
+  documentAttachmentSchema,
+]);
 
 /**
  * `body` may be empty ONLY when at least one attachment is present

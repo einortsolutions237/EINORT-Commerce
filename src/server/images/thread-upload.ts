@@ -18,7 +18,12 @@ import { merchantExistsForAdmin } from "@/server/admin/queries";
 import * as adminSurface from "@/server/admin/action";
 import * as merchantSurface from "@/server/merchant/action";
 
-import { isAllowedContentType, objectKeyFor, presignUpload } from "./r2";
+import {
+  isAllowedContentType,
+  isAllowedDocumentContentType,
+  objectKeyFor,
+  presignUpload,
+} from "./r2";
 
 /**
  * ADM-05 / SUB-03 — mint a presigned PUT for a support-thread image
@@ -193,6 +198,115 @@ export const requestAdminThreadAttachmentUpload = adminSurface.adminAction({
 
     const uploadId = crypto.randomUUID();
     const key = objectKeyFor(input.tenantId, input.kind, uploadId);
+    const uploadUrl = await presignUpload(
+      key,
+      input.contentType,
+      input.byteSize,
+    );
+
+    return { ok: true, uploadUrl, uploadId };
+  },
+});
+
+/**
+ * D-22 — the document siblings of the two mint doors above, for a PDF
+ * receipt rather than an image.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THESE ARE TWO MORE DOORS, NOT A BRANCH INSIDE THE EXISTING ONES.
+ * ---------------------------------------------------------------------------
+ * The existing `requestThreadAttachmentUpload` / `requestAdminThreadAttachmentUpload`
+ * pair is gated by `isAllowedContentType`, the image allowlist, and their
+ * schemas' `kind` field chooses a NAMESPACE (`"threads" | "subscriptions"`)
+ * for a caller who already holds a valid image-upload credential — see this
+ * module's header. A PDF is not a third namespace choice; it is a different
+ * CONTRACT: never re-encoded, never published, read back only through an
+ * authorized download door instead of a public derivative URL. Folding that
+ * into the image doors' schema would mean a reader of those two functions has
+ * to hold two storage contracts in their head to know which one is live on
+ * the line they are changing. So the document mint gets its own pair, gated
+ * by `isAllowedDocumentContentType` instead, and there is no `kind` field at
+ * all: a PDF receipt only ever lands in the `threads` namespace, because
+ * `subscriptions` (plan 06-15) is an image-receipt surface, not a document
+ * one, and D-22 does not ask for that combination.
+ *
+ * Same size ceiling as the image doors (`MAX_THREAD_UPLOAD_BYTES`) for the
+ * same reason: a PDF receipt is the same kind of upload as a screenshot, just
+ * a different encoding, and the browser declares the size honestly or not at
+ * all — `presignUpload` signs it into `content-length`, so R2 enforces it
+ * regardless of what a lying client claims.
+ */
+const requestThreadDocumentUploadSchema = z.object({
+  contentType: z.string().min(1).max(128),
+  byteSize: z.number().int().positive().max(MAX_THREAD_UPLOAD_BYTES),
+});
+
+/**
+ * The merchant's document door. The caller's own tenant id comes from the
+ * session, never from the payload, mirroring the image door above.
+ */
+export const requestThreadDocumentUpload = merchantSurface.merchantAction({
+  mode: "write",
+  schema: requestThreadDocumentUploadSchema,
+  handler: async (
+    ctx,
+    input,
+  ): Promise<merchantSurface.ActionResult<ThreadUploadGrant>> => {
+    /*
+     * The document allowlist, not the image one — checked BEFORE signing for
+     * the same reason as every other door in this file: the signature is
+     * what makes the content-type binding real, so anything off the list
+     * simply never receives a grant.
+     */
+    if (!isAllowedDocumentContentType(input.contentType)) {
+      return {
+        ok: false,
+        error: { contentType: [strings.support.attachments.typeError] },
+      };
+    }
+
+    const uploadId = crypto.randomUUID();
+    const key = objectKeyFor(ctx.tenantId, "threads", uploadId);
+    const uploadUrl = await presignUpload(
+      key,
+      input.contentType,
+      input.byteSize,
+    );
+
+    return { ok: true, uploadUrl, uploadId };
+  },
+});
+
+/**
+ * The platform owner's document door. The target tenant id is the same
+ * deliberate exception the image admin door documents above, validated the
+ * same way before anything is signed.
+ */
+const requestAdminThreadDocumentUploadSchema =
+  requestThreadDocumentUploadSchema.extend({
+    tenantId: z.string().min(1).max(64),
+  });
+
+export const requestAdminThreadDocumentUpload = adminSurface.adminAction({
+  schema: requestAdminThreadDocumentUploadSchema,
+  handler: async (
+    _ctx,
+    input,
+  ): Promise<merchantSurface.ActionResult<ThreadUploadGrant>> => {
+    if (!isAllowedDocumentContentType(input.contentType)) {
+      return {
+        ok: false,
+        error: { contentType: [strings.support.attachments.typeError] },
+      };
+    }
+
+    const exists = await merchantExistsForAdmin(input.tenantId);
+    if (!exists) {
+      return { ok: false, error: { tenantId: ["Unknown store."] } };
+    }
+
+    const uploadId = crypto.randomUUID();
+    const key = objectKeyFor(input.tenantId, "threads", uploadId);
     const uploadUrl = await presignUpload(
       key,
       input.contentType,
