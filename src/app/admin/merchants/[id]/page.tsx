@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Ban, CircleCheck, MessagesSquare } from "lucide-react";
 
 import { DomainCell } from "@/components/admin/domain-cell";
+import { SuspendRestoreControl } from "@/components/admin/suspend-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import { env } from "@/env";
 import { strings } from "@/lib/strings";
 import { requireAdminContext } from "@/server/admin/context";
 import { merchantDetailForAdmin } from "@/server/admin/queries";
+import { threadForAdmin } from "@/server/admin/support";
 import { resolveEntitlements } from "@/server/entitlements/resolve";
 
 import { formatAbsoluteDate, planLabelFor } from "../../format";
@@ -40,18 +42,28 @@ import { formatAbsoluteDate, planLabelFor } from "../../format";
  * probed id therefore looks identical to a wrong one from outside.
  *
  * ---------------------------------------------------------------------------
- * TWO CARDS STILL SHIP SMALLER THAN `06-UI-SPEC.md § C2` DESCRIBES —
+ * ONE CARD STILL SHIPS SMALLER THAN `06-UI-SPEC.md § C2` DESCRIBES —
  * DELIBERATELY, NOT AN OVERSIGHT.
  * ---------------------------------------------------------------------------
- * The header's `Open support thread` button now lands (plan 06-12, this
- * plan). The Store status card's Suspend/Restore control, the Plan card's
- * `See subscription payments` link, and the At a glance figures' own
- * per-figure ledger links still point at destinations that do not exist
- * until later plans (suspend/restore's write path — 06-14,
- * `/admin/subscriptions` — 06-16, the figures' filtered-ledger links —
- * 06-16). `06-08-PLAN.md`'s own words: "a menu item pointing at a 404 is
- * worse than an absent one." Each remaining one is a comment at the spot it
- * will land, not a disabled control.
+ * The header's `Open support thread` button (plan 06-12) and the Store
+ * status card's `SuspendRestoreControl` (this plan — see
+ * `src/components/admin/suspend-dialog.tsx`) both land now. The Plan card's
+ * `See subscription payments` link and the At a glance figures' own
+ * per-figure ledger links still point at a destination that does not exist
+ * until `/admin/subscriptions` (plan 06-16). `06-08-PLAN.md`'s own words: "a
+ * menu item pointing at a 404 is worse than an absent one." That one
+ * remaining case is a comment at the spot it will land, not a disabled
+ * control.
+ *
+ * ---------------------------------------------------------------------------
+ * "WHEN THE STATUS LAST CHANGED" IS DERIVED FROM THE THREAD, NOT A COLUMN.
+ * ---------------------------------------------------------------------------
+ * `Organization` carries no `statusChangedAt` — ADM-04 keeps this phase's
+ * admin scope pilot-sized, and `src/server/admin/suspend.ts`'s own header
+ * explains why the merchant's `SYSTEM`-authored thread message already IS
+ * that record. `statusChangeLineFor` below reads the most recent matching
+ * `SYSTEM` message from `threadForAdmin` rather than adding a column a
+ * second writer could drift from the first.
  */
 
 export const metadata: Metadata = {
@@ -67,6 +79,63 @@ const STATUS_CHIP = {
   active: { icon: CircleCheck, variant: "outline-success" as const },
   suspended: { icon: Ban, variant: "destructive" as const },
 };
+
+/**
+ * The fixed prefix `strings.support.system.suspended` always carries before
+ * its interpolated `{reason}` — matching against it is how this page reads
+ * the reason back out of the thread rather than keeping a second copy of
+ * that template.
+ */
+const SUSPENDED_MESSAGE_PREFIX = "Your store was suspended by EINORT. Reason: ";
+/** `strings.support.system.restored` carries no `{reason}` token (R-2). */
+const RESTORED_MESSAGE = "Your store was restored by EINORT.";
+
+type ThreadMessage = { readonly author: string; readonly body: string; readonly createdAt: Date };
+
+/**
+ * The Store status card's Body line, derived from the thread rather than a
+ * column — see the file header. `null` for an active store that has never
+ * been suspended (the ordinary case for most of the pilot fleet); the
+ * caller falls back to `fallbackActiveSince`.
+ */
+function statusChangeLineFor(
+  status: string,
+  messages: readonly ThreadMessage[],
+  fallbackActiveSince: Date,
+): string {
+  // Newest first: a store can be suspended and restored more than once, and
+  // only the most recent change is "when it last changed".
+  const reversed = [...messages].reverse();
+
+  if (status === "active") {
+    const restored = reversed.find(
+      (message) => message.author === "SYSTEM" && message.body === RESTORED_MESSAGE,
+    );
+    return strings.admin.merchantDetail.statusChangedActive.replace(
+      "{when}",
+      formatAbsoluteDate(restored?.createdAt ?? fallbackActiveSince),
+    );
+  }
+
+  const suspended = reversed.find(
+    (message) =>
+      message.author === "SYSTEM" && message.body.startsWith(SUSPENDED_MESSAGE_PREFIX),
+  );
+
+  // Should never be null — `setOrganizationSuspended` posts this message in
+  // the SAME transaction as the status flip — but a defensive fallback beats
+  // a crash on the one page the platform owner reads to find out why a store
+  // is down.
+  if (!suspended) {
+    return strings.admin.merchantDetail.statusChangedSuspended
+      .replace("{when}", formatAbsoluteDate(fallbackActiveSince))
+      .replace("{reason}", strings.admin.errors.generic);
+  }
+
+  return strings.admin.merchantDetail.statusChangedSuspended
+    .replace("{when}", formatAbsoluteDate(suspended.createdAt))
+    .replace("{reason}", suspended.body.slice(SUSPENDED_MESSAGE_PREFIX.length));
+}
 
 export default async function AdminMerchantDetailPage({
   params,
@@ -84,6 +153,11 @@ export default async function AdminMerchantDetailPage({
   // One clock for the whole render (same discipline `page.tsx` documents).
   const now = new Date();
   const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN;
+
+  // The thread IS the audit record (ADM-04) — read once here so the Store
+  // status card's Body line can be derived from it, rather than a column.
+  const thread = await threadForAdmin(merchant.id);
+  const statusChangeLine = statusChangeLineFor(merchant.status, thread, merchant.createdAt);
 
   // Allowlist `active`; anything else — including a status this page has
   // never seen — reads as Suspended's styling, matching
@@ -164,23 +238,26 @@ export default async function AdminMerchantDetailPage({
               {strings.admin.merchantDetail.cardStoreStatus}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2">
+          <CardContent className="flex flex-col gap-3">
             <Badge variant={chip.variant}>
               <StatusIcon aria-hidden="true" />
               {statusLabel}
             </Badge>
-            {merchant.status === "active" ? (
-              <p className="text-sm leading-normal font-normal text-muted-foreground">
-                {strings.admin.merchantDetail.statusChangedActive.replace(
-                  "{when}",
-                  formatAbsoluteDate(merchant.createdAt),
-                )}
-              </p>
-            ) : null}
+            <p className="text-sm leading-normal font-normal text-muted-foreground">
+              {statusChangeLine}
+            </p>
             {/*
-             * The symmetric Suspend store / Restore store control lands here
-             * — plan 06-14, see the header.
+             * The page's most consequential control, and the only one in
+             * this card — the `SuspendDialog` (see
+             * src/components/admin/suspend-dialog.tsx), mounted via this
+             * small client wrapper so the Server Component above it never
+             * needs to hold dialog-open state itself.
              */}
+            <SuspendRestoreControl
+              merchantId={merchant.id}
+              storeName={merchant.storeName}
+              status={merchant.status}
+            />
           </CardContent>
         </Card>
 
