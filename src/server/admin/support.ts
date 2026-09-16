@@ -1,7 +1,10 @@
 import "server-only";
 
 import { adminDb } from "@/server/db/admin";
-import type { SupportAuthor } from "@/server/db/enums";
+import type {
+  SupportAttachmentKind,
+  SupportAuthor,
+} from "@/server/db/enums";
 
 import { UNREAD_BY_PLATFORM_AUTHORS, type SupportMessageRow } from "../support/shared";
 
@@ -312,6 +315,46 @@ function compareInboxRows(a: InboxRow, b: InboxRow): number {
 
   // Neither has ever exchanged a message: alphabetical by store name.
   return a.storeName.localeCompare(b.storeName);
+}
+
+/**
+ * D-22 — one `SupportAttachment` row, by id alone, for the admin-credential
+ * download door (`src/app/api/admin/support/attachment/[attachmentId]/route.ts`).
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS FUNCTION EXISTS AT ALL, RATHER THAN THE ROUTE CALLING `adminDb`
+ * DIRECTLY.
+ * ---------------------------------------------------------------------------
+ * `eslint.config.mjs` restricts `adminDb` to `src/server/admin/**` — a Route
+ * Handler under `src/app/api/admin/**` is outside that zone and the import
+ * fails lint, exactly as it should: the fence exists so every read across the
+ * cross-tenant trust boundary is visibly inside this directory, not scattered
+ * across route handlers that merely happen to live under an `/admin/` path
+ * segment. This function is the one place that boundary is crossed for the
+ * download door, mirroring the reasoning `merchantExistsForAdmin`
+ * (`src/server/admin/queries.ts`) already established for the mint and
+ * finalize doors.
+ *
+ * ---------------------------------------------------------------------------
+ * NO `tenantId` PARAMETER, AND THAT IS CORRECT HERE.
+ * ---------------------------------------------------------------------------
+ * `SupportAttachment.id` is a `cuid()`, globally unique across every tenant —
+ * unlike `threadForAdmin`/`firstUnreadForPlatform`, which take a target
+ * tenant because they read a WHOLE thread, this reads exactly one row by its
+ * own unique key. `adminDb` is deliberately unscoped and the platform owner
+ * is authorized to read any tenant's attachment, so no tenant predicate is
+ * needed to narrow this lookup — see `requireAdminContext`'s own header on
+ * why this function taking no tenant id is not the TEN-04 substitution that
+ * `no-tenant-id-param.test.ts` forbids elsewhere on this surface.
+ */
+export async function attachmentForAdmin(attachmentId: string): Promise<{
+  readonly kind: SupportAttachmentKind;
+  readonly storageKey: string;
+} | null> {
+  return adminDb.supportAttachment.findUnique({
+    where: { id: attachmentId },
+    select: { kind: true, storageKey: true },
+  });
 }
 
 /**
