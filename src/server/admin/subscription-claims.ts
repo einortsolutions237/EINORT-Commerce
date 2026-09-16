@@ -222,6 +222,59 @@ export function pendingSubscriptionClaimCount(): Promise<number> {
   return adminDb.subscriptionPaymentClaim.count({ where: { status: "PENDING" } });
 }
 
+/** The exact fields `SubscriptionClaimCard` (`src/components/subscription-claim-card.tsx`) needs, and nothing more. */
+export interface SubscriptionClaimCardData {
+  readonly id: string;
+  readonly status: ClaimStatus;
+  readonly operator: PaymentOperator;
+  readonly reference: string;
+  readonly amountXaf: number;
+  readonly rejectionReason: string | null;
+  readonly submittedAt: Date;
+  readonly coversThrough: Date | null;
+  readonly receiptKey: string | null;
+}
+
+/**
+ * The inline claim cards `/admin/support/[tenantId]/page.tsx` renders below
+ * a `SYSTEM` message carrying a `subscriptionClaimId` (06-UI-SPEC.md § C6) —
+ * resolved for exactly the ids that thread's own already-loaded messages
+ * reference, in ONE `findMany`, never one query per message.
+ *
+ * `merchantId` (not `tenantId`) — a QUERY parameter naming which thread's
+ * claims to look at, the identical "hand an id to a query, never to the
+ * identity function" shape `listSubscriptionClaimsForAdmin`'s own `filter
+ * .merchantId` already uses. `tests/unit/no-tenant-id-param.test.ts` bans the
+ * literal identifiers `tenantId`/`organizationId`/`storeId` from every
+ * exported signature under `src/server/admin/**`, with no carve-out for a
+ * filter versus an identity parameter — spelling it differently here is what
+ * keeps this function on the right side of that scan.
+ *
+ * Returns `[]` without a query when `claimIds` is empty, so a thread with no
+ * subscription-claim messages costs nothing beyond the check.
+ */
+export async function subscriptionClaimsForThread(
+  merchantId: string,
+  claimIds: readonly string[],
+): Promise<readonly SubscriptionClaimCardData[]> {
+  if (claimIds.length === 0) return [];
+
+  return adminDb.subscriptionPaymentClaim.findMany({
+    where: { id: { in: [...claimIds] }, tenantId: merchantId },
+    select: {
+      id: true,
+      status: true,
+      operator: true,
+      reference: true,
+      amountXaf: true,
+      rejectionReason: true,
+      submittedAt: true,
+      coversThrough: true,
+      receiptKey: true,
+    },
+  });
+}
+
 /**
  * The one routine refusal a review can produce, converted to something a
  * caller can render — matching `src/server/admin/claims.ts`'s

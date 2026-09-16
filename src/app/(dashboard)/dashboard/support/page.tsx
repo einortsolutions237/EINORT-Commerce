@@ -4,7 +4,11 @@ import Link from "next/link";
 import { Composer } from "@/components/support/composer";
 import { MessageList } from "@/components/support/message-list";
 import { ScrollToLatest } from "@/components/support/scroll-to-latest";
+import { SubscriptionClaimCard } from "@/components/subscription-claim-card";
 import { strings } from "@/lib/strings";
+import { scopedDb } from "@/server/db/tenant-scoped";
+import { IMAGE_PRESETS } from "@/server/images/pipeline";
+import { publicUrlFor } from "@/server/images/r2";
 import { requireMerchantContext } from "@/server/merchant/context";
 import {
   firstUnreadForMerchant,
@@ -40,11 +44,29 @@ import { markThreadReadForMerchant } from "@/server/support/messages";
  * merchant simply navigating here (06-UI-SPEC.md § A2's "Unread rule");
  * there is no manual control anywhere in this tree for it, so this call is
  * the ONLY place the thread is ever marked read for the merchant.
+ *
+ * ---------------------------------------------------------------------------
+ * A `SYSTEM` MESSAGE CARRYING `subscriptionClaimId` RENDERS THE INLINE CARD,
+ * READ-ONLY, WITH NO LINK (SUB-03 / D-20).
+ * ---------------------------------------------------------------------------
+ * `SubscriptionClaimCard` takes no action props by construction — confirming
+ * or rejecting a subscription payment happens on the platform owner's own
+ * review page, which this merchant has no route to and which this page
+ * never links to. The
+ * merchant's own view of the SAME claim already lives on `/dashboard/plan`,
+ * and `strings.plan.subscriptionClaim`'s `awaitingLink` already points the
+ * other way ("See it in Support"), so no reciprocal link is added here. The
+ * referenced claims are fetched in ONE `findMany` through the tenant-scoped
+ * client, keyed by the `subscriptionClaimId` values already present on
+ * `rows` — never one query per message.
  */
 
 export const metadata: Metadata = {
   title: strings.support.page.title,
 };
+
+/** The `thread` preset's single derivative (`src/server/images/pipeline.ts`). */
+const RECEIPT_DERIVATIVE = `${IMAGE_PRESETS.thread.labels[0]}.${IMAGE_PRESETS.thread.format}`;
 
 export default async function SupportPage() {
   const ctx = await requireMerchantContext();
@@ -56,6 +78,60 @@ export default async function SupportPage() {
 
   // MUST run after the two reads above — see this file's header.
   await markThreadReadForMerchant(ctx.tenantId);
+
+  /*
+   * The inline claim cards' data, fetched in ONE query alongside the thread
+   * read above — never one query per message. See this file's header.
+   */
+  const claimIds = [
+    ...new Set(
+      rows
+        .map((row) => row.subscriptionClaimId)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const claims =
+    claimIds.length === 0
+      ? []
+      : await scopedDb(ctx.tenantId).subscriptionPaymentClaim.findMany({
+          where: { id: { in: claimIds } },
+          select: {
+            id: true,
+            status: true,
+            operator: true,
+            reference: true,
+            amountXaf: true,
+            rejectionReason: true,
+            submittedAt: true,
+            coversThrough: true,
+            receiptKey: true,
+          },
+        });
+  const claimById = new Map(claims.map((claim) => [claim.id, claim] as const));
+
+  /** The named slot `MessageList` exposes — pure and synchronous, matching its own contract. */
+  function renderClaimCard(row: (typeof rows)[number]) {
+    if (row.subscriptionClaimId === null) return null;
+    const claim = claimById.get(row.subscriptionClaimId);
+    if (!claim) return null;
+
+    return (
+      <SubscriptionClaimCard
+        status={claim.status}
+        operator={claim.operator}
+        reference={claim.reference}
+        amountXaf={claim.amountXaf}
+        rejectionReason={claim.rejectionReason}
+        submittedAt={claim.submittedAt}
+        coversThrough={claim.coversThrough}
+        receiptUrl={
+          claim.receiptKey === null
+            ? null
+            : publicUrlFor(`${claim.receiptKey}/${RECEIPT_DERIVATIVE}`)
+        }
+      />
+    );
+  }
 
   /*
    * SUB-03 entry point (R-3): only when unsubscribed AND the trial has run
@@ -94,6 +170,7 @@ export default async function SupportPage() {
           viewer="MERCHANT"
           authorOtherLabel={strings.support.thread.authorOther}
           firstUnreadAt={firstUnreadAt}
+          renderBelowMessage={renderClaimCard}
         />
       )}
 

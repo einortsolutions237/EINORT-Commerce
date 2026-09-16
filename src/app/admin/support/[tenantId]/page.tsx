@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Composer } from "@/components/support/composer";
 import { MessageList } from "@/components/support/message-list";
 import { ScrollToLatest } from "@/components/support/scroll-to-latest";
+import { SubscriptionClaimCard } from "@/components/subscription-claim-card";
 import { strings } from "@/lib/strings";
 import { requireAdminContext } from "@/server/admin/context";
 import { merchantDetailForAdmin } from "@/server/admin/queries";
@@ -16,6 +17,9 @@ import {
   markThreadReadForPlatform,
   threadForAdmin,
 } from "@/server/admin/support";
+import { subscriptionClaimsForThread } from "@/server/admin/subscription-claims";
+import { IMAGE_PRESETS } from "@/server/images/pipeline";
+import { publicUrlFor } from "@/server/images/r2";
 
 /**
  * `/admin/support/[tenantId]` — one merchant's thread, the platform side,
@@ -65,15 +69,18 @@ import {
  * — this page simply never renders it.
  *
  * ---------------------------------------------------------------------------
- * A `SYSTEM` MESSAGE CARRYING `subscriptionClaimId` RENDERS PLAINLY, FOR NOW.
+ * A `SYSTEM` MESSAGE CARRYING `subscriptionClaimId` RENDERS THE INLINE CARD,
+ * READ-ONLY, WITH A LINK TO THE ONE DECISION SURFACE.
  * ---------------------------------------------------------------------------
- * § C6 specifies an inline, read-only `SubscriptionClaimCard` with a link to
- * `/admin/subscriptions` for such a message — but neither the card component
- * nor that route exists yet (both arrive in plan 06-15 and plan 06-16).
- * `MessageBubble` already renders every `SYSTEM` message full-width,
- * centered, with no bubble, regardless of `subscriptionClaimId` — this page
- * changes nothing about that rendering rather than adding a placeholder card
- * or a link to a route that would 404 today.
+ * § C6: `SubscriptionClaimCard` renders below such a message, and it takes NO
+ * action props by construction — confirming or rejecting a subscription
+ * payment happens on `/admin/subscriptions` and nowhere else (D-20). The
+ * referenced claims are fetched in ONE `findMany`
+ * (`subscriptionClaimsForThread`), keyed by the `subscriptionClaimId` values
+ * already present on `rows` after the thread read above — never one query
+ * per message. The link to `/admin/subscriptions` is rendered by THIS page,
+ * beside the card, not as a prop the card itself accepts: see that
+ * component's own header for why it takes none.
  */
 
 export const metadata: Metadata = {
@@ -87,6 +94,10 @@ const STATUS_CHIP = {
   active: { icon: CircleCheck, variant: "outline-success" as const },
   suspended: { icon: Ban, variant: "destructive" as const },
 };
+
+/** The `thread` preset's single derivative (`src/server/images/pipeline.ts`), matching
+ * `/admin/subscriptions/page.tsx`'s own `RECEIPT_DERIVATIVE`. */
+const RECEIPT_DERIVATIVE = `${IMAGE_PRESETS.thread.labels[0]}.${IMAGE_PRESETS.thread.format}`;
 
 export default async function AdminSupportThreadPage({
   params,
@@ -108,6 +119,59 @@ export default async function AdminSupportThreadPage({
 
   // MUST run after the two reads above — see this file's header.
   await markThreadReadForPlatform(tenantId);
+
+  /*
+   * The inline claim cards' data, fetched in ONE query alongside the thread
+   * read above — never one query per message. `claimIds` collects the
+   * non-null `subscriptionClaimId` values already present on `rows`; a
+   * thread with none costs nothing beyond the empty check inside
+   * `subscriptionClaimsForThread`.
+   */
+  const claimIds = [
+    ...new Set(
+      rows
+        .map((row) => row.subscriptionClaimId)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const claims = await subscriptionClaimsForThread(tenantId, claimIds);
+  const claimById = new Map(claims.map((claim) => [claim.id, claim] as const));
+
+  /*
+   * The named slot `MessageList` exposes (see that component's own header).
+   * Pure and synchronous — every claim it can possibly need was already
+   * resolved above, so this never awaits anything mid-render.
+   */
+  function renderClaimCard(row: (typeof rows)[number]) {
+    if (row.subscriptionClaimId === null) return null;
+    const claim = claimById.get(row.subscriptionClaimId);
+    if (!claim) return null;
+
+    return (
+      <div className="flex flex-col gap-2">
+        <SubscriptionClaimCard
+          status={claim.status}
+          operator={claim.operator}
+          reference={claim.reference}
+          amountXaf={claim.amountXaf}
+          rejectionReason={claim.rejectionReason}
+          submittedAt={claim.submittedAt}
+          coversThrough={claim.coversThrough}
+          receiptUrl={
+            claim.receiptKey === null
+              ? null
+              : publicUrlFor(`${claim.receiptKey}/${RECEIPT_DERIVATIVE}`)
+          }
+        />
+        <Link
+          href="/admin/subscriptions"
+          className="self-start text-sm leading-normal font-semibold text-muted-foreground hover:text-foreground hover:underline"
+        >
+          {strings.admin.nav.subscriptions}
+        </Link>
+      </div>
+    );
+  }
 
   const chip =
     merchant.status === "active" ? STATUS_CHIP.active : STATUS_CHIP.suspended;
@@ -166,6 +230,7 @@ export default async function AdminSupportThreadPage({
           viewer="PLATFORM"
           authorOtherLabel={merchant.storeName}
           firstUnreadAt={firstUnreadAt}
+          renderBelowMessage={renderClaimCard}
         />
       )}
 
