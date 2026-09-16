@@ -184,7 +184,28 @@ export function AdminSidebar({
   };
 
   return (
-    <Sidebar className="border-sidebar-border">
+    <Sidebar
+      className="border-sidebar-border"
+      /*
+       * `Sidebar`'s own `fixed inset-y-0 h-svh` (`src/components/ui/sidebar.tsx`)
+       * positions the desktop rail relative to the true viewport, ignoring
+       * `AdminBanner`'s height even though the banner renders before this tree
+       * in `src/app/admin/layout.tsx` — a `position: fixed` box is taken out of
+       * document flow entirely, so a sibling occupying space above it in the
+       * flow does not push it down. Without this override the rail's own
+       * header (the wordmark + "Platform Admin" lockup below) draws underneath
+       * the banner's `sticky top-0 z-30` strip instead of below it.
+       *
+       * An inline `style` wins over `Sidebar`'s class-based `top`/`h-svh`
+       * regardless of Tailwind's own utility ordering, which a className
+       * override cannot guarantee. `2rem` is `AdminBanner`'s rendered height —
+       * `min-h-8` wins over its `py-0.5` content box there (21px line-box +
+       * 4px padding = 25px < 32px floor), and that file's own header documents
+       * why the banner can never grow past one line, so this value never
+       * drifts out from under it.
+       */
+      style={{ top: "2rem", height: "calc(100svh - 2rem)" }}
+    >
       <SidebarHeader className="min-h-14 justify-center border-b border-sidebar-border px-4">
         <div className="flex items-center gap-2">
           <Image src={einortLogo} alt={BRAND} className="h-6 w-auto shrink-0" />
