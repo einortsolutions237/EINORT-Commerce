@@ -405,7 +405,7 @@ Plans:
 
 ### Phase 6: Merchant Dashboard & Platform Admin
 
-> **v2.0 reconciliation (2026-09-13):** This phase was defined and requirement-mapped during v1.0 but never planned or executed. It is **not renumbered and its requirements are unchanged** — DASH-01, DASH-02, ADM-01..05, and SUB-03 keep their existing "Phase 6" traceability rows. It becomes milestone v2.0's foundation phase and executes first, because three later v2.0 phases depend on what it builds: Phase 8 migrates the dashboard surfaces this phase creates, Phase 13's MMKT-06 moderation page lives inside this phase's pilot-scoped Super Admin, and Phases 9-15 use the ADM-05 support thread as their notification channel (`resend` is still unwired — no module under `src/` imports it, so an in-app thread message plus a dashboard badge is the only real channel that exists).
+> **v2.0 reconciliation (2026-09-13):** This phase was defined and requirement-mapped during v1.0 but never planned or executed. It is **not renumbered and its requirements are unchanged** — DASH-01, DASH-02, ADM-01..05, and SUB-03 keep their existing "Phase 6" traceability rows. It becomes milestone v2.0's foundation phase and executes first, because three later v2.0 phases depend on what it builds: Phase 8 migrates the dashboard surfaces this phase creates, Phase 13's MMKT-06 moderation page lives inside this phase's pilot-scoped Super Admin, and Phases 9-15 use the ADM-05 support thread as their notification channel (`resend` has been wired since Phase 3's `src/server/claims/notify.ts`, and Phase 6 adds a second consumer, `src/server/support/notify.ts`; both degrade loudly and never block on a missing key, so the in-app thread message plus a dashboard badge remains the reliable channel and email is only the nudge).
 
 **Goal**: A merchant can run their business day-to-day from a dashboard that surfaces what needs attention, and the platform owner can operate and support the pilot fleet of stores from a pilot-scoped Super Admin surface — including a direct messaging channel to every merchant and the ability to verify their subscription payments through it.
 **Mode:** mvp
@@ -421,7 +421,7 @@ Plans:
   6. A merchant and the platform owner can exchange messages and file/image attachments in a persistent, per-merchant thread — visible in the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on new activity. No real-time/websocket infrastructure.
   7. A merchant can submit their monthly subscription payment (Mobile Money/Orange Money transaction reference + receipt image) through that same thread, and the platform owner can confirm or reject it there, activating/extending the subscription on confirmation — reusing Phase 3's claim-and-verify pattern with payer/payee reversed.
 
-**Plans:** 13/17 plans executed
+**Plans:** 17/17 plan files executed through their automatable scope. 06-01 through 06-16 (Waves 1-6) are fully complete and merged. 06-17 (Wave 7, the phase gate) has its two automatable tasks complete — the requirement-coverage guard (including the ADM-04 scope-ceiling assertion) and the full lint/typecheck/unit/build/isolation gate, plus this documentation-correction pass — but its Task 3, the two `checkpoint:human-verify` manual-only verifications 06-VALIDATION.md names as automation-impossible (admin-bootstrap correctness against a real account, the full two-session merchant↔platform thread round trip), has not yet been run and requires the developer directly. The phase is not marked complete in the top-level phase list below until that checkpoint is signed off.
 **UI hint**: yes
 
 Plans:
@@ -451,7 +451,7 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [x] 06-12-PLAN.md — Platform side of the thread: flat unread-first inbox, per-merchant conversation, admin-side message writer, reusing 06-09's transcript components via a `viewer` prop
-- [ ] 06-15-PLAN.md — SUB-03 merchant half: claim writer, submit dialog on `/dashboard/plan`, claim card replacing the submit button while a claim is under review
+- [x] 06-15-PLAN.md — SUB-03 merchant half: claim writer, submit dialog on `/dashboard/plan`, claim card replacing the submit button while a claim is under review
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -461,7 +461,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 06-17-PLAN.md — Phase gate: requirement-coverage guard, full automated suite, the two checkpoint:human-verify checks 06-VALIDATION.md names as automation-impossible (admin bootstrap correctness, full two-session thread round trip), documentation corrections
+- [ ] 06-17-PLAN.md — Phase gate: requirement-coverage guard, full automated suite, the two checkpoint:human-verify checks 06-VALIDATION.md names as automation-impossible (admin bootstrap correctness, full two-session thread round trip), documentation corrections *(Tasks 1-2 complete — requirement-coverage guard including the ADM-04 ceiling assertion, full lint/typecheck/unit/build/isolation gate green, and this documentation-correction pass. Task 3, the two manual-only verifications, requires the developer directly and has not yet run — see `06-VALIDATION.md` § Manual-Only Verifications.)*
 
 Cross-cutting constraints:
 
