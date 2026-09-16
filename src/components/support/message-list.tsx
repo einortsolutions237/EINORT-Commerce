@@ -36,6 +36,27 @@ import { MessageBubble, type SupportViewer } from "./message-bubble";
  * equally at home rendered from here (server) or from `composer.tsx`
  * (client, for the optimistic pending bubble), because it holds no state
  * of its own either.
+ *
+ * ---------------------------------------------------------------------------
+ * `renderBelowMessage` — THE NAMED SLOT SUB-03 / D-20 (PLAN 06-16) FILLS,
+ * NEVER A SPECIAL CASE INSIDE `MessageBubble`.
+ * ---------------------------------------------------------------------------
+ * A `SYSTEM` message carrying a non-null `subscriptionClaimId` renders the
+ * read-only `SubscriptionClaimCard` inline, below its own row — on BOTH
+ * `/dashboard/support` and `/admin/support/[tenantId]`. This component and
+ * `MessageBubble` hold NO subscription-specific knowledge either way: they
+ * expose one generic, optional, synchronous callback over a `row`, and the
+ * PAGE decides what (if anything) renders below it. That is what keeps this
+ * pair "surface-agnostic" per 06-UI-SPEC.md § C6 — a fork inside
+ * `MessageBubble` for one claim type would be the first of many, and the
+ * next surface-specific inline card would either fork it again or reach for
+ * the same slot this one already provides.
+ *
+ * Synchronous and pure by contract: `MessageList` never awaits anything, so
+ * a caller must already have resolved whatever the slot needs (here, the
+ * thread's own subscription claims, fetched in ONE batched query keyed by
+ * the ids collected from `rows` before this component ever renders — never
+ * one query per message) and hand down a plain lookup closure.
  */
 
 export interface MessageListProps {
@@ -54,6 +75,8 @@ export interface MessageListProps {
    * `viewer`.
    */
   readonly downloadBasePath: string;
+  /** See the header. `undefined`/`null`/anything falsy renders nothing extra. */
+  readonly renderBelowMessage?: (row: SupportMessageRow) => React.ReactNode;
 }
 
 const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("en", {
@@ -124,6 +147,7 @@ export function MessageList({
   authorOtherLabel,
   firstUnreadAt,
   downloadBasePath,
+  renderBelowMessage,
 }: MessageListProps) {
   // One clock for the whole render, so no row can compare against a moment
   // slightly later than the row rendered just before it.
@@ -171,6 +195,12 @@ export function MessageList({
         downloadBasePath={downloadBasePath}
       />,
     );
+
+    // The named slot. Synchronous, pure, and optional — see the header.
+    const belowContent = renderBelowMessage?.(row);
+    if (belowContent) {
+      items.push(<div key={`below-${row.id}`}>{belowContent}</div>);
+    }
 
     previousDay = row.createdAt;
   }

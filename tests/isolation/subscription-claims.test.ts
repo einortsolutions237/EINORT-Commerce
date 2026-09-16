@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it, beforeAll } from "vitest";
 
 import { strings } from "@/lib/strings";
@@ -50,6 +54,20 @@ import { seedTwoTenants, TENANT_A, TENANT_B } from "../setup/seed-two-tenants";
 const { submitSubscriptionPaymentClaim, latestSubscriptionClaimFor } =
   await import("@/server/subscription/claims");
 
+/**
+ * Plan 06-16's platform half, appended below. `confirmSubscriptionClaim` /
+ * `rejectSubscriptionClaim` are the ONLY writers of
+ * `SubscriptionPaymentClaim.status` past its initial `PENDING` — see that
+ * module's own header — and `platformDb` is what lets this file read and
+ * seed `Organization.subscriptionCurrentPeriodEnd` directly, the same way
+ * `tests/isolation/claims.test.ts` reads `Order`/`PaymentClaim` state through
+ * its own helpers.
+ */
+const { confirmSubscriptionClaim, rejectSubscriptionClaim } = await import(
+  "@/server/admin/subscription-claims"
+);
+const { platformDb } = await import("@/server/db/platform");
+
 beforeAll(async () => {
   await seedTwoTenants();
 });
@@ -82,6 +100,36 @@ function readSystemMessages(tenantId: string, subscriptionClaimId: string) {
   return scopedDb(tenantId).supportMessage.findMany({
     where: { subscriptionClaimId },
     select: { author: true, subscriptionClaimId: true, body: true },
+  });
+}
+
+/**
+ * Plan 06-16's own read helper — the review fields `readClaims` above never
+ * selected, because 06-15's own describes never needed them. A NEW function
+ * rather than widening `readClaims`'s `select`, so this file's diff for the
+ * platform half is additions only.
+ */
+function readClaimDetail(tenantId: string, claimId: string) {
+  return scopedDb(tenantId).subscriptionPaymentClaim.findUniqueOrThrow({
+    where: { id: claimId },
+    select: {
+      id: true,
+      status: true,
+      coversThrough: true,
+      reviewedAt: true,
+      reviewedByUserId: true,
+      rejectionReason: true,
+    },
+  });
+}
+
+/** `Organization`'s two subscription columns, read through the same
+ * non-tenant-scoped registry facade `tests/isolation/claims.test.ts` and
+ * `tests/isolation/entitlements.test.ts` already use for `organization`. */
+function readOrganizationSubscription(tenantId: string) {
+  return platformDb.organization.findUniqueOrThrow({
+    where: { id: tenantId },
+    select: { subscriptionStatus: true, subscriptionCurrentPeriodEnd: true },
   });
 }
 
@@ -310,5 +358,272 @@ describe("latestSubscriptionClaimFor — a merchant reads only their own history
       latestForB?.id,
       "Tenant B's latest claim resolved to Tenant A's freshly submitted row.",
     ).not.toBe(submitted.claim.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 06-16 — the platform owner's confirm/reject side.
+// ---------------------------------------------------------------------------
+
+describe("SUB-03 platform half — confirmSubscriptionClaim / rejectSubscriptionClaim (plan 06-16)", () => {
+  /*
+   * No session, no `requireAdminContext()` — `confirmSubscriptionClaim` /
+   * `rejectSubscriptionClaim` are plain functions, not `adminAction`s. Their
+   * authorization boundary is one layer up, at the `adminAction`-wrapped
+   * Server Actions `src/server/admin/subscription-actions.ts` builds; this
+   * file proves what the functions THEMSELVES do once called, matching
+   * `tests/isolation/claims.test.ts`'s "admin order-claim writer" describe
+   * block's own precedent. `ADMIN_USER_ID` stands in for the one
+   * `platformRole: "admin"` account.
+   */
+  const ADMIN_USER_ID = "admin-fixture-user-id";
+
+  it("confirms a PENDING claim: CONFIRMED, reviewedAt/reviewedByUserId set, coversThrough set, organization active", async () => {
+    const reference = freshReference();
+    const submitted = await submitSubscriptionPaymentClaim({
+      tenantId: TENANT_A.id,
+      actorUserId: TENANT_A.userId,
+      operator: "MTN_MOMO",
+      reference,
+      planTier: "business",
+      receiptKey: null,
+    });
+    expect(submitted.ok).toBe(true);
+    if (!submitted.ok) return;
+
+    const before = new Date();
+
+    const result = await confirmSubscriptionClaim({
+      claimId: submitted.claim.id,
+      actorUserId: ADMIN_USER_ID,
+    });
+    expect(result.ok).toBe(true);
+
+    const claim = await readClaimDetail(TENANT_A.id, submitted.claim.id);
+    expect(claim.status).toBe("CONFIRMED");
+    expect(claim.reviewedByUserId).toBe(ADMIN_USER_ID);
+    expect(claim.reviewedAt).not.toBeNull();
+    expect(claim.coversThrough).not.toBeNull();
+    if (claim.coversThrough === null) return;
+
+    // No prior period end for this organization, so the floor is
+    // (roughly) "before" plus one month — a loose bound here on purpose;
+    // the exact-arithmetic case is the next test below.
+    const expectedFloor = new Date(before);
+    expectedFloor.setMonth(expectedFloor.getMonth() + 1);
+    expect(
+      claim.coversThrough.getTime(),
+    ).toBeGreaterThanOrEqual(expectedFloor.getTime() - 5_000);
+
+    const organization = await readOrganizationSubscription(TENANT_A.id);
+    expect(organization.subscriptionStatus).toBe("active");
+    expect(organization.subscriptionCurrentPeriodEnd).toEqual(
+      claim.coversThrough,
+    );
+
+    // TWO messages carry this claim's id by now: the submission message
+    // (`submitSubscriptionPaymentClaim`'s own) and the confirmation message
+    // this decision just posted — both legitimately reference the same
+    // claim. "Exactly one message PER DECISION" (the behaviour this plan
+    // adds) is asserted below by diffing counts, not by a raw total here.
+    const messages = await readSystemMessages(TENANT_A.id, submitted.claim.id);
+    expect(messages).toHaveLength(2);
+    expect(messages.every((message) => message.author === "SYSTEM")).toBe(true);
+  });
+
+  it("extends from the organization's existing FUTURE period end, not from now (T-06-81's early-payment case)", async () => {
+    const reference = freshReference();
+    const submitted = await submitSubscriptionPaymentClaim({
+      tenantId: TENANT_A.id,
+      actorUserId: TENANT_A.userId,
+      operator: "MTN_MOMO",
+      reference,
+      planTier: "business",
+      receiptKey: null,
+    });
+    expect(submitted.ok).toBe(true);
+    if (!submitted.ok) return;
+
+    // A merchant paying early: their subscription already runs 20 days out.
+    const existingPeriodEnd = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+    await platformDb.organization.update({
+      where: { id: TENANT_A.id },
+      data: { subscriptionCurrentPeriodEnd: existingPeriodEnd },
+    });
+
+    const result = await confirmSubscriptionClaim({
+      claimId: submitted.claim.id,
+      actorUserId: ADMIN_USER_ID,
+    });
+    expect(result.ok).toBe(true);
+
+    const claim = await readClaimDetail(TENANT_A.id, submitted.claim.id);
+    expect(claim.coversThrough).not.toBeNull();
+    if (claim.coversThrough === null) return;
+
+    const expected = new Date(existingPeriodEnd);
+    expected.setMonth(expected.getMonth() + 1);
+
+    expect(
+      claim.coversThrough,
+      "A naive `now + 1 month` implementation would SHORTEN this merchant's " +
+        "subscription instead of extending it from their existing period end.",
+    ).toEqual(expected);
+
+    const organization = await readOrganizationSubscription(TENANT_A.id);
+    expect(organization.subscriptionCurrentPeriodEnd).toEqual(expected);
+  });
+
+  it("refuses a second confirmation and posts no second system message", async () => {
+    const reference = freshReference();
+    const submitted = await submitSubscriptionPaymentClaim({
+      tenantId: TENANT_A.id,
+      actorUserId: TENANT_A.userId,
+      operator: "ORANGE_MONEY",
+      reference,
+      planTier: "starter",
+      receiptKey: null,
+    });
+    expect(submitted.ok).toBe(true);
+    if (!submitted.ok) return;
+
+    await expect(
+      confirmSubscriptionClaim({
+        claimId: submitted.claim.id,
+        actorUserId: ADMIN_USER_ID,
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    // Submission message + the first confirmation's own message.
+    const afterFirst = await readSystemMessages(TENANT_A.id, submitted.claim.id);
+    expect(afterFirst).toHaveLength(2);
+
+    const second = await confirmSubscriptionClaim({
+      claimId: submitted.claim.id,
+      actorUserId: ADMIN_USER_ID,
+    });
+    expect(second.ok).toBe(false);
+
+    const messages = await readSystemMessages(TENANT_A.id, submitted.claim.id);
+    expect(
+      messages,
+      "A second, refused confirmation still posted a second SYSTEM message.",
+    ).toHaveLength(2);
+  });
+
+  it("rejects a PENDING claim with the reason, and leaves the organization's subscription untouched", async () => {
+    const reference = freshReference();
+    const submitted = await submitSubscriptionPaymentClaim({
+      tenantId: TENANT_B.id,
+      actorUserId: TENANT_B.userId,
+      operator: "MTN_MOMO",
+      reference,
+      planTier: "professional",
+      receiptKey: null,
+    });
+    expect(submitted.ok).toBe(true);
+    if (!submitted.ok) return;
+
+    const before = await readOrganizationSubscription(TENANT_B.id);
+    const reason = "The reference does not match any transfer we received.";
+
+    const result = await rejectSubscriptionClaim({
+      claimId: submitted.claim.id,
+      reason,
+      actorUserId: ADMIN_USER_ID,
+    });
+    expect(result.ok).toBe(true);
+
+    const claim = await readClaimDetail(TENANT_B.id, submitted.claim.id);
+    expect(claim.status).toBe("REJECTED");
+    expect(claim.rejectionReason).toBe(reason);
+    expect(claim.coversThrough).toBeNull();
+
+    const after = await readOrganizationSubscription(TENANT_B.id);
+    expect(after.subscriptionStatus).toBe(before.subscriptionStatus);
+    expect(after.subscriptionCurrentPeriodEnd).toEqual(
+      before.subscriptionCurrentPeriodEnd,
+    );
+
+    // Submission message + the rejection's own message.
+    const messages = await readSystemMessages(TENANT_B.id, submitted.claim.id);
+    expect(messages).toHaveLength(2);
+    expect(messages.every((message) => message.author === "SYSTEM")).toBe(true);
+  });
+
+  it("confirming tenant A's claim never alters tenant B's organization or thread", async () => {
+    const reference = freshReference();
+    const submitted = await submitSubscriptionPaymentClaim({
+      tenantId: TENANT_A.id,
+      actorUserId: TENANT_A.userId,
+      operator: "MTN_MOMO",
+      reference,
+      planTier: "business",
+      receiptKey: null,
+    });
+    expect(submitted.ok).toBe(true);
+    if (!submitted.ok) return;
+
+    const bOrgBefore = await readOrganizationSubscription(TENANT_B.id);
+    const bMessagesBefore = await scopedDb(TENANT_B.id).supportMessage.findMany(
+      { where: {}, select: { id: true } },
+    );
+
+    await expect(
+      confirmSubscriptionClaim({
+        claimId: submitted.claim.id,
+        actorUserId: ADMIN_USER_ID,
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    const bOrgAfter = await readOrganizationSubscription(TENANT_B.id);
+    expect(bOrgAfter.subscriptionStatus).toBe(bOrgBefore.subscriptionStatus);
+    expect(bOrgAfter.subscriptionCurrentPeriodEnd).toEqual(
+      bOrgBefore.subscriptionCurrentPeriodEnd,
+    );
+
+    const bMessagesAfter = await scopedDb(TENANT_B.id).supportMessage.findMany(
+      { where: {}, select: { id: true } },
+    );
+    expect(bMessagesAfter).toHaveLength(bMessagesBefore.length);
+  });
+});
+
+describe("KD-V2-02 — resolveEntitlements is not silently taught to enforce subscriptionCurrentPeriodEnd", () => {
+  /*
+   * THE STRUCTURAL GUARD. No runtime test can catch a future plan quietly
+   * wiring enforcement into `resolveEntitlements`, because that plan's own
+   * tests would exercise the new behaviour it intended, not the absence this
+   * test exists to police. So this reads `resolve.ts` from disk, the same
+   * technique `tests/isolation/claims.test.ts`'s "ORD-02 — nothing
+   * auto-confirms a payment" describe block uses for
+   * `PaymentClaim.status`, and asserts the deferral is still a deliberate
+   * README-level decision rather than an edit nobody meant to make.
+   */
+  it("never reads Organization.subscriptionCurrentPeriodEnd in its logic", () => {
+    const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
+    const source = readFileSync(
+      join(repoRoot, "src/server/entitlements/resolve.ts"),
+      "utf8",
+    );
+
+    // Blank comment lines so documenting the deferral in resolve.ts's own
+    // header cannot trip this guard.
+    const stripped = source
+      .split("\n")
+      .map((line) =>
+        /^\s*(?:\/\/|\/\*|\*)/.test(line) ? " ".repeat(line.length) : line,
+      )
+      .join("\n");
+
+    expect(
+      stripped,
+      "KD-V2-02: resolveEntitlements started reading " +
+        "subscriptionCurrentPeriodEnd. That is a deliberate, considered " +
+        "change — it alters canWrite semantics for every entitlement-gated " +
+        "action in the product — and must be made on purpose, not as a side " +
+        "effect of an unrelated edit. See src/server/admin/subscription-" +
+        "claims.ts's header for the full deferral.",
+    ).not.toContain("subscriptionCurrentPeriodEnd");
   });
 });
