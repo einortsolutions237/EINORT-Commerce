@@ -15,6 +15,7 @@ import { platformDb } from "@/server/db/platform";
 import { requireAdminContext } from "@/server/admin/context";
 import { pendingOrderClaimCount as loadPendingOrderClaimCount } from "@/server/admin/claims";
 import { unreadThreadCount as loadUnreadThreadCount } from "@/server/admin/support";
+import { pendingSubscriptionClaimCount as loadPendingSubscriptionClaimCount } from "@/server/admin/subscription-claims";
 
 import { SignOutButton } from "../sign-out-button";
 
@@ -75,14 +76,16 @@ export default async function AdminLayout({
   children,
 }: LayoutProps<"/admin">) {
   const ctx = await requireAdminContext();
-  const [owner, pendingOrderClaims, unreadThreads] = await Promise.all([
-    platformDb.user.findUniqueOrThrow({
-      where: { id: ctx.userId },
-      select: { email: true },
-    }),
-    loadPendingOrderClaimCount(),
-    loadUnreadThreadCount(),
-  ]);
+  const [owner, pendingOrderClaims, pendingSubscriptionClaims, unreadThreads] =
+    await Promise.all([
+      platformDb.user.findUniqueOrThrow({
+        where: { id: ctx.userId },
+        select: { email: true },
+      }),
+      loadPendingOrderClaimCount(),
+      loadPendingSubscriptionClaimCount(),
+      loadUnreadThreadCount(),
+    ]);
 
   return (
     <>
@@ -91,15 +94,14 @@ export default async function AdminLayout({
       <ThemeProvider>
         <SidebarProvider>
           {/*
-           * `pendingOrderClaims` (plan 06-10) and `unreadThreads` (plan
-           * 06-12) are both wired below. `pendingSubscriptionClaims` is
-           * still a literal zero: 06-16 wires it. Honest rather than
-           * unfinished — see `AdminSidebar`'s own header for why each later
-           * plan changes only this call site.
+           * All three rail counts are live reads now — no literal-zero count
+           * props remain in this layout. See `AdminSidebar`'s own header for
+           * why a new count only ever changes this one call site rather than
+           * the component itself.
            */}
           <AdminSidebar
             pendingOrderClaims={pendingOrderClaims}
-            pendingSubscriptionClaims={0}
+            pendingSubscriptionClaims={pendingSubscriptionClaims}
             unreadThreads={unreadThreads}
           />
 
