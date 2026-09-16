@@ -12,6 +12,7 @@ import {
   MessagesSquare,
 } from "lucide-react";
 
+import { SuspendDialog, type SuspendDialogMode } from "@/components/admin/suspend-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,13 +76,26 @@ import { strings } from "@/lib/strings";
  * a network round trip, for no correctness benefit at this scale.
  *
  * ---------------------------------------------------------------------------
- * THE ROW ACTION MENU IS A DATA ARRAY OF ONE ITEM TODAY, ON PURPOSE.
+ * THE ROW ACTION MENU IS A DATA ARRAY, GROWN ONE PLAN AT A TIME, ON PURPOSE.
  * ---------------------------------------------------------------------------
- * `06-08-PLAN.md` § "row actions": `View store` ships now; `Open support
- * thread` is plan 06-12's, `Suspend store` / `Restore store` are plan 06-14's.
- * Each later plan appends one row to `rowActionsFor` below rather than this
- * file being rewritten — a menu item pointing at a route that does not exist
- * yet is worse than an absent one.
+ * `06-08-PLAN.md` § "row actions": `View store` shipped first, `Open support
+ * thread` next, and the symmetric `Suspend store` / `Restore store` control
+ * below is the last of the three — each landed by appending one row to
+ * `rowActionsFor` rather than this file being rewritten, since a menu item
+ * pointing at a route that does not exist yet is worse than an absent one.
+ *
+ * ---------------------------------------------------------------------------
+ * SUSPEND/RESTORE OPENS A DIALOG BEHIND THE ROW MENU, NOT A BARE ACTION.
+ * ---------------------------------------------------------------------------
+ * `src/components/admin/suspend-dialog.tsx` — mounted once per row rather
+ * than once for the whole list — so a dense table row can never mis-tap its
+ * way into suspending a store: the `dropdown-menu` item only opens the
+ * dialog, and the dialog itself is where the required reason and the
+ * destructive confirm live. The mobile-card layout renders its own
+ * `RowActionsMenu`, so each `AdminMerchantListItem` owns two independent
+ * dialog instances (desktop + `< md`), each closed until its own menu opens
+ * it — matching how the rest of this table already dual-renders per
+ * breakpoint.
  */
 
 export interface AdminMerchantListItem {
@@ -90,9 +104,11 @@ export interface AdminMerchantListItem {
   readonly ownerName: string;
   readonly ownerEmail: string;
   readonly planLabel: string;
-  /** `Organization.status`, raw — `"active"` today; plan 06-14 writes
-   * `"suspended"`. Anything else renders with the Suspended chip's styling,
-   * matching this codebase's allowlist-`active` fail-closed convention. */
+  /** `Organization.status`, raw — `"active"` or `"suspended"`, written by
+   * `setOrganizationSuspended` (`src/server/admin/suspend.ts`), the only
+   * module in `src/` permitted to write it. Anything else renders with the
+   * Suspended chip's styling, matching this codebase's allowlist-`active`
+   * fail-closed convention. */
   readonly status: string;
   readonly productCount: number;
   readonly orderCount: number;
@@ -156,54 +172,82 @@ function rowActionsFor(item: AdminMerchantListItem) {
       href: `/admin/support/${item.id}`,
       external: false,
     },
-    // Plan 06-14 appends "Suspend store" / "Restore store" here.
   ] as const;
 }
 
 function RowActionsMenu({ item }: { readonly item: AdminMerchantListItem }) {
   const actions = rowActionsFor(item);
+  const [dialogMode, setDialogMode] = useState<SuspendDialogMode | null>(null);
+
+  // Allowlist `active`; anything else offers the Restore label, matching
+  // `StoreStatusBadge`'s own fail-closed convention above.
+  const canRestore = item.status !== "active";
+  const suspendRestoreIcon = canRestore ? CircleCheck : Ban;
+  const suspendRestoreLabel = canRestore
+    ? strings.admin.merchants.actionRestore
+    : strings.admin.merchants.actionSuspend;
+  const SuspendRestoreIcon = suspendRestoreIcon;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="min-h-11 min-w-11"
-          />
-        }
-      >
-        <Ellipsis aria-hidden="true" />
-        <span className="sr-only">
-          {strings.admin.merchants.rowActionsLabel.replace(
-            "{store}",
-            item.storeName,
-          )}
-        </span>
-      </DropdownMenuTrigger>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="min-h-11 min-w-11"
+            />
+          }
+        >
+          <Ellipsis aria-hidden="true" />
+          <span className="sr-only">
+            {strings.admin.merchants.rowActionsLabel.replace(
+              "{store}",
+              item.storeName,
+            )}
+          </span>
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end">
-        {actions.map((action) => {
-          const Icon = action.icon;
-          return (
-            <DropdownMenuItem
-              key={action.key}
-              render={
-                action.external ? (
-                  <a href={action.href} target="_blank" rel="noopener" />
-                ) : (
-                  <Link href={action.href} />
-                )
-              }
-            >
-              <Icon aria-hidden="true" />
-              {action.label}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <DropdownMenuContent align="end">
+          {actions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <DropdownMenuItem
+                key={action.key}
+                render={
+                  action.external ? (
+                    <a href={action.href} target="_blank" rel="noopener" />
+                  ) : (
+                    <Link href={action.href} />
+                  )
+                }
+              >
+                <Icon aria-hidden="true" />
+                {action.label}
+              </DropdownMenuItem>
+            );
+          })}
+          <DropdownMenuItem
+            variant={canRestore ? "default" : "destructive"}
+            onClick={() => setDialogMode(canRestore ? "restore" : "suspend")}
+          >
+            <SuspendRestoreIcon aria-hidden="true" />
+            {suspendRestoreLabel}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <SuspendDialog
+        open={dialogMode !== null}
+        onOpenChange={(open) => {
+          if (!open) setDialogMode(null);
+        }}
+        mode={dialogMode ?? "suspend"}
+        merchantId={item.id}
+        storeName={item.storeName}
+      />
+    </>
   );
 }
 
