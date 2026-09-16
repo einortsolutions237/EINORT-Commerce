@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Design Parity + Marketplace/Marketing Build-out
 status: executing
-stopped_at: 06-12 completed and committed on its own worktree branch, awaiting merge; sibling plan 06-15 (Wave 5) status unknown to this executor
-last_updated: "2026-09-14T21:59:58.788Z"
-last_activity: "2026-09-14 -- Wave 4 executed and merged (support-thread image attachments: thread/subscription upload namespaces, thread image preset, two narrow mint doors, merchant-authenticated finalize route, transactional attachment persistence, sent/staged attachment grid). Post-merge gate green: lint/typecheck/build/685 unit tests. Corrected an overstated ADM-05 completion claim back to Pending — the requirement's Super Admin inbox half is still 06-12's job. Full isolation suite deferred to after Wave 5 merges, to avoid Neon test-branch contention with the incoming parallel executors."
+stopped_at: Phase 6 Wave 6 merged to master
+last_updated: "2026-09-16T16:55:00.000Z"
+last_activity: 2026-09-16 -- Phase 6 Waves 5-6 (06-12, 06-15, 06-13, 06-14, 06-16) executed and merged
 progress:
   total_phases: 18
   completed_phases: 6
   total_plans: 102
-  completed_plans: 92
-  percent: 33
+  completed_plans: 93
+  percent: 35
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** A merchant picks an industry, adds a logo and a few products, and within minutes has a storefront that looks like it cost them money to build.
-**Current focus:** Phase 6 is executing now (Waves 1-4 of 7 complete and merged to master — plans 06-01 through 06-11). Wave 5 (06-12, 06-15) is in flight: 06-12 is complete on its own worktree branch and awaiting merge; 06-15's status is unknown to this executor. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
+**Current focus:** Phase 6 is executing now (Waves 1-6 of 7 complete and merged to master — plans 06-01 through 06-16, 13/17). Only Wave 7 (06-17, the phase gate) remains. Phase 7 (3 plans, 3 waves) is fully planned and verified, queued to execute after Phase 6 lands per the roadmap's real content dependency.
 
 ## Current Position
 
 Phase: 6 (Merchant Dashboard & Platform Admin) — EXECUTING
-Plan: Wave 5 of 7 — 06-12 complete on its own worktree branch, awaiting merge; sibling plan 06-15 status unknown to this executor
+Plan: Wave 6 of 7 complete (06-13, 06-14, 06-16 merged to master); Wave 7 (06-17, phase gate) next and last
 Status: Executing Phase 6
-Last activity: 2026-09-14 -- 06-12 executed on its own worktree branch (admin support inbox + per-merchant thread, ADM-03/ADM-05): src/server/admin/support.ts/support-actions.ts (cross-tenant inbox, unread map, platform-side message writer), /admin/support and /admin/support/[tenantId] pages, the rail's live unread badge, both deferred merchants-surface entry points wired. Extended composer.tsx with a viewer/tenantId mirror (it had none despite message-bubble.tsx/message-list.tsx already having one) and built the admin-authenticated finalize route thread-finalize/route.ts had already deferred to this plan by name — both Rule 3 blocking-issue fixes, without which an admin reply with an attachment would fail at the last step. Post-task gate green: lint/typecheck/build/685 unit tests, on the executor's own worktree (not yet merged to master). ADM-05 left Pending, not Complete, in REQUIREMENTS.md — the two-way loop works but SUB-03's own claim-card surface (06-15/06-16) is still outstanding. See 06-12-SUMMARY.md.
+Last activity: 2026-09-16 -- Waves 5 and 6 executed and merged: 06-12 (admin support inbox + per-merchant thread), 06-15 (subscription-claim submission, merchant half), 06-13 (PDF support-thread attachments, D-22), 06-14 (suspend/restore, the sole Organization.status writer), 06-16 (subscription-claim platform review, completing SUB-03). Post-merge gate green: lint/typecheck/build/704 unit tests. Resolved a real 3-file merge conflict between 06-13 and 06-16 (both added a prop to MessageList/its two pages — additive, kept both). Found and fixed a genuine test bug: tests/isolation/claims.test.ts's ORD-02 confirmer scan used a bare `status: "CONFIRMED"` text match with no model context, so 06-16's sanctioned SubscriptionPaymentClaim writer false-positived as an ORD-02 violation the moment it landed — rescoped the scan to the PaymentClaim delegate call site specifically, matching the precise pattern tests/unit/phase-03-requirement-coverage.test.ts already used for the same class of problem. ADM-01, ADM-05, and SUB-03 all now genuinely complete (verified against each requirement's full text, not just each plan's self-report) — see REQUIREMENTS.md.
 
 **Phase 05.3 (Storefront Editor Page Split) — COMPLETE 2026-09-13.** All 4 plans (05.3-01 through 05.3-04) merged and gated: 664/664 unit tests, lint, typecheck, build all green; dead-route grep gate zero; D-B zero-new-capability constraint held; the six-behavior manual UI walkthrough approved by the user. EDIT-02/EDIT-03 marked complete in REQUIREMENTS.md.
 
@@ -133,6 +133,7 @@ Recent decisions affecting current work:
 - **Isolation-suite runtime, v2.0.** The model-generic isolation suite already runs 22-27 minutes, and v2.0 registers roughly 5-7 new tenant-scoped models. Without the already-identified fix (per-`describe` reseed for read-only assertions, plus a `test:isolation:smoke` split for per-task gates), every v2.0 plan ends with a 40+ minute test gate. PITFALLS.md recommends scheduling this **before the first v2.0 schema phase** — i.e. as early work inside Phase 9, which is the first phase to register new models.
 - **`TENANT_SCOPED_MODELS` insertion order is load-bearing.** It is in FK dependency order and `tests/setup/seed-two-tenants.ts` drives its batched `$transaction` off it. Every v2.0 phase adding a model must insert it in the right position and must never re-sort the array.
 - **Known pre-existing environmental flakiness in `tests/isolation/stock-race.test.ts` and two `tests/isolation/claims.test.ts` cases**, confirmed 2026-09-14 during Phase 6 Wave 2's post-merge gate: `stock-race.test.ts`'s concurrent-transaction tests intermittently fail with a Neon `"Unable to start a transaction in the given time"` pool-timeout error — reproduced identically on unmodified master, so it is not a regression from any Wave 2 change. Two `claims.test.ts` tests (the heaviest fixtures — two full merchant sign-ups, and a reject→reopen→reject cycle) exceed Vitest's default 30s per-test timeout under this environment's real Neon round-trip latency; both pass cleanly with `--testTimeout=60000`. Neither needs a code fix; both are latency/pool-capacity characteristics of running isolation tests against a real remote Neon branch. Worth revisiting alongside the already-tracked "Isolation-suite runtime, v2.0" item below (a per-test timeout bump or connection-pool tuning, not a logic change).
+- **A second, related environmental pattern confirmed 2026-09-16 during Phase 6 Wave 6's post-merge full-suite run: intermittent genuine Neon connection drops** (`"Can't reach database server"`, `"Connection terminated unexpectedly"`, `"expired transaction"`) scattered across whichever isolation test happens to be running at the time — not the same test twice across reruns, and reproduced in files (`tenant-isolation.test.ts`) untouched by any recent plan. Two separate full-suite runs each showed a different, larger-than-usual set of failures (10-14 files) that shrank to 0-1 genuine failures on a targeted rerun of just the affected file. Root cause is the Neon branch's connection capacity/stability under this session's cumulative multi-hour test load, not application code. Do not re-diagnose this as a regression without first rerunning the specific failing file(s) alone.
 
 ## Deferred Items
 
@@ -148,7 +149,7 @@ Items acknowledged and carried forward from v1.0 (never formally closed via `/gs
 
 ## Session Continuity
 
-Last session: 2026-09-14T21:59:58.779Z
-Stopped at: 06-12 completed and committed on its own worktree branch, awaiting merge; sibling plan 06-15 (Wave 5) status unknown to this executor
-Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-12-SUMMARY.md
-Next command: `/gsd:execute-phase 6` (resume at Wave 5 merge) once the dispatched Wave 5 executors complete
+Last session: 2026-09-16T16:55:00.000Z
+Stopped at: Phase 6 Wave 6 merged to master; Wave 7 (06-17, the phase gate) not yet dispatched
+Resume file: .planning/phases/06-merchant-dashboard-platform-admin/06-16-SUMMARY.md
+Next command: `/gsd:execute-phase 6` (resume at Wave 7) — note 06-17 has two blocking checkpoint:human-verify tasks (admin bootstrap correctness, a full two-session thread round trip) that need the user, not just automated gates

@@ -421,7 +421,7 @@ Plans:
   6. A merchant and the platform owner can exchange messages and file/image attachments in a persistent, per-merchant thread — visible in the merchant dashboard and a Super Admin inbox, with an in-app badge and email nudge on new activity. No real-time/websocket infrastructure.
   7. A merchant can submit their monthly subscription payment (Mobile Money/Orange Money transaction reference + receipt image) through that same thread, and the platform owner can confirm or reject it there, activating/extending the subscription on confirmation — reusing Phase 3's claim-and-verify pattern with payer/payee reversed.
 
-**Plans:** 12/17 plans executed
+**Plans:** 13/17 plans executed
 **UI hint**: yes
 
 Plans:
@@ -455,9 +455,9 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 06-13-PLAN.md — D-22's PDF attachment path as a genuinely separate, non-re-encoding storage/serving path (own allowlist, own finalize verification, own download doors) — resolves the D-22/UI-SPEC conflict rather than deferring it
-- [ ] 06-14-PLAN.md — First and only writer of `Organization.status`, its source-scanning guard, symmetric suspend/restore UI mounted at both entry points, Redis hostname-cache invalidation
-- [ ] 06-16-PLAN.md — SUB-03 platform half: the only writer of `SubscriptionPaymentClaim.status`, D-20's separate review page, inline read-only claim cards in both threads
+- [x] 06-13-PLAN.md — D-22's PDF attachment path as a genuinely separate, non-re-encoding storage/serving path (own allowlist, own finalize verification, own download doors) — resolves the D-22/UI-SPEC conflict rather than deferring it
+- [x] 06-14-PLAN.md — First and only writer of `Organization.status`, its source-scanning guard, symmetric suspend/restore UI mounted at both entry points, Redis hostname-cache invalidation
+- [x] 06-16-PLAN.md — SUB-03 platform half: the only writer of `SubscriptionPaymentClaim.status`, D-20's separate review page, inline read-only claim cards in both threads
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -701,7 +701,7 @@ Milestone v2.0 begins at Phase 6. Phases 9 → 10 → 11 → 12 are a hard order
 | 05.1. Template Preview Rendering & Picker Redesign | v1.0 | 9/9 | Complete | 2026-09-08 |
 | 05.2. Marketing Landing Page Redesign | v1.0 | 1/1 | Complete | 2026-09-08 |
 | 05.3. Storefront Editor Page Split | v1.0 | 3/4 | In Progress | - |
-| 6. Merchant Dashboard & Platform Admin | v2.0 | 12/17 | In Progress|  |
+| 6. Merchant Dashboard & Platform Admin | v2.0 | 13/17 | In Progress|  |
 | 7. Trial & Template-Tier Business Rules | v2.0 | 0/TBD | Not started | - |
 | 8. Design System & Visual Migration | v2.0 | 0/TBD | Not started | - |
 | 9. Inventory | v2.0 | 0/TBD | Not started | - |
