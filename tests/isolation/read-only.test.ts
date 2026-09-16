@@ -104,6 +104,8 @@ const { merchantAction } = await import("@/server/merchant/action");
 const { saveBranding } = await import("@/server/theming/actions");
 const { platformDb } = await import("@/server/db/platform");
 const { auth } = await import("@/server/auth/auth");
+const { requestThreadAttachmentUpload, requestSubscriptionReceiptUpload } =
+  await import("@/server/images/thread-upload");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -402,5 +404,67 @@ describe("subscribed writes allowed", () => {
 
     const after = await organizationBySlug(slug);
     expect(after?.planTier).toBe("professional");
+  });
+});
+
+describe("SUB-03 receipt upload survives the trial write gate (T-06-78)", () => {
+  it("still refuses an ordinary thread attachment once the trial has expired", async () => {
+    await signUpChooseAndCarrySession(
+      "receipt-thread@example.test",
+      "receipt-thread-store",
+      "business",
+    );
+    const org = await organizationBySlug("receipt-thread-store");
+    await expireTrial(org!.id);
+
+    const result = await requestThreadAttachmentUpload({
+      kind: "subscriptions",
+      contentType: "image/png",
+      byteSize: 1024,
+    });
+
+    expect(result.ok).toBe(false);
+    const error = (result as { ok: false; error: Record<string, string[]> })
+      .error;
+    expect(error.form).toEqual([strings.trial.readOnlyBlocked]);
+  });
+
+  it("mints a subscription-receipt upload grant for an expired-trial merchant", async () => {
+    await signUpChooseAndCarrySession(
+      "receipt-expired@example.test",
+      "receipt-expired-store",
+      "business",
+    );
+    const org = await organizationBySlug("receipt-expired-store");
+    await expireTrial(org!.id);
+
+    const result = await requestSubscriptionReceiptUpload({
+      contentType: "image/png",
+      byteSize: 1024,
+    });
+
+    expect(
+      result.ok,
+      "An expired-trial merchant could not mint a subscription-receipt " +
+        "upload grant — exactly the merchant SUB-03 exists to unlock.",
+    ).toBe(true);
+    if (!result.ok) return;
+    expect(result.uploadUrl.length).toBeGreaterThan(0);
+    expect(result.uploadId.length).toBeGreaterThan(0);
+  });
+
+  it("still mints a subscription-receipt upload grant during an active trial", async () => {
+    await signUpChooseAndCarrySession(
+      "receipt-active@example.test",
+      "receipt-active-store",
+      "business",
+    );
+
+    const result = await requestSubscriptionReceiptUpload({
+      contentType: "image/webp",
+      byteSize: 2048,
+    });
+
+    expect(result.ok).toBe(true);
   });
 });

@@ -155,6 +155,56 @@ export const requestThreadAttachmentUpload = merchantSurface.merchantAction({
 });
 
 /**
+ * The subscription-receipt door — SUB-03 / T-06-78, mirroring the exact
+ * decision `submitSubscriptionPayment` documents in its own header
+ * (`src/server/subscription/actions.ts`): an expired-trial merchant is
+ * precisely the merchant this upload exists for, so gating the mint on write
+ * access already being true is a lockout — the one merchant the receipt
+ * field exists for would be refused before their photo ever reached R2. The
+ * door above stays `mode: "write"`, because D-08 correctly write-gates an
+ * ordinary support-thread attachment; this is a second, narrow door for a
+ * second, narrow purpose, not a loosening of the first one.
+ *
+ * `kind` is deliberately absent from this schema, the same way it is absent
+ * from the document schema below: a `mode: "read"` upload door must never
+ * accept a caller-chosen namespace, or an expired-trial merchant could use
+ * it to smuggle an ordinary thread message past D-08's write gate. This door
+ * signs into `"subscriptions"` and nothing else.
+ */
+const requestSubscriptionReceiptUploadSchema = z.object({
+  contentType: z.string().min(1).max(128),
+  byteSize: z.number().int().positive().max(MAX_THREAD_UPLOAD_BYTES),
+});
+
+export const requestSubscriptionReceiptUpload = merchantSurface.merchantAction(
+  {
+    mode: "read",
+    schema: requestSubscriptionReceiptUploadSchema,
+    handler: async (
+      ctx,
+      input,
+    ): Promise<merchantSurface.ActionResult<ThreadUploadGrant>> => {
+      if (!isAllowedContentType(input.contentType)) {
+        return {
+          ok: false,
+          error: { contentType: [strings.support.attachments.typeError] },
+        };
+      }
+
+      const uploadId = crypto.randomUUID();
+      const key = objectKeyFor(ctx.tenantId, "subscriptions", uploadId);
+      const uploadUrl = await presignUpload(
+        key,
+        input.contentType,
+        input.byteSize,
+      );
+
+      return { ok: true, uploadUrl, uploadId };
+    },
+  },
+);
+
+/**
  * The platform owner's door. The target tenant id is the one deliberate
  * exception to "never a tenant id in the payload" on this module, because the
  * platform owner has no tenant of their own (D-04) — the admin identity

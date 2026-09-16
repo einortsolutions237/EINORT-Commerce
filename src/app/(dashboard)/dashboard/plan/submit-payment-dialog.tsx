@@ -24,7 +24,7 @@ import { strings } from "@/lib/strings";
 import { cn } from "@/lib/utils";
 import type { PaymentOperator } from "@/server/db/enums";
 import type { PlanTier } from "@/server/entitlements/plans";
-import { requestThreadAttachmentUpload } from "@/server/images/thread-upload";
+import { requestSubscriptionReceiptUpload } from "@/server/images/thread-upload";
 import { formatMsisdnForDisplay } from "@/server/payments/phone";
 import { formatXaf } from "@/server/payments/whatsapp";
 import { submitSubscriptionPayment } from "@/server/subscription/actions";
@@ -70,14 +70,20 @@ import type { SubscriptionClaimRow } from "@/server/subscription/claims";
  * BE ABLE TO ATTACH ONE.
  * ---------------------------------------------------------------------------
  * `submitSubscriptionPayment` is `mode: "read"` precisely so an expired-trial
- * merchant can still submit a claim (see that action's own header). But the
- * receipt upload triad it reuses — `requestThreadAttachmentUpload` and
- * `/api/upload/thread-finalize` (plan 06-11) — is `mode: "write"` /
- * `ctx.canWrite`-gated, unchanged by this plan, because D-08's read-only
- * trial state already blocks the general support-thread attach affordance
- * for the same population. An expired merchant can therefore submit a
- * reference and an operator with no photo; the schema's `receiptKey` is
- * nullable precisely so that path is not a dead end. A failed or refused
+ * merchant can still submit a claim (see that action's own header). The
+ * receipt upload triad matches that decision rather than reusing the
+ * general support-thread one unchanged: it mints through
+ * `requestSubscriptionReceiptUpload`, a `mode: "read"` door hardcoded to the
+ * `subscriptions` namespace (`src/server/images/thread-upload.ts`), and
+ * finalizes through `/api/upload/thread-finalize`'s matching `subscriptions`
+ * exception to its own `canWrite` check — an earlier version of this dialog
+ * called the general `mode: "write"` `requestThreadAttachmentUpload` here,
+ * which silently failed every receipt upload for exactly the expired-trial
+ * merchants SUB-03 exists to unlock (T-06-78). The receipt is still
+ * optional independent of that: the schema's `receiptKey` is nullable, so a
+ * merchant who declines to attach one (or whose upload fails for an
+ * ordinary reason — a dropped connection, a rejected file type) can still
+ * submit a reference and an operator with no photo. A failed or refused
  * upload is surfaced inline and never blocks the claim itself, mirroring
  * `claim-form.tsx`'s own "the screenshot is optional, so it never costs
  * somebody their claim" rule.
@@ -235,8 +241,7 @@ export function SubmitPaymentDialog({
     }
 
     try {
-      const grant = await requestThreadAttachmentUpload({
-        kind: "subscriptions",
+      const grant = await requestSubscriptionReceiptUpload({
         contentType: file.type,
         byteSize: file.size,
       });

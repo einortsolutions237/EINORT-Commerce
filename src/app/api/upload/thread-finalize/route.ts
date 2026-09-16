@@ -30,8 +30,10 @@ import { requireMerchantContext } from "@/server/merchant/context";
  * sets the same precedent for the product/logo pair — "the `claims` kind is
  * deliberately not handled here... that path is a later plan's action" —
  * and both of these routes follow it. Plan 06-15's subscription-receipt
- * upload (the `subscriptions` namespace) is still deferred: it reuses
- * whichever of the two doors its own consuming UI needs, unchanged.
+ * upload (the `subscriptions` namespace) finalizes through this same
+ * merchant-door route rather than a third one, because the credential is
+ * unchanged — a merchant session — and only the write-gate exception below
+ * differs by kind.
  *
  * ---------------------------------------------------------------------------
  * IT RE-AUTHORIZES. FINALIZE IS NOT A CONTINUATION OF THE MINT.
@@ -43,11 +45,21 @@ import { requireMerchantContext } from "@/server/merchant/context";
  * finalize without a live merchant session could spend compute deriving
  * images for a tenant they no longer (or never did) belong to.
  *
- * `ctx.canWrite` is re-checked explicitly (D-08 / SUB-02): `merchantAction`
- * enforces the trial write gate for the MINT step, but this Route Handler
- * sits outside that wrapper, and a five-minute presigned grant obtained
- * before a trial expired must not be convertible into a stored object after
- * it has.
+ * `ctx.canWrite` is re-checked explicitly (D-08 / SUB-02) for the `threads`
+ * kind: `merchantAction` enforces the trial write gate for the MINT step,
+ * but this Route Handler sits outside that wrapper, and a five-minute
+ * presigned grant obtained before a trial expired must not be convertible
+ * into a stored object after it has.
+ *
+ * The `subscriptions` kind is the deliberate exception, mirroring
+ * `requestSubscriptionReceiptUpload`'s own `mode: "read"` mint
+ * (`src/server/images/thread-upload.ts`) and `submitSubscriptionPayment`'s
+ * header (`src/server/subscription/actions.ts`, T-06-78): an expired-trial
+ * merchant is exactly the merchant a subscription receipt exists for, so
+ * this route re-checking `canWrite` unconditionally would silently convert
+ * the mint step's own trial-lockout fix back into a lockout at finalize
+ * time. The check below runs AFTER the body is parsed for this reason — it
+ * needs `kind` to know which of the two rules applies.
  *
  * ---------------------------------------------------------------------------
  * NODE RUNTIME. DO NOT ADD A `runtime` EXPORT.
@@ -142,10 +154,6 @@ export async function POST(request: Request): Promise<NextResponse> {
    */
   const ctx = await requireMerchantContext();
 
-  if (!ctx.canWrite) {
-    return fail("read_only", 403);
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -156,6 +164,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   const parsed = threadFinalizeSchema.safeParse(body);
   if (!parsed.success) {
     return fail("invalid_request", 400);
+  }
+
+  // See this file's header: every kind except `subscriptions` stays
+  // write-gated; a subscription receipt is the one upload an expired-trial
+  // merchant must still be able to finalize.
+  if (parsed.data.kind !== "subscriptions" && !ctx.canWrite) {
+    return fail("read_only", 403);
   }
 
   /*
