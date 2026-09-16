@@ -475,7 +475,6 @@ describe("ORD-02 — nothing auto-confirms a payment", () => {
     "src/server/admin/claims.ts",
   ];
   const SKIPPED_DIRS = new Set(["generated"]);
-  const CONFIRMED_WRITE = /status\s*:\s*"CONFIRMED"/;
 
   function sourceFilesUnder(dir: string): string[] {
     const absolute = join(repoRoot, dir);
@@ -503,9 +502,52 @@ describe("ORD-02 — nothing auto-confirms a payment", () => {
       .join("\n");
   }
 
+  /** Index of the `)` matching the `(` at `open`, or -1. */
+  function matchParen(code: string, open: number): number {
+    let depth = 0;
+    for (let i = open; i < code.length; i++) {
+      if (code[i] === "(") depth += 1;
+      else if (code[i] === ")") {
+        depth -= 1;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * `paymentClaim.update(...)`/`.create(...)` calls whose argument text sets
+   * `status: "CONFIRMED"` — delegate-scoped, not a bare string search.
+   *
+   * A plain `/status\s*:\s*"CONFIRMED"/` scan also matches
+   * `src/server/admin/subscription-claims.ts`, which confirms a
+   * `SubscriptionPaymentClaim` — a different model with its own SUB-03
+   * single-writer discipline (plan 06-16), not an ORD-02 violation. The fix
+   * is not a file-path exception: `paymentClaim` (lowercase `p`) is a
+   * case-sensitive substring only of the real `PaymentClaim` delegate access
+   * (`tx.paymentClaim.update`); it never occurs inside
+   * `subscriptionPaymentClaim`, where "Payment" is capitalised mid-identifier.
+   * Scoping the match to the call site itself is therefore exact, and stays
+   * exact if a THIRD claim-shaped model is ever added later.
+   */
+  const CONFIRM_CALL = /\.paymentClaim\.(?:update|create)\s*\(/g;
+  const CONFIRMED_IN_ARGS = /status\s*:\s*"CONFIRMED"/;
+
+  function confirmsPaymentClaim(code: string): boolean {
+    CONFIRM_CALL.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = CONFIRM_CALL.exec(code)) !== null) {
+      const open = match.index + match[0].length - 1;
+      const close = matchParen(code, open);
+      if (close === -1) continue;
+      if (CONFIRMED_IN_ARGS.test(code.slice(open, close + 1))) return true;
+    }
+    return false;
+  }
+
   const scannedFiles = sourceFilesUnder("src").sort();
   const confirmers = scannedFiles.filter((file) =>
-    CONFIRMED_WRITE.test(
+    confirmsPaymentClaim(
       stripCommentLines(readFileSync(join(repoRoot, file), "utf8")),
     ),
   );
