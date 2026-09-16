@@ -45,6 +45,15 @@ export interface MessageListProps {
   readonly authorOtherLabel: string;
   /** `firstUnreadForMerchant`'s result — `null` when nothing is unread. */
   readonly firstUnreadAt: Date | null;
+  /**
+   * D-22 — the authorized download route's base path for a `DOCUMENT`
+   * attachment: `/api/support/attachment` on `/dashboard/support`,
+   * `/api/admin/support/attachment` on `/admin/support/[tenantId]`. Threaded
+   * straight through to every `MessageBubble` — see that component's own
+   * header for why this is a prop chosen by the page, never a branch on
+   * `viewer`.
+   */
+  readonly downloadBasePath: string;
 }
 
 const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("en", {
@@ -114,6 +123,7 @@ export function MessageList({
   viewer,
   authorOtherLabel,
   firstUnreadAt,
+  downloadBasePath,
 }: MessageListProps) {
   // One clock for the whole render, so no row can compare against a moment
   // slightly later than the row rendered just before it.
@@ -158,6 +168,7 @@ export function MessageList({
         viewer={viewer}
         authorOtherLabel={authorOtherLabel}
         resolveAttachmentUrl={resolveThreadAttachmentUrl}
+        downloadBasePath={downloadBasePath}
       />,
     );
 

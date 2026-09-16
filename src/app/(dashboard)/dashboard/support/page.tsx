@@ -94,6 +94,7 @@ export default async function SupportPage() {
           viewer="MERCHANT"
           authorOtherLabel={strings.support.thread.authorOther}
           firstUnreadAt={firstUnreadAt}
+          downloadBasePath="/api/support/attachment"
         />
       )}
 

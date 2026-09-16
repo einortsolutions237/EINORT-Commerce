@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { strings } from "@/lib/strings";
 import type { SupportMessageRow } from "@/server/support/shared";
 
-import { AttachmentGrid } from "./attachment-grid";
+import { AttachmentGrid, type SentAttachment } from "./attachment-grid";
 
 /**
  * ONE message, rendered by a single `viewer` prop — 06-UI-SPEC.md § S.
@@ -86,6 +86,16 @@ export interface MessageBubbleProps {
    * always empty, so it is never invoked from that tree.
    */
   readonly resolveAttachmentUrl?: (storageKey: string) => string;
+  /**
+   * D-22 — the authorized download route's base path for a `DOCUMENT`
+   * attachment, mirroring `resolveAttachmentUrl`'s own optionality for the
+   * identical reason: `MessageList` (server) always supplies it, and the
+   * composer's optimistic pending bubble never does because a draft's
+   * `attachments` is always empty. Passed straight through to
+   * `AttachmentGrid`'s own `downloadBasePath` prop — see that component's
+   * header on why this is a prop rather than a branch on `viewer`.
+   */
+  readonly downloadBasePath?: string;
 }
 
 /** `strings.support.thread.meta` is `"{author} · {time}"` — split once, on `{time}`, so the pending state can swap a spinner in for the text half without hand-writing a second template. */
@@ -104,6 +114,7 @@ export function MessageBubble({
   authorOtherLabel,
   pending = false,
   resolveAttachmentUrl,
+  downloadBasePath,
 }: MessageBubbleProps) {
   /*
    * SYSTEM messages are a platform EVENT, not a turn in the conversation —
@@ -135,21 +146,30 @@ export function MessageBubble({
   const relativeTime = formatRelativeTime(row.createdAt);
 
   /*
-   * `kind === "IMAGE"` only — a `DOCUMENT` row (plan 06-13) has no public
-   * derivative URL to resolve at all; it is served through its own
-   * authorized route handler instead. This filter is what keeps that future
-   * kind from being fed through `resolveAttachmentUrl` by accident the day
-   * it starts appearing in `row.attachments`.
+   * D-22 — both kinds, resolved differently. An `IMAGE` row gets its real,
+   * publicly reachable derivative URL from `resolveAttachmentUrl`; a
+   * `DOCUMENT` row has no such URL at all (it is never served from
+   * `R2_PUBLIC_BASE_URL`), so `url` is set to an unused empty string —
+   * `AttachmentGrid` never reads it for that kind, and instead composes the
+   * authorized download link itself from `downloadBasePath` plus the
+   * attachment's own `id`. Each half is independently guarded by its own
+   * optional prop, mirroring `resolveAttachmentUrl`'s own existing
+   * undefined-when-pending behaviour: the composer's optimistic bubble
+   * supplies neither, but that bubble's `attachments` is always empty
+   * anyway (`draftRow`), so nothing is ever silently dropped in practice.
    */
-  const imageAttachments =
-    resolveAttachmentUrl === undefined
-      ? []
-      : row.attachments
-          .filter((attachment) => attachment.kind === "IMAGE")
-          .map((attachment) => ({
-            ...attachment,
-            url: resolveAttachmentUrl(attachment.storageKey),
-          }));
+  const attachmentsForGrid: SentAttachment[] = row.attachments.flatMap(
+    (attachment) => {
+      if (attachment.kind === "IMAGE") {
+        return resolveAttachmentUrl === undefined
+          ? []
+          : [{ ...attachment, url: resolveAttachmentUrl(attachment.storageKey) }];
+      }
+      return downloadBasePath === undefined
+        ? []
+        : [{ ...attachment, url: "" }];
+    },
+  );
 
   return (
     <div className={cn("flex", isOwn ? "justify-end" : "justify-start")}>
@@ -187,12 +207,13 @@ export function MessageBubble({
             </p>
           ) : null}
 
-          {imageAttachments.length > 0 ? (
+          {attachmentsForGrid.length > 0 ? (
             <AttachmentGrid
               mode="sent"
-              attachments={imageAttachments}
+              attachments={attachmentsForGrid}
               authorLabel={authorLabel}
               time={absoluteTime}
+              downloadBasePath={downloadBasePath ?? ""}
             />
           ) : null}
         </div>

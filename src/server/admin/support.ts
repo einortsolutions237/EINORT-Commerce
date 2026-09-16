@@ -134,19 +134,32 @@ const MESSAGE_SELECT = {
 } as const;
 
 /**
- * One image attachment as `support-actions.ts`'s Zod schema hands it down,
- * after the admin mint door (`src/server/images/thread-upload.ts`,
- * `requestAdminThreadAttachmentUpload`) has already derived and stored it.
- * `width`/`height` are non-null for the identical reason
- * `messages.ts`'s `ThreadAttachmentInput` states: this plan is images-only.
+ * One attachment as `support-actions.ts`'s Zod schema hands it down, after
+ * either the admin image mint door (`requestAdminThreadAttachmentUpload`) or
+ * the admin document mint door (`requestAdminThreadDocumentUpload`,
+ * `src/server/images/thread-upload.ts`) has already verified and stored it.
+ *
+ * A discriminated union on `kind`, mirroring `ThreadAttachmentInput`
+ * (`../support/messages.ts`) — the admin-zone sibling of that type, for the
+ * identical D-22 reason: a `DOCUMENT` attachment has no raster dimensions,
+ * and the union makes a descriptor that carries them for the wrong kind a
+ * type error rather than a runtime possibility.
  */
-export interface PlatformThreadAttachmentInput {
-  readonly storageKey: string;
-  readonly contentType: string;
-  readonly byteSize: number;
-  readonly width: number;
-  readonly height: number;
-}
+export type PlatformThreadAttachmentInput =
+  | {
+      readonly kind: "IMAGE";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+      readonly width: number;
+      readonly height: number;
+    }
+  | {
+      readonly kind: "DOCUMENT";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+    };
 
 /**
  * A narrow, structural transaction-client shape — `postSystemMessageAsAdmin`
@@ -451,13 +464,14 @@ export async function postPlatformMessage(
         data: attachments.map((attachment) => ({
           tenantId: merchantId,
           messageId: created.id,
-          // Images only in this plan (D-22's DOCUMENT path is plan 06-13).
-          kind: "IMAGE" as const,
+          kind: attachment.kind,
           storageKey: attachment.storageKey,
           contentType: attachment.contentType,
           byteSize: attachment.byteSize,
-          width: attachment.width,
-          height: attachment.height,
+          // NULL for DOCUMENT — see `PlatformThreadAttachmentInput`'s own
+          // header and `messages.ts`'s identical merchant-side write.
+          width: attachment.kind === "IMAGE" ? attachment.width : null,
+          height: attachment.kind === "IMAGE" ? attachment.height : null,
         })),
       });
     }

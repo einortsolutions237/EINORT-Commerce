@@ -10,20 +10,34 @@ import type { ScopedTx } from "@/server/db/tenant-scoped";
 import { UNREAD_BY_MERCHANT_AUTHORS, type SupportMessageRow } from "./shared";
 
 /**
- * One image attachment as `sendSupportMessage`'s Zod schema hands it down
- * after `src/app/api/upload/thread-finalize/route.ts` has already derived and
- * stored it (ADM-05 / D-10). `width`/`height` are non-null here on purpose —
- * this plan is images-only, and the finalize route always reports real,
- * Sharp-measured dimensions for an `IMAGE` row. `SupportAttachmentRow`'s own
- * fields stay nullable for the `DOCUMENT` case plan 06-13 adds.
+ * One attachment as `sendSupportMessage`'s Zod schema hands it down, after
+ * either `src/app/api/upload/thread-finalize/route.ts` (IMAGE) or
+ * `src/app/api/upload/thread-document-finalize/route.ts` (DOCUMENT, D-22)
+ * has already verified and stored it.
+ *
+ * A discriminated union on `kind`, matching `SupportAttachmentRow`'s own
+ * shape (`./shared.ts`): an `IMAGE` variant always carries real,
+ * Sharp-measured `width`/`height`, and a `DOCUMENT` variant carries neither —
+ * a PDF has no raster dimensions. Expressing this as a union rather than
+ * optional fields is what makes "a DOCUMENT descriptor carrying dimensions"
+ * a type error at every call site, not just a runtime possibility nobody
+ * checks.
  */
-export interface ThreadAttachmentInput {
-  readonly storageKey: string;
-  readonly contentType: string;
-  readonly byteSize: number;
-  readonly width: number;
-  readonly height: number;
-}
+export type ThreadAttachmentInput =
+  | {
+      readonly kind: "IMAGE";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+      readonly width: number;
+      readonly height: number;
+    }
+  | {
+      readonly kind: "DOCUMENT";
+      readonly storageKey: string;
+      readonly contentType: string;
+      readonly byteSize: number;
+    };
 
 const MESSAGE_SELECT = {
   id: true,
@@ -127,13 +141,15 @@ export async function postMerchantMessage(
         data: attachments.map((attachment) =>
           scopedCreateData<SupportAttachmentCreateManyInput>({
             messageId: created.id,
-            // Images only in this plan (D-22's DOCUMENT path is plan 06-13).
-            kind: "IMAGE",
+            kind: attachment.kind,
             storageKey: attachment.storageKey,
             contentType: attachment.contentType,
             byteSize: attachment.byteSize,
-            width: attachment.width,
-            height: attachment.height,
+            // NULL for DOCUMENT — a PDF has no raster dimensions, and a zero
+            // would read as a real measurement rather than an absent one
+            // (`prisma/schema.prisma`'s own comment on these two columns).
+            width: attachment.kind === "IMAGE" ? attachment.width : null,
+            height: attachment.kind === "IMAGE" ? attachment.height : null,
           }),
         ),
       });
