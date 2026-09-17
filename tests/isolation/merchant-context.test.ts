@@ -69,6 +69,20 @@ vi.mock("next/headers", () => ({
 const revalidatePath = vi.hoisted(() => vi.fn());
 vi.mock("next/cache", () => ({ revalidatePath }));
 
+/**
+ * `after()`, run immediately rather than deferred. `sendSupportMessage`
+ * (exercised by the `requireMerchantContextAllowSuspended` describe block
+ * below) schedules `notifyPlatformOfMerchantMessage` through it, and that
+ * module's own header states it can never reject — so invoking it inline is
+ * safe here and this suite has no need for `claim-submission.test.ts`'s own
+ * `drainDeferred` collection idiom.
+ */
+vi.mock("next/server", () => ({
+  after: (task: () => unknown) => {
+    void task();
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Rate limiters with controllable verdicts
 // ---------------------------------------------------------------------------
@@ -94,9 +108,13 @@ vi.mock("@/server/rate-limit", async (importOriginal) => {
 
 // Imported after the mocks so the modules under test pick them up.
 const { signUpMerchant } = await import("@/server/auth/signup");
-const { selectPlan } = await import("@/server/merchant/actions");
+const { selectPlan, switchPlan } = await import("@/server/merchant/actions");
 const { saveBranding } = await import("@/server/theming/actions");
-const { requireMerchantContext } = await import("@/server/merchant/context");
+const { requireMerchantContext, requireMerchantContextAllowSuspended } =
+  await import("@/server/merchant/context");
+const { sendSupportMessage, markSupportThreadRead } = await import(
+  "@/server/support/actions"
+);
 const { platformDb } = await import("@/server/db/platform");
 const { scopedDb } = await import("@/server/db/tenant-scoped");
 const { auth } = await import("@/server/auth/auth");
@@ -368,6 +386,69 @@ describe("suspended", () => {
     });
 
     await expectRedirect(() => requireMerchantContext(), "/suspended");
+  });
+});
+
+describe("requireMerchantContextAllowSuspended — the one exception", () => {
+  it("does not redirect a suspended organization, and reports suspended: true", async () => {
+    await signUpChooseAndCarrySession(
+      "susp-allow@example.test",
+      "susp-allow-store",
+    );
+
+    const before = await requireMerchantContext();
+    await platformDb.organization.update({
+      where: { id: before.tenantId },
+      data: { status: "suspended" },
+    });
+
+    const ctx = await requireMerchantContextAllowSuspended();
+    expect(ctx.tenantId).toBe(before.tenantId);
+    expect(ctx.suspended).toBe(true);
+  });
+
+  it("still lets a suspended merchant send and read support messages", async () => {
+    await signUpChooseAndCarrySession(
+      "susp-support@example.test",
+      "susp-support-store",
+    );
+
+    const before = await requireMerchantContext();
+    await platformDb.organization.update({
+      where: { id: before.tenantId },
+      data: { status: "suspended" },
+    });
+
+    const sent = await sendSupportMessage({
+      body: "Still here",
+      attachments: [],
+    });
+    expect(
+      sent.ok,
+      "a suspended merchant could not send a support message — exactly the " +
+        "channel that resolves the suspension",
+    ).toBe(true);
+
+    await expect(markSupportThreadRead({})).resolves.toEqual({ ok: true });
+  });
+
+  it("still redirects a suspended merchant away from an ordinary write", async () => {
+    await signUpChooseAndCarrySession(
+      "susp-blocked@example.test",
+      "susp-blocked-store",
+    );
+
+    const before = await requireMerchantContext();
+    await platformDb.organization.update({
+      where: { id: before.tenantId },
+      data: { status: "suspended" },
+    });
+
+    // The support surface's exception must not widen into a general
+    // suspension bypass — every other write stays exactly as blocked as the
+    // "suspended" describe block above already proves for a bare
+    // `requireMerchantContext()` call.
+    await expectRedirect(() => switchPlan({ tier: "starter" }), "/suspended");
   });
 });
 

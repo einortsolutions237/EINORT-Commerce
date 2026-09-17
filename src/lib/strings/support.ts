@@ -72,6 +72,15 @@ export const supportCopy = {
     emptyBody:
       "Write to the EINORT team here — questions, problems, or proof of your subscription payment. Replies land in this thread.",
 
+    /**
+     * Rendered only for a suspended merchant. The reason itself already
+     * appears in the thread as the suspend system message
+     * (`src/server/admin/suspend.ts`), so this line states only that sending
+     * still works — it does not repeat the reason.
+     */
+    suspendedNotice:
+      "Your store is suspended, but you can still send messages here.",
+
     /** SUB-03 entry line. Rendered only while the subscription is unpaid. */
     subscriptionPrompt: "Paying your subscription? ",
     subscriptionLink: "Submit your payment",

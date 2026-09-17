@@ -9,7 +9,10 @@ import {
 } from "@/server/entitlements/assert";
 import type { MerchantContext } from "@/server/entitlements/resolve";
 
-import { requireMerchantContext } from "./context";
+import {
+  requireMerchantContext,
+  requireMerchantContextAllowSuspended,
+} from "./context";
 
 /**
  * The write gate — D-08 / SUB-02 as a wrapper, not as a convention.
@@ -67,10 +70,29 @@ export function merchantAction<S extends z.ZodType, R>(config: {
   mode: "read" | "write";
   schema: S;
   handler: (ctx: MerchantContext, input: z.infer<S>) => Promise<ActionResult<R>>;
+  /**
+   * `false` (the default) for every ordinary write: a suspended merchant is
+   * redirected to `/suspended` before this factory's own checks ever run,
+   * exactly as `requireMerchantContext()`'s header describes.
+   *
+   * `true` is a narrow, deliberate exception for the support surface only
+   * (`sendSupportMessage` / `markSupportThreadRead` in
+   * `src/server/support/actions.ts`) — see
+   * `requireMerchantContextAllowSuspended()`'s header
+   * (`src/server/merchant/context.ts`) for why a suspended merchant must
+   * still be able to reach the one channel that resolves the suspension.
+   * This branches WHICH identity resolver runs, never the write-gate check
+   * below it: `mode: "write"` still refuses an expired-trial merchant here
+   * exactly as it always has, suspension and trial expiry being two
+   * independent gates.
+   */
+  allowSuspended?: boolean;
 }) {
   return async (raw: unknown): Promise<ActionResult<R>> => {
     // Identity and entitlements first, before anything looks at the payload.
-    const ctx = await requireMerchantContext();
+    const ctx = config.allowSuspended
+      ? await requireMerchantContextAllowSuspended()
+      : await requireMerchantContext();
 
     /*
      * The refusal, ahead of the parse and ahead of every database call.

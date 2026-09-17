@@ -120,9 +120,17 @@ const sendMessageSchema = z
  * merchant cannot post. The support thread is not exempt from that gate, and
  * `strings.trial.readOnlyBlocked` is the message they see, same as every
  * other blocked write in the dashboard.
+ *
+ * `allowSuspended: true` — the one exception, and it is orthogonal to the
+ * paragraph above: a SUSPENDED merchant must still be able to send a
+ * message (that is the whole reason this flag exists — see
+ * `requireMerchantContextAllowSuspended()`'s header), independent of
+ * whether their trial has also expired. Both gates apply; neither one
+ * substitutes for the other.
  */
 export const sendSupportMessage = merchantAction({
   mode: "write",
+  allowSuspended: true,
   schema: sendMessageSchema,
   handler: async (ctx, input): Promise<ActionResult<{ message: SupportMessageRow }>> => {
     /*
@@ -179,6 +187,7 @@ export const sendSupportMessage = merchantAction({
  */
 export const markSupportThreadRead = merchantAction({
   mode: "read",
+  allowSuspended: true,
   schema: z.object({}),
   handler: async (ctx) => {
     await markThreadReadForMerchant(ctx.tenantId);

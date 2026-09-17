@@ -1514,6 +1514,8 @@ export const strings = {
     heading: "Your store is unavailable",
     body: "Your store has been suspended and customers can't reach it right now. Contact us to sort this out.",
     cta: "Contact us",
+    /** Links to `/dashboard/support`, which stays reachable while suspended. */
+    supportLink: "Message us here",
     signOut: "Sign out",
   },
 

@@ -11,7 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { strings } from "@/lib/strings";
 import { pendingClaimCount } from "@/server/claims/queries";
 import { isUrgentTrial } from "@/server/entitlements/resolve";
-import { requireMerchantContext } from "@/server/merchant/context";
+import { requireMerchantContextAllowSuspended } from "@/server/merchant/context";
 import { unreadForMerchant } from "@/server/support/queries";
 
 import { SignOutButton } from "../sign-out-button";
@@ -23,20 +23,31 @@ import { TrialBanner } from "./trial-banner";
  * ---------------------------------------------------------------------------
  * THIS LAYOUT IS NOT THE AUTHORIZATION BOUNDARY. IT NEVER REDIRECTS.
  * ---------------------------------------------------------------------------
- * It calls `requireMerchantContext()` for DATA — the trial banner needs a
- * server-computed `daysLeft` — and for nothing else. Putting the auth check
- * here is the natural-looking mistake and it is a real one on two counts: a
- * Next 16 layout does not control whether its child segments render or appear
- * in the RSC payload, and it does not re-run on client-side navigation between
- * sibling routes, so a session check placed here is a check that sometimes does
- * not happen.
+ * It calls `requireMerchantContextAllowSuspended()` for DATA — the trial
+ * banner needs a server-computed `daysLeft` — and for nothing else. Putting
+ * the auth check here is the natural-looking mistake and it is a real one on
+ * two counts: a Next 16 layout does not control whether its child segments
+ * render or appear in the RSC payload, and it does not re-run on client-side
+ * navigation between sibling routes, so a session check placed here is a
+ * check that sometimes does not happen.
  *
  * Every page under this group therefore calls the DAL itself. That is not
- * defensive duplication — it is the only version of the check that is actually
- * enforced — and `React.cache()` collapses the repeat calls to one `getSession`
- * and one organization read per render pass, so it is free. A page under
- * `(dashboard)/` that never calls `requireMerchantContext()` is a bug, whatever
- * this file does.
+ * defensive duplication — it is the only version of the check that is
+ * actually enforced — and `React.cache()` collapses the repeat calls to one
+ * `getSession` and one organization read per render pass, so it is free. A
+ * page under `(dashboard)/` that never calls `requireMerchantContext()` (or,
+ * for `dashboard/support/page.tsx` alone, its suspension-tolerant sibling)
+ * is a bug, whatever this file does.
+ *
+ * THE `AllowSuspended` VARIANT, SPECIFICALLY, HERE. This shell has to be
+ * able to RENDER for a suspended merchant, because `dashboard/support` is
+ * reachable while suspended (see `requireMerchantContextAllowSuspended()`'s
+ * header in `src/server/merchant/context.ts`) and every route under this
+ * group shares this one layout — if this call used the strict resolver, its
+ * redirect to `/suspended` would fire before Support's own page component
+ * ever got a chance to render, regardless of what that page calls itself.
+ * Every OTHER page still calls the strict resolver and still redirects; this
+ * file merely stops being the thing that redirects first.
  *
  * (The inverse of `src/app/s/[slug]/layout.tsx`, deliberately. There, the gate
  * belongs in the layout: the storefront's tenant comes from the hostname, which
@@ -86,7 +97,7 @@ export default async function DashboardLayout({
   // generates this layout's key as the apex. Confirmed against the generated
   // `LayoutRoutes` union rather than assumed from the folder name.
 }: LayoutProps<"/">) {
-  const ctx = await requireMerchantContext();
+  const ctx = await requireMerchantContextAllowSuspended();
   const [pendingClaims, unreadSupportCount] = await Promise.all([
     pendingClaimCount(ctx.tenantId),
     unreadForMerchant(ctx.tenantId),

@@ -9,7 +9,7 @@ import { strings } from "@/lib/strings";
 import { scopedDb } from "@/server/db/tenant-scoped";
 import { IMAGE_PRESETS } from "@/server/images/pipeline";
 import { publicUrlFor } from "@/server/images/r2";
-import { requireMerchantContext } from "@/server/merchant/context";
+import { requireMerchantContextAllowSuspended } from "@/server/merchant/context";
 import {
   firstUnreadForMerchant,
   threadForMerchant,
@@ -24,13 +24,21 @@ import { markThreadReadForMerchant } from "@/server/support/messages";
  * D-10..D-13 / SUB-03 (06-UI-SPEC.md § A2).
  *
  * ---------------------------------------------------------------------------
- * THIS PAGE AUTHORIZES ITSELF.
+ * THIS PAGE AUTHORIZES ITSELF — AND IS THE ONE PAGE THAT STAYS OPEN WHILE
+ * SUSPENDED.
  * ---------------------------------------------------------------------------
- * `requireMerchantContext()` is called here, not inherited from
- * `(dashboard)/layout.tsx` — the layout is a shell, explicitly not an
- * authorization boundary. Every page under this route group repeats the
- * call for that reason; it is `React.cache()`-memoized, so the repetition
- * costs nothing.
+ * `requireMerchantContextAllowSuspended()` is called here, not
+ * `requireMerchantContext()` and not inherited from `(dashboard)/layout.tsx`
+ * — the layout is a shell, explicitly not an authorization boundary. Every
+ * page under this route group repeats the call for that reason; it is
+ * `React.cache()`-memoized, so the repetition costs nothing.
+ *
+ * The `AllowSuspended` variant is deliberate here specifically: see its own
+ * header in `src/server/merchant/context.ts` for why a suspended merchant
+ * must still reach this one page. `ctx.suspended` renders the inline notice
+ * below; every other page in this route group still calls the strict
+ * `requireMerchantContext()` and still redirects a suspended merchant to
+ * `/suspended`.
  *
  * ---------------------------------------------------------------------------
  * READ THE FIRST-UNREAD BOUNDARY BEFORE MARKING THE THREAD READ. IN THAT
@@ -69,7 +77,7 @@ export const metadata: Metadata = {
 const RECEIPT_DERIVATIVE = `${IMAGE_PRESETS.thread.labels[0]}.${IMAGE_PRESETS.thread.format}`;
 
 export default async function SupportPage() {
-  const ctx = await requireMerchantContext();
+  const ctx = await requireMerchantContextAllowSuspended();
 
   const [rows, firstUnreadAt] = await Promise.all([
     threadForMerchant(ctx.tenantId),
@@ -154,6 +162,12 @@ export default async function SupportPage() {
           {strings.support.page.subline}
         </p>
       </div>
+
+      {ctx.suspended ? (
+        <p className="rounded-lg border border-border bg-muted px-4 py-3 text-base leading-normal font-normal text-foreground">
+          {strings.support.page.suspendedNotice}
+        </p>
+      ) : null}
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-16 text-center">

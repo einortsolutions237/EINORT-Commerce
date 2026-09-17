@@ -153,6 +153,11 @@ export const requireMerchantContext = cache(
     // OQ-5. Reachable only behind a session whose active organization IS the
     // suspended one, so telling this merchant why is a necessity rather than a
     // leak — the anonymous storefront path stays indistinguishable (D-05).
+    //
+    // `requireMerchantContextAllowSuspended()` below is the ONE deliberate
+    // exception to this redirect, scoped to the support surface — see its own
+    // header for why a suspended merchant still needs a way to reach the
+    // platform owner.
     if (org.status !== ACTIVE_STATUS) redirect("/suspended");
 
     // D-05: the plan pick is mandatory, and this is the gate that enforces it.
@@ -194,6 +199,85 @@ export const requireMerchantContext = cache(
     return {
       ...resolveEntitlements(org, new Date()),
       userId: session.user.id,
+    };
+  },
+);
+
+/** `requireMerchantContextAllowSuspended()`'s return shape: everything
+ * `requireMerchantContext()` returns, plus whether the org is currently
+ * suspended — the one fact its callers need that the strict resolver never
+ * surfaces, because the strict resolver redirects away before returning at
+ * all. */
+export interface MerchantContextAllowSuspended extends MerchantContext {
+  readonly suspended: boolean;
+}
+
+/**
+ * `requireMerchantContext()`'s ladder, with exactly one rung removed: this
+ * never redirects a suspended merchant to `/suspended`.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS EXISTS: SUSPENSION MUST NOT ALSO CUT OFF THE ONE CHANNEL THAT
+ * RESOLVES IT.
+ * ---------------------------------------------------------------------------
+ * `/admin`'s suspend action posts a system message into the merchant's own
+ * support thread naming the reason (`src/server/admin/suspend.ts`) — the
+ * thread IS the record of why a store was suspended. But until this
+ * resolver existed, `requireMerchantContext()`'s unconditional redirect meant
+ * the one person who most needs to read that message and reply to it could
+ * not reach the page it lives on: every route under `(dashboard)/`,
+ * including Support, bounced a suspended merchant straight to the static
+ * `/suspended` notice. That is the same shape of lockout T-06-78 already
+ * names for an expired trial's receipt upload — the write a blocked party
+ * needs most is the one gated identically to every other write — except here
+ * the block was a full redirect, not a narrower write-gate.
+ *
+ * ---------------------------------------------------------------------------
+ * ONLY THE SUPPORT SURFACE USES THIS. EVERYTHING ELSE STAYS BLOCKED.
+ * ---------------------------------------------------------------------------
+ * Suspension still means the store cannot operate: catalog writes, order
+ * handling, the storefront editor and the storefront itself all stay exactly
+ * as blocked as before, because every one of those call sites still calls
+ * `requireMerchantContext()` (the strict resolver) and still redirects. This
+ * function is consumed by exactly three places — `(dashboard)/layout.tsx`
+ * (so the shell can render at all for a suspended merchant),
+ * `dashboard/support/page.tsx`, and the two support Server Actions
+ * (`sendSupportMessage`, `markSupportThreadRead` via `merchantAction`'s
+ * `allowSuspended` flag) — and MUST NOT be reached for by a new call site
+ * without the same scrutiny this header asks of the ones already here.
+ *
+ * `canWrite` (D-08's trial gate) is UNCHANGED and NOT bypassed: an
+ * expired-trial merchant is still refused when they try to send a message,
+ * exactly as `sendSupportMessage`'s own header states. Suspension and trial
+ * expiry are two independent gates; this resolver removes only the first.
+ */
+export const requireMerchantContextAllowSuspended = cache(
+  async (): Promise<MerchantContextAllowSuspended> => {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) redirect("/login");
+
+    if (session.user.platformRole === ADMIN_ROLE) redirect("/admin");
+
+    const tenantId = session.session.activeOrganizationId;
+    if (!tenantId) redirect("/onboarding/create-store");
+
+    const org = await platformDb.organization.findUnique({
+      where: { id: tenantId },
+      select: MERCHANT_COLUMNS,
+    });
+
+    if (!org) redirect("/login");
+
+    // THE ONE RUNG REMOVED FROM `requireMerchantContext()`'S LADDER. See this
+    // function's header for why.
+
+    if (org.planTier === null) redirect("/onboarding/plan");
+    if (org.industry === null) redirect("/onboarding/branding");
+
+    return {
+      ...resolveEntitlements(org, new Date()),
+      userId: session.user.id,
+      suspended: org.status !== ACTIVE_STATUS,
     };
   },
 );

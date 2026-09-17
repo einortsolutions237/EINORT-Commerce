@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { strings } from "@/lib/strings";
@@ -28,9 +29,17 @@ import { SignOutButton } from "../sign-out-button";
  * same anonymous not-found page, would leave the one person who can act on it
  * with no idea what happened (T-02-15).
  *
- * Static and terminal: one message and one way to reach a human. There is no
- * appeal form, no status detail and no reason code, because none of those
- * exists to render — the WhatsApp thread is the entire support surface in V1.
+ * One message and two ways to reach a human — updated from Phase 2's "one",
+ * because Phase 6 built an in-app support thread that Phase 2 could not have
+ * pointed to yet. The external WhatsApp link is still here for a merchant who
+ * would rather not sign back in; `strings.suspended.supportLink` now also
+ * offers `/dashboard/support`, which `requireMerchantContextAllowSuspended()`
+ * (`src/server/merchant/context.ts`) deliberately keeps reachable for exactly
+ * this reader — the reason for the suspension already appears there as a
+ * system message, and replying is how a merchant gets the discussion started
+ * without leaving the product. Still no appeal form and no status detail
+ * here on this page itself: the thread is where that conversation actually
+ * happens now, not a form this static page would have to render.
  */
 
 export const metadata: Metadata = {
@@ -68,6 +77,20 @@ export default function SuspendedPage() {
                   {strings.trial.contactUrlLabel}
                 </span>
               </a>
+
+              {/*
+               * `requireMerchantContextAllowSuspended()` keeps this one route
+               * reachable while suspended (see its own header) — the
+               * suspension reason already appears there as a system message,
+               * so this is how a merchant continues that conversation without
+               * leaving the product.
+               */}
+              <Link
+                href="/dashboard/support"
+                className="inline-flex min-h-11 items-center text-base leading-normal font-medium text-foreground underline underline-offset-3"
+              >
+                {strings.suspended.supportLink}
+              </Link>
 
               {/*
                * The secondary action: a suspended merchant must have a way
