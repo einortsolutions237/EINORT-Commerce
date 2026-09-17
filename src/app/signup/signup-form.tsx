@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { strings } from "@/lib/strings";
 import { cn } from "@/lib/utils";
 import { signUpMerchant } from "@/server/auth/signup";
@@ -164,13 +165,14 @@ export function SignupForm() {
           >
             {strings.signup.passwordLabel}
           </Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="new-password"
             className="min-h-11 bg-background"
             aria-invalid={errors.password ? true : undefined}
             aria-describedby="password-helper"
+            showLabel={strings.signup.showPassword}
+            hideLabel={strings.signup.hidePassword}
             {...form.register("password")}
           />
           <p

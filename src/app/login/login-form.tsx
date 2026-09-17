@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { strings } from "@/lib/strings";
 import { signInMerchant } from "@/server/auth/login";
 
@@ -122,13 +123,14 @@ export function LoginForm() {
           >
             {strings.login.passwordLabel}
           </Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             className="min-h-11 bg-background"
             aria-invalid={hasError ? true : undefined}
             aria-describedby={hasError ? "login-form-error" : undefined}
+            showLabel={strings.login.showPassword}
+            hideLabel={strings.login.hidePassword}
             {...form.register("password")}
           />
         </div>

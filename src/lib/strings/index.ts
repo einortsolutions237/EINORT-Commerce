@@ -129,6 +129,8 @@ export const strings = {
     emailLabel: "Email address",
     passwordLabel: "Password",
     passwordHelper: "8 characters minimum.",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     slugLabel: "Your store address",
 
     /** The one primary button on the page. */
@@ -203,6 +205,8 @@ export const strings = {
 
     emailLabel: "Email address",
     passwordLabel: "Password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
 
     /** The one primary button on the page. */
     cta: "Sign in",
